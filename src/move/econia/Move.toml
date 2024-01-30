@@ -1,0 +1,16 @@
+[package]
+name = "Econia"
+version = "5.0.0"
+upgrade_policy = "compatible"
+authors = ["Econia Labs (developers@econialabs.com)"]
+
+[addresses]
+econia = "_"
+
+[dev-addresses]
+econia = "0xc0de"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
