@@ -19,8 +19,8 @@ module econia::core {
 
     /// Registrant's utility asset primary fungible store balance is below market registration fee.
     const E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET: u64 = 0;
-    /// The given trading pair already exists.
-    const E_PAIR_ALREADY_REGISTERED: u64 = 1;
+    /// The given trading pair already exists for the specified size parameters.
+    const E_PAIR_ALREADY_REGISTERED_FOR_GIVEN_SIZE_PARAMETERS: u64 = 1;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -102,7 +102,7 @@ module econia::core {
         let market_registration_fee = registry_ref_mut.market_registration_fee;
         assert!(
             registrant_balance >= market_registration_fee,
-            E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET
+            E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET,
         );
         primary_fungible_store::transfer(
             registrant,
@@ -118,7 +118,10 @@ module econia::core {
             min_post_size,
         };
         let pairs_map_ref_mut = &mut registry_ref_mut.pairs;
-        assert!(!table::contains(pairs_map_ref_mut, sized_pair_info), E_PAIR_ALREADY_REGISTERED);
+        assert!(
+            !table::contains(pairs_map_ref_mut, sized_pair_info),
+            E_PAIR_ALREADY_REGISTERED_FOR_GIVEN_SIZE_PARAMETERS,
+        );
         let markets_map_ref_mut = &mut registry_ref_mut.markets;
         let market_id = table_with_length::length(markets_map_ref_mut);
         let constructor_ref = object::create_object(@econia);
