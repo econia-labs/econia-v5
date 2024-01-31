@@ -25,6 +25,10 @@ module econia::test_assets {
         transfer_ref: TransferRef,
     }
 
+    public fun ensure_assets_initialized() {
+        if (!exists<TestAssetsMetadata>(@econia)) init_test_assets();
+    }
+
     public fun get_metadata(): (
         Object<Metadata>,
         Object<Metadata>,
@@ -35,18 +39,13 @@ module econia::test_assets {
     }
 
     public fun init_test_assets() {
-        if (exists<TestAssetsMetadata>(@econia)) return;
-        move_to(
+        if (!exists<TestAssetsMetadata>(@econia)) move_to(
             &account::create_signer_for_test(@econia),
             TestAssetsMetadata {
                 base_metadata: init_test_asset(BASE_SYMBOL, BASE_DECIMALS),
                 quote_metadata: init_test_asset(QUOTE_SYMBOL, QUOTE_DECIMALS),
             }
         )
-    }
-
-    public fun ensure_assets_initialized() {
-        if (!exists<TestAssetsMetadata>(@econia)) init_test_assets();
     }
 
     fun init_test_asset(
