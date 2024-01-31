@@ -1,8 +1,15 @@
 module econia::core {
 
-    use aptos_framework::fungible_asset::{Self, BurnRef, MintRef, Metadata};
-    use aptos_framework::object::{Self, ExtendRef, Object, ObjectGroup};
-    use aptos_framework::table_with_length::{TableWithLength};
+    use aptos_framework::fungible_asset::Metadata;
+    use aptos_framework::object::{Object, ObjectGroup};
+    use aptos_framework::table_with_length::{Self, TableWithLength};
+
+    #[test_only]
+    use aptos_framework::account;
+    #[test_only]
+    use econia::test_assets;
+
+    const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100000000;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -41,12 +48,31 @@ module econia::core {
 
     /// Stored under Econia account.
     struct Registry has key {
-        markets: TableWithLength<u64, MarketInfo>
+        markets: TableWithLength<u64, MarketInfo>,
+        utility_asset_metadata: Object<Metadata>,
+        market_registration_fee: u64,
     }
 
     /// Stored under each user's account.
     struct MarketAccounts has key {
         map: TableWithLength<u64, MarketAccountInfo>
+    }
+
+    fun init_module_internal(
+        econia: &signer,
+        utility_asset_metadata: Object<Metadata>
+    ) {
+        move_to(econia, Registry {
+            markets: table_with_length::new(),
+            utility_asset_metadata,
+            market_registration_fee: GENESIS_MARKET_REGISTRATION_FEE,
+        });
+    }
+
+    #[test_only]
+    public fun init_module_test() {
+        let (_, quote_asset) = test_assets::get_metadata();
+        init_module_internal(&account::create_signer_for_test(@econia), quote_asset);
     }
 
 }
