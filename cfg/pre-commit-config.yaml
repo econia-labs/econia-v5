@@ -1,3 +1,4 @@
+---
 repos:
 -
   hooks:
@@ -46,3 +47,4 @@ repos:
   - id: 'shfmt'
   repo: 'https://github.com/scop/pre-commit-shfmt'
   rev: 'v3.7.0-4'
+...
