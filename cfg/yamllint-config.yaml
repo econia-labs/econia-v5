@@ -1,0 +1,29 @@
+# Used by pre-commit.
+extends: 'default'
+rules:
+  braces:
+    forbid: true
+  brackets:
+    forbid: true
+  colons: 'enable'
+  commas: 'enable'
+  comments-indentation: 'enable'
+  document-start:
+    present: false
+  empty-lines:
+    max: 0
+    max-end: 1
+    max-start: 0
+  empty-values: 'enable'
+  hyphens: 'enable'
+  indentation:
+    check-multi-line-strings: true
+    indent-sequences: false
+    spaces: 2
+  key-duplicates: false
+  key-ordering: 'enable'
+  line-length: 'enable'
+  new-lines: 'enable'
+  quoted-strings:
+    quote-type: 'single'
+    required: true
