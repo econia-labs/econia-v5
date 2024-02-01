@@ -33,6 +33,7 @@ repos:
     args:
     - '--config-file'
     - 'cfg/yamllint-config.yaml'
+    - '--strict'
     id: 'yamllint'
   repo: 'https://github.com/adrienverge/yamllint'
   rev: 'v1.33.0'

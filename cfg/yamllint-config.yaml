@@ -27,3 +27,4 @@ rules:
   quoted-strings:
     quote-type: 'single'
     required: true
+  truthy: 'enable'
