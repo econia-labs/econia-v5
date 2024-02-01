@@ -1,3 +1,4 @@
+---
 repos:
 -
   hooks:
@@ -16,7 +17,11 @@ repos:
   rev: '0.7.17'
 -
   hooks:
-  - id: 'markdownlint-fix'
+  -
+    args:
+    - '--config'
+    - 'cfg/markdownlint-config.yaml'
+    id: 'markdownlint-fix'
   repo: 'https://github.com/igorshubovych/markdownlint-cli'
   rev: 'v0.39.0'
 -
@@ -42,3 +47,4 @@ repos:
   - id: 'shfmt'
   repo: 'https://github.com/scop/pre-commit-shfmt'
   rev: 'v3.7.0-4'
+...

@@ -1,30 +1,39 @@
-# Used by pre-commit.
+---
 extends: 'default'
 rules:
   braces:
     forbid: true
   brackets:
     forbid: true
-  colons: 'enable'
-  commas: 'enable'
-  comments-indentation: 'enable'
+  comments:
+    ignore-shebangs: true
+    level: 'error'
+    min-spaces-from-content: 1
+    require-starting-space: true
+  comments-indentation:
+    level: 'error'
+  document-end: 'enable'
   document-start:
-    present: false
+    level: 'error'
   empty-lines:
     max: 0
     max-end: 1
     max-start: 0
   empty-values: 'enable'
-  hyphens: 'enable'
+  float-values:
+    forbid-inf: false
+    forbid-nan: false
+    forbid-scientific-notation: true
+    require-numeral-before-decimal: true
   indentation:
     check-multi-line-strings: true
     indent-sequences: false
     spaces: 2
-  key-duplicates: false
   key-ordering: 'enable'
-  line-length: 'enable'
-  new-lines: 'enable'
+  octal-values: 'enable'
   quoted-strings:
     quote-type: 'single'
     required: true
-  truthy: 'enable'
+  truthy:
+    level: 'error'
+...
