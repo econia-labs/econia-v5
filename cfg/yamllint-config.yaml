@@ -1,4 +1,3 @@
-# Used by pre-commit.
 extends: 'default'
 rules:
   braces:
