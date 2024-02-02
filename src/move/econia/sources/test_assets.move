@@ -5,6 +5,7 @@ module econia::test_assets {
     use aptos_framework::fungible_asset::{Self, BurnRef, MintRef, Metadata, TransferRef};
     use aptos_framework::primary_fungible_store;
     use aptos_framework::object::{Self, Object, ObjectGroup};
+    use std::features;
     use std::option;
     use std::string;
 
@@ -39,7 +40,10 @@ module econia::test_assets {
     }
 
     public fun init_test_assets() {
-        if (!exists<TestAssetsMetadata>(@econia)) move_to(
+        if (exists<TestAssetsMetadata>(@econia)) return;
+        let framework = account::create_signer_for_test(@std);
+        features::change_feature_flags(&framework, vector[features::get_auids()], vector[]);
+        move_to(
             &account::create_signer_for_test(@econia),
             TestAssetsMetadata {
                 base_metadata: init_test_asset(BASE_SYMBOL, BASE_DECIMALS),
@@ -52,7 +56,7 @@ module econia::test_assets {
         symbol: vector<u8>,
         decimals: u8,
     ): Object<Metadata> {
-        let constructor_ref = object::create_object(@econia);
+        let constructor_ref = object::create_sticky_object(@econia);
         primary_fungible_store::create_primary_store_enabled_fungible_asset(
             &constructor_ref,
             option::none(),
