@@ -1,17 +1,10 @@
 # Contribution guidelines
 
-See [RFC 2119] for a guide to interpreting the key words in this document:
+The key words `MUST`, `MUST NOT`, `REQUIRED`, `SHALL`, `SHALL NOT`, `SHOULD`,
+`SHOULD NOT`, `RECOMMENDED`,  `MAY`, and `OPTIONAL` in this document are to be
+interpreted as described in [RFC 2119].
 
-- `MAY`
-- `MUST`
-- `MUST NOT`
-- `OPTIONAL`
-- `RECOMMENDED`
-- `REQUIRED`
-- `SHALL`
-- `SHALL NOT`
-- `SHOULD`
-- `SHOULD NOT`
+These keywords `SHALL` be in `monospace` for ease of identification.
 
 ## Continuous integration and development
 
@@ -55,7 +48,7 @@ tracking purposes.
 
 ### Markdown
 
-1. [Reference links] are REQUIRED where possible, for readability and for ease
+1. [Reference links] are `REQUIRED` where possible, for readability and for ease
    of linting.
 
 ### Move
