@@ -44,6 +44,14 @@ you are submitting a PR as a community contributor, an Econia Labs member
 `SHALL` change your PR title to include an auto-generated tag for internal
 tracking purposes.
 
+Pull requests `MUST` include a description written using imperative form that
+"tells the repository what to do".
+
+Pull request titles `MUST` also use imperative form, with the first letter after
+the tag capitalized. For example `[ECO-WXYZ] Update something in the repo`.
+
+Commit titles `SHOULD` use a similar format, but without a leading tag.
+
 ## Style
 
 ### General
