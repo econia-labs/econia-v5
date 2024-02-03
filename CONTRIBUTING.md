@@ -1,4 +1,4 @@
-# Contribution guidelines
+# Contribution Guidelines
 
 The key words `MUST`, `MUST NOT`, `REQUIRED`, `SHALL`, `SHALL NOT`, `SHOULD`,
 `SHOULD NOT`, `RECOMMENDED`,  `MAY`, and `OPTIONAL` in this document are to be
@@ -53,6 +53,7 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 1. Minimize maintainability dependencies.
 1. Prefer compact code blocks, delimited by section comments rather than
    whitespace.
+1. Titles `SHALL` use `Title Case` while headers `SHALL` use `Sentence case`.
 
 ### Markdown
 
