@@ -1,5 +1,6 @@
 # Econia v5
 
-[![pre-commit]](https://github.com/pre-commit/pre-commit)
+[![pre-commit shield]][pre-commit repo]
 
-[pre-commit]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
+[pre-commit repo]: https://github.com/pre-commit/pre-commit
+[pre-commit shield]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
