@@ -1,11 +1,15 @@
 {
-    "dictionaryDefinitions": [
-      {
-        "name": "project-words",
-        "path": "./cspell-dictionary.txt",
-        "addWords": true
-      }
-    ],
-    "dictionaries": ["project-words"],
-    "ignorePaths": ["/project-words.txt"]
+  "dictionaries": [
+    "project-words"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "addWords": true,
+      "name": "project-words",
+      "path": "./cspell-dictionary.txt"
+    }
+  ],
+  "ignorePaths": [
+    "/project-words.txt"
+  ]
 }
