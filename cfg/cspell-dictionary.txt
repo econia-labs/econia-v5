@@ -1,0 +1,5 @@
+aptos
+econia
+octas
+struct
+subdir
