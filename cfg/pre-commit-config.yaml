@@ -1,3 +1,4 @@
+# cspell:words autofix, markdownlint, mdformat, shfmt
 ---
 repos:
 -
@@ -9,7 +10,7 @@ repos:
   - id: 'mixed-line-ending'
   - id: 'trailing-whitespace'
   repo: 'https://github.com/pre-commit/pre-commit-hooks'
-  rev: 'v2.3.0'
+  rev: 'v4.5.0'
 -
   hooks:
   - id: 'mdformat'
@@ -41,10 +42,19 @@ repos:
     - '--strict'
     id: 'yamllint'
   repo: 'https://github.com/adrienverge/yamllint'
-  rev: 'v1.33.0'
+  rev: 'v1.34.0'
 -
   hooks:
   - id: 'shfmt'
   repo: 'https://github.com/scop/pre-commit-shfmt'
   rev: 'v3.7.0-4'
+-
+  hooks:
+  -
+    args:
+    - '--config'
+    - 'cfg/cspell-config.json'
+    id: 'cspell'
+  repo: 'https://github.com/streetsidesoftware/cspell-cli'
+  rev: 'v8.3.0'
 ...

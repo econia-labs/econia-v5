@@ -1,4 +1,5 @@
 #!/bin/sh
+# cspell:words entr
 (
 	local move_dir=src/move/econia
 	(

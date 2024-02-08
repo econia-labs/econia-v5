@@ -1,3 +1,4 @@
+// cspell:words auids
 #[test_only]
 module econia::test_assets {
 
