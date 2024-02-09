@@ -47,15 +47,6 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    minimum post size so as to avoid distortions between assets with different
    decimal amounts.
 
-### Eviction criteria
-
-1. Markets `SHALL` permit a fixed number of orders per side, for example 1000.
-1. Orders `SHALL` be evicted if the ratio formed by their price and the best ask
-   or bid price exceeds a fixed value, for example 10.
-1. When an order is placed, the head and tail of the book for the given side
-   `SHALL` be checked, and evicted if they are below the minimum post size for
-   the market.
-
 ## Dynamics
 
 ### Fees
@@ -75,6 +66,15 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    quote-only outside of liquidity pool operations.
 
 ### Eviction
+
+1. Markets `SHALL` permit a fixed number of orders per side, for example 1000.
+
+1. Orders `SHALL` be evicted if the ratio formed by their price and the best ask
+   or bid price exceeds a fixed value, for example 10.
+
+1. When an order is placed, the head and tail of the book for the given side
+   `SHALL` be checked, and evicted if they are below the minimum post size for
+   the market.
 
 1. Eviction from the middle of the price-time queue `MAY` be incentivized via an
    eviction bounty program via a public API, where bounty hunters need to pay a
@@ -187,6 +187,12 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Core data structures `SHALL` include `aptos_framework::any::Any`,
    `aptos_framework::copyable_any::Any`, or similar `extension` fields
    to enable unforeseen backwards-compatible feature upgrades.
+
+## Implementation details
+
+1. Error codes that are raised by multiple functions `SHALL` be wrapped with
+   inline helper functions containing a single assert, so that the inline
+   function can be failure tested, for ease of coverage.
 
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [`aptos-core` #11950]: https://github.com/aptos-labs/aptos-core/pull/11950
