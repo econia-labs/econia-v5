@@ -72,7 +72,7 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 1. Error code names `MUST` start with `E_`, for example `E_NOT_ENOUGH_BASE`.
 1. Econia `SHALL` be implemented according to the [architecture specification].
 
-[architecture specification]: doc/architecture.md
+[architecture specification]: doc/architecture-specification.md
 [doc comments]: https://move-language.github.io/move/coding-conventions.html?#comments
 [github actions]: https://docs.github.com/en/actions
 [linear]: https://pre-commit.com/hooks.html
