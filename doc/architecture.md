@@ -1,6 +1,6 @@
-<!--- cspell:words incentivized, evictable -->
+<!--- cspell:words evictable, incentivized -->
 
-# Econia v5 Architecture
+# Econia v5 Architecture Specification
 
 The key words `MUST`, `MUST NOT`, `REQUIRED`, `SHALL`, `SHALL NOT`, `SHOULD`,
 `SHOULD NOT`, `RECOMMENDED`,  `MAY`, and `OPTIONAL` in this document are to be
@@ -17,7 +17,7 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Fee rates `SHALL` be expressed in basis points.
 1. Both size and price `SHALL` be restricted to a certain number of significant
    figures, based on the market, per [`aptos-core` #11950].
-1. The minimum permissible post size `SHALL` be mediated via a mixture of
+1. The minimum permissible post amount `SHALL` be mediated via a mixture of
    eviction criteria and governance.
 
 ### Significant figures
@@ -32,12 +32,13 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    restrictions for existing markets to enable, for example, above-average
    significant figure restrictions for price on a wrapped Bitcoin market.
 
-### Minimum post size
+### Minimum post amount
 
-1. In the default case, a market `SHALL` have a minimum post size that is
+1. In the default case, a market `SHALL` have a minimum post amount that is
    calculated based on existing liquidity: the amount of base locked in all asks
-   or the amount of quote locked in all bids. For example the minimum post size
-   may be calculated as 1 basis point of all liquidity for the given side.
+   or the amount of quote locked in all bids. For example the minimum post
+   amount may be calculated as 1 basis point of all liquidity for the given
+   side.
 1. Alternatively, governance `MAY` override the default minimum post size and
    specify a minimum base and quote amount to post. This could be necessary for
    high-liquidity markets, to avoid flash loan attacks.
@@ -68,21 +69,16 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 ### Eviction
 
 1. Markets `SHALL` permit a fixed number of orders per side, for example 1000.
-
 1. Orders `SHALL` be evicted if the ratio formed by their price and the best ask
    or bid price exceeds a fixed value, for example 10.
-
 1. When an order is placed, the head and tail of the book for the given side
    `SHALL` be checked, and evicted if they are below the minimum post size for
    the market.
-
-1. Eviction from the middle of the price-time queue `MAY` be incentivized via an
-   eviction bounty program via a public API, where bounty hunters need to pay a
-   deposit, and if the order in question is evictable, then they get back their
-   deposit and an eviction bounty, for example 5 basis points of the posted
-   collateral on the order, deposited straight to the bounty hunter's primary
-   fungible asset store. In this schema bounty rate and deposit amount may be
-   tracked as market parameters.
+1. Eviction from anywhere in the price-time queue `MAY` be incentivized via an
+   eviction bounty program via a public API, where bounty hunters are paid a
+   fixed amount of the remaining collateral available on an evictable order, for
+   example 5 basis points, deposited straight to the bounty hunter's primary
+   fungible asset store.
 
 ### Oracle queries
 
@@ -110,18 +106,13 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    and have their sponsorship bucket be used only after applicable global
    transaction sponsorship.
 
-### Events
-
-1. Market registration events `SHALL` include fungible asset metadata like
-   decimals for ease of indexing.
-
-### Withdrawals
-
-1. Since fungible assets may be seized at any time, deposits and withdrawals
-   `SHALL` be assessed proportionally to socialize losses and avoid bank run
-   scenarios: if vaults are 50% empty, then deposits will be 50% of expected.
-
 ## Data structures
+
+### Registry
+
+1. Recognized markets `SHALL` map from trading pair to market metadata, using an
+   `aptos_std::smart_table::SmartTable` since it is an ordered map that will not
+   be subject to the same attack vectors as maps with a public insertion vector.
 
 ### Market accounts
 
@@ -129,7 +120,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    with order price as the lookup key. Hence each user will only be able to have
    one open order at a given price. The red-black tree `MAY` cache the location
    of the last accessed key so that operations to check existence then borrow
-   can occur without re-traversal.
+   can occur without re-traversal. Bid and ask trees for a user `MAY` be
+   combined into one single tree.
 1. Only available and total amounts for base and quote `SHALL` be tracked, since
    deposits will be held in a global vault in order to reduce borrows. Since
    anyone can deposit into the global vault store, there is no way to ensure the
@@ -139,6 +131,9 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    `SHALL` transact against a global base/quote vault for the entire market.
 1. There `SHALL` be a hard-coded constant restricting the number of open orders
    each user is allowed to have.
+1. Each user `SHALL` have a market accounts map of type
+   `aptos_std::smart_table::SmartTable` which lists the markets they have open
+   market accounts for.
 
 ### Market vaults
 
@@ -190,9 +185,53 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ## Implementation details
 
+### Simulator
+
+1. A runtime-level simulator `SHALL` determine in/out values for trades, to
+   determine the results of a proposed trade ahead of time, in order to enable
+   fill-or-kill orders as well as simulations from calling functions.
+
+### Eviction
+
+1. Eviction price `SHALL` be mediated via optimistic division only per
+   [`aptos-core` #11952], via `eviction_price_divisor_ask` and `_bid`, such that
+   the proposed ask price is divided by the best ask price, and the best bid
+   price is divided by the proposed bid price before threshold comparisons.
+1. Eviction of a full order book `SHALL NOT` be possible within a single
+   transaction.
+
+### Error codes
+
 1. Error codes that are raised by multiple functions `SHALL` be wrapped with
    inline helper functions containing a single assert, so that the inline
    function can be failure tested, for ease of coverage.
+
+### Events
+
+1. Market registration events `SHALL` include fungible asset metadata like
+   decimals for ease of indexing.
+1. Market orders and limit orders `SHALL` use the same event structure, which
+   `MAY` be common to swaps.
+
+### Withdrawals
+
+1. Since fungible assets may be seized at any time, deposits and withdrawals
+   `SHALL` be assessed proportionally to socialize losses and avoid bank run
+   scenarios: if vaults are 50% empty, then deposits will be 50% of expected.
+
+### Parameter updates
+
+1. Market parameter updates for a given market `SHALL` be updated in multiple
+   places in the registry since data is indexed in multiple ways.
+1. Market parameters `SHALL` be set via APIs that accept a vector for each
+   field, representing an option where `some` corresponding to an update. Market
+   ID `SHALL` be offered as a field, and if `none` the update corresponds to
+   default parameter updates.
+
+### Package size
+
+1. Move package size `SHALL` be under the max transaction limit, to enable
+   package publication using a single transaction.
 
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [`aptos-core` #11950]: https://github.com/aptos-labs/aptos-core/pull/11950

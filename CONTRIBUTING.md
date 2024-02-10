@@ -26,8 +26,8 @@ See the `cfg/` directory for assorted formatter and linter configurations.
 ### GitHub actions
 
 This repository uses [GitHub actions] to perform assorted status checks. If you
-submit a pull request but do not [run `pre-commit`](#pre-commit) then your pull
-request might get blocked.
+submit a pull request but do not [run `pre-commit`] then your pull request might
+get blocked.
 
 ## Pull requests
 
@@ -70,7 +70,9 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 1. Variable names `SHOULD` be descriptive, with minor exceptions for scenarios
    like math utility functions.
 1. Error code names `MUST` start with `E_`, for example `E_NOT_ENOUGH_BASE`.
+1. Econia `SHALL` be implemented according to the [architecture specification].
 
+[architecture specification]: doc/architecture.md
 [doc comments]: https://move-language.github.io/move/coding-conventions.html?#comments
 [github actions]: https://docs.github.com/en/actions
 [linear]: https://pre-commit.com/hooks.html
@@ -78,5 +80,6 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 [pre-commit hook]: https://pre-commit.com/hooks.html
 [reference links]: https://mdformat.readthedocs.io/en/stable/users/style.html#reference-links
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
+[run `pre-commit`]: #pre-commit
 [squash and merge method]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github
 [`pre-commit`]: https://github.com/pre-commit/pre-commit
