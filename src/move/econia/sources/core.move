@@ -5,7 +5,7 @@ module econia::core {
     use aptos_framework::table::{Self, Table};
     use aptos_framework::table_with_length::{Self, TableWithLength};
     use aptos_framework::primary_fungible_store;
-    use aptos_std::smart_vector::{SmartVector};
+    use aptos_framework::smart_table::{Self, SmartTable};
     use std::signer;
 
     #[test_only]
@@ -13,14 +13,18 @@ module econia::core {
     #[test_only]
     use econia::test_assets;
 
-    const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100000000;
-    const GENESIS_DEFAULT_POOL_FEE_RATE_BPS: u16 = 30;
-    const GENESIS_DEFAULT_MAX_SIZE_SIG_FIGS: u8 = 4;
+    const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100_000_000;
+    const GENESIS_ORACLE_FEE: u64 = 1_000;
+
+    const GENESIS_DEFAULT_POOL_FEE_RATE_BPS: u8 = 30;
     const GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS: u8 = 4;
     const GENESIS_DEFAULT_MAX_POSTED_ORDERS_PER_SIDE: u32 = 1000;
+    const GENESIS_DEFAULT_EVICTION_BOUNTY_BPS: u8 = 10;
+    const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK: u128 = 100_000_000_000_000_000_000;
+    const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID: u128 = 100_000_000_000_000_000_000;
 
     const MIN_POST_AMOUNT_NULL: u64 = 0;
-    const FEE_RATE_NULL: u16 = 0;
+    const FEE_RATE_NULL: u8 = 0;
 
     /// Registrant's utility asset primary fungible store balance is below market registration fee.
     const E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET: u64 = 0;
@@ -42,13 +46,15 @@ module econia::core {
     }
 
     struct MarketParameters has copy, drop, store {
-        pool_fee_rate_bps: u16,
-        taker_fee_rate_bps: u16,
+        pool_fee_rate_bps: u8,
+        taker_fee_rate_bps: u8,
         min_post_amount_base: u64,
         min_post_amount_quote: u64,
-        max_size_sig_figs: u8,
         max_price_sig_figs: u8,
         max_posted_orders_per_side: u32,
+        eviction_price_divisor_ask: u128,
+        eviction_price_divisor_bid: u128,
+        eviction_bounty_bps: u8,
     }
 
     #[resource_group_member(group = ObjectGroup)]
@@ -65,16 +71,17 @@ module econia::core {
         market_account_object: Object<MarketAccount>,
     }
 
-    struct MarketAccountsManifest has key {
-        market_ids: SmartVector<u64>,
-        market_accounts: Table<u64, MarketAccountMetadata>,
+    struct MarketAccounts has key {
+        market_accounts: SmartTable<u64, MarketAccountMetadata>,
     }
 
     struct Registry has key {
         markets: TableWithLength<u64, MarketMetadata>,
-        trading_pairs: Table<TradingPair, u64>,
+        trading_pair_market_ids: Table<TradingPair, u64>,
+        recognized_market_ids: SmartTable<TradingPair, u64>,
         utility_asset_metadata: Object<Metadata>,
         market_registration_fee: u64,
+        oracle_fee: u64,
         default_market_parameters: MarketParameters,
     }
 
@@ -106,9 +113,9 @@ module econia::core {
             market_registration_fee,
         );
         let trading_pair = TradingPair { base_metadata, quote_metadata };
-        let trading_pairs_ref_mut = &mut registry_ref_mut.trading_pairs;
+        let trading_pair_market_ids_ref_mut = &mut registry_ref_mut.trading_pair_market_ids;
         assert!(
-            !table::contains(trading_pairs_ref_mut, trading_pair),
+            !table::contains(trading_pair_market_ids_ref_mut, trading_pair),
             E_TRADING_PAIR_ALREADY_REGISTERED,
         );
         let markets_ref_mut = &mut registry_ref_mut.markets;
@@ -129,7 +136,7 @@ module econia::core {
             market_parameters,
         });
         table_with_length::add(markets_ref_mut, market_id, market_metadata);
-        table::add(trading_pairs_ref_mut, trading_pair, market_id);
+        table::add(trading_pair_market_ids_ref_mut, trading_pair, market_id);
     }
 
     fun init_module_internal(
@@ -138,17 +145,21 @@ module econia::core {
     ) {
         move_to(econia, Registry {
             markets: table_with_length::new(),
-            trading_pairs: table::new(),
+            trading_pair_market_ids: table::new(),
+            recognized_market_ids: smart_table::new(),
             utility_asset_metadata,
             market_registration_fee: GENESIS_MARKET_REGISTRATION_FEE,
+            oracle_fee: GENESIS_ORACLE_FEE,
             default_market_parameters: MarketParameters {
                 pool_fee_rate_bps: GENESIS_DEFAULT_POOL_FEE_RATE_BPS,
                 taker_fee_rate_bps: FEE_RATE_NULL,
                 min_post_amount_base: MIN_POST_AMOUNT_NULL,
                 min_post_amount_quote: MIN_POST_AMOUNT_NULL,
-                max_size_sig_figs: GENESIS_DEFAULT_MAX_SIZE_SIG_FIGS,
                 max_price_sig_figs: GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
                 max_posted_orders_per_side: GENESIS_DEFAULT_MAX_POSTED_ORDERS_PER_SIDE,
+                eviction_price_divisor_ask: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
+                eviction_price_divisor_bid: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
+                eviction_bounty_bps: GENESIS_DEFAULT_EVICTION_BOUNTY_BPS,
             },
         });
     }
@@ -164,13 +175,16 @@ module econia::core {
         init_module_test();
         let registry_ref_mut = borrow_global_mut<Registry>(@econia);
         assert!(registry_ref_mut.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
+        assert!(registry_ref_mut.oracle_fee == GENESIS_ORACLE_FEE, 0);
         let params = registry_ref_mut.default_market_parameters;
         assert!(params.pool_fee_rate_bps == GENESIS_DEFAULT_POOL_FEE_RATE_BPS, 0);
         assert!(params.taker_fee_rate_bps == FEE_RATE_NULL, 0);
         assert!(params.min_post_amount_base == MIN_POST_AMOUNT_NULL, 0);
         assert!(params.min_post_amount_quote == MIN_POST_AMOUNT_NULL, 0);
-        assert!(params.max_size_sig_figs == GENESIS_DEFAULT_MAX_SIZE_SIG_FIGS, 0);
         assert!(params.max_price_sig_figs == GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS, 0);
         assert!(params.max_posted_orders_per_side == GENESIS_DEFAULT_MAX_POSTED_ORDERS_PER_SIDE, 0);
+        assert!(params.eviction_price_divisor_ask == GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK, 0);
+        assert!(params.eviction_price_divisor_bid == GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID, 0);
+        assert!(params.eviction_bounty_bps == GENESIS_DEFAULT_EVICTION_BOUNTY_BPS, 0);
     }
 }
