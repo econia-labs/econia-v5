@@ -15,19 +15,18 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Prices `SHALL` be expressed as a `u128` fixed-point decimal per
    [`aptos-core` #11952], representing a ratio of volume to size.
 1. Fee rates `SHALL` be expressed in basis points.
-1. Both size and price `SHALL` be restricted to a certain number of significant
-   figures, based on the market, per [`aptos-core` #11950].
+1. Price `SHALL` be restricted to a certain number of significant figures, based
+   on the market, per [`aptos-core` #11950].
 1. The minimum permissible post amount `SHALL` be mediated via a mixture of
    eviction criteria and governance.
 
 ### Significant figures
 
-1. Size and price `SHALL` be restricted to a certain number of significant
-   figures per market, with the required number of significant figures tracked
-   separately for each unit.
-1. A global registry `SHALL` track the default minimum size and price
-   significant figure values for new markets, with both defaults subject to
-   modification per a governance vote.
+1. Price `SHALL` be restricted to a certain number of significant figures per
+   market.
+1. A global registry `SHALL` track the default maximum price significant figure
+   values for new markets, with defaults subject to modification per a
+   governance vote.
 1. Governance `SHALL` have the authority to manually set new significant figure
    restrictions for existing markets to enable, for example, above-average
    significant figure restrictions for price on a wrapped Bitcoin market.
@@ -52,11 +51,12 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ### Fees
 
+1. Fee rates `SHALL` be encoded as `u8` values, enabling fees up to 2.55%.
 1. Taker fees, assessed on the taker side of the trade, `SHALL` default to 0 for
    every new market, with a governance override enabling a new fee rate for
    select markets.
 1. Integrators `SHALL` have the ability to collect fees via an
-   `integrator_fee_rate_bps: u16` argument on public functions, deposited into a
+   `integrator_fee_rate_bps: u8` argument on public functions, deposited into a
    specific fungible asset store reserved for that market, to enable parallelism
    for integrators who facilitate trades across multiple markets. Hence there
    `SHALL` also be an `integrator_fee_store: Object<T>` argument. Integrator
@@ -85,16 +85,30 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Queries for information like best bid/ask `SHALL` be possible through public
    APIs, to enable composability. These APIs `MAY` charge a small amount, for
    example 100 octas, to reduce excessive queries for contended state.
+1. Oracle fees `SHALL` be paid to a primary fungible store for each market,
+   denominated in the protocol utility coin, with the oracle query amount
+   tracked in a global registry.
+1. Runtime oracle functions `SHALL` be implemented as a public wrapper around
+   private view functions.
 
 ### Trading
 
-1. Limit orders and market orders `SHALL` accept the object address of a user's
-   market account, as well as a size, price, and restriction. This `MAY` be
-   moderated via a single API that uses `HI_64` or `0` to indicate market order
-   for immediate-or-cancel restriction.
-1. Swaps `SHALL` fill outside of a market account, and `SHALL` specify an input
-   amount as well as the worst acceptable effective price after fees.
-1. Size change or cancel orders `SHALL` accept the price of the order to cancel.
+1. Orders `SHALL` accept the object address of a user's market account, as well
+   as a size, limit price (worst execution price including fees), and
+   restriction.
+1. Limit orders, market orders, and swaps `SHALL` be moderated via a single API
+   that uses `HI_64` or `0` to indicate an immediate-or-cancel market order.
+1. Orders `SHALL` fill outside of a market account if the market account object
+   address is passed as `0x0`.
+1. Size changes and order cancellations `SHALL` accept the price of the order to
+   cancel for the given user and market account object address.
+1. Posting `SHALL NOT` be permitted outside of a market account.
+1. Restrictions and self match behavior `SHALL NOT` moderate behavior via abort
+   statements, since this approach inhibits ease of indexing.
+1. Self match behavior `SHALL` support `CANCEL_BOTH`, `CANCEL_MAKER`, and
+   `CANCEL_TAKER` options.
+1. Order restrictions `SHALL` support `NO_RESTRICTION`, `FILL_OR_KILL`,
+   `POST_ONLY`, and `IMMEDIATE_OR_CANCEL`.
 
 ### Transaction sponsorship
 
@@ -126,7 +140,6 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    deposits will be held in a global vault in order to reduce borrows. Since
    anyone can deposit into the global vault store, there is no way to ensure the
    global ceiling is static.
-1. Market orders and swaps `SHALL` fill into a user's market account.
 1. When a user deposits to or withdraws from their market account, assets
    `SHALL` transact against a global base/quote vault for the entire market.
 1. There `SHALL` be a hard-coded constant restricting the number of open orders
@@ -190,6 +203,12 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. A runtime-level simulator `SHALL` determine in/out values for trades, to
    determine the results of a proposed trade ahead of time, in order to enable
    fill-or-kill orders as well as simulations from calling functions.
+1. The simulator `SHALL` accept the same arguments as the order APIs, returning
+   asset in consumed, the asset out amount, and if the order would result in a
+   post.
+1. The simulator `SHALL` use the same underlying logic as the matching engine,
+   incorporating, for example, self-match behavior and absentee integrator
+   handling logic.
 
 ### Eviction
 
