@@ -124,9 +124,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ### Registry
 
-1. Recognized markets `SHALL` map from trading pair to market metadata, using an
+1. Recognized markets `SHALL` map from trading pair to market ID, using an
    `aptos_std::smart_table::SmartTable` since it is an ordered map that will not
    be subject to the same attack vectors as maps with a public insertion vector.
+1. Market IDs `SHALL` be 1-indexed.
 
 ### Market accounts
 
