@@ -1,3 +1,4 @@
+// # cspell:words unrecognize
 module econia::core {
 
     use aptos_framework::fungible_asset::Metadata;
@@ -7,6 +8,7 @@ module econia::core {
     use aptos_framework::primary_fungible_store;
     use aptos_framework::smart_table::{Self, SmartTable};
     use std::signer;
+    use std::vector;
 
     #[test_only]
     use aptos_framework::account;
@@ -33,6 +35,10 @@ module econia::core {
     const E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET: u64 = 0;
     /// A market is already registered for the given trading pair.
     const E_TRADING_PAIR_ALREADY_REGISTERED: u64 = 1;
+    /// Signer is not Econia.
+    const E_NOT_ECONIA: u64 = 2;
+    /// Market ID is not valid.
+    const E_INVALID_MARKET_ID: u64 = 3;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -76,10 +82,12 @@ module econia::core {
         market_accounts: SmartTable<u64, MarketAccountMetadata>,
     }
 
+    struct Null has drop, store {}
+
     struct Registry has key {
         markets: TableWithLength<u64, MarketMetadata>,
         trading_pair_market_ids: Table<TradingPair, u64>,
-        recognized_market_ids: SmartTable<TradingPair, u64>,
+        recognized_market_ids: SmartTable<u64, Null>,
         utility_asset_metadata: Object<Metadata>,
         market_registration_fee: u64,
         oracle_fee: u64,
@@ -96,7 +104,7 @@ module econia::core {
         base_metadata: Object<Metadata>,
         quote_metadata: Object<Metadata>,
     ) acquires Registry {
-        let registry_ref_mut = borrow_global_mut<Registry>(@econia);
+        let registry_ref_mut = borrow_registry_mut();
         let utility_asset_metadata = registry_ref_mut.utility_asset_metadata;
         let registrant_balance = primary_fungible_store::balance(
             signer::address_of(registrant),
@@ -139,6 +147,28 @@ module econia::core {
         table::add(trading_pair_market_ids_ref_mut, trading_pair, market_id);
     }
 
+    public entry fun update_recognized_markets(
+        econia: &signer,
+        market_ids_to_recognize: vector<u64>,
+        market_ids_to_unrecognize: vector<u64>,
+    ) acquires Registry {
+        assert_signer_is_econia(econia);
+        let registry_ref_mut = borrow_registry_mut();
+        let recognized_market_ids_ref_mut = &mut registry_ref_mut.recognized_market_ids;
+        let n_markets = table_with_length::length(&registry_ref_mut.markets);
+        vector::for_each_ref(&market_ids_to_recognize, |market_id_ref| {
+            if (!smart_table::contains(recognized_market_ids_ref_mut, *market_id_ref)) {
+                assert!(*market_id_ref <= n_markets, E_INVALID_MARKET_ID);
+                smart_table::add(recognized_market_ids_ref_mut, *market_id_ref, Null {});
+            }
+        });
+        vector::for_each_ref(&market_ids_to_unrecognize, |market_id_ref| {
+            if (smart_table::contains(recognized_market_ids_ref_mut, *market_id_ref)) {
+                smart_table::remove(recognized_market_ids_ref_mut, *market_id_ref);
+            }
+        });
+    }
+
     fun init_module(econia: &signer) {
         move_to(econia, Registry {
             markets: table_with_length::new(),
@@ -160,13 +190,21 @@ module econia::core {
         });
     }
 
+    fun assert_signer_is_econia(account: &signer) {
+        assert!(signer::address_of(account) == @econia, E_NOT_ECONIA);
+    }
+
+    inline fun borrow_registry(): &Registry { borrow_global<Registry>(@econia) }
+
+    inline fun borrow_registry_mut(): &mut Registry { borrow_global_mut<Registry>(@econia) }
+
     #[test_only]
     const MARKET_REGISTRANT_FOR_TEST: address = @0xace;
 
     #[test_only]
     public fun ensure_module_initialized_for_test() {
         aptos_coin::ensure_initialized_with_fa_metadata_for_test();
-        if (!exists<Registry>(@econia)) init_module(&account::create_signer_for_test(@econia));
+        if (!exists<Registry>(@econia)) init_module(&get_signer(@econia));
     }
 
     #[test_only]
@@ -176,17 +214,50 @@ module econia::core {
     }
 
     #[test_only]
+    public fun get_test_trading_pair_flipped(): TradingPair {
+        let (base_metadata, quote_metadata) = test_assets::get_metadata();
+        TradingPair { base_metadata: quote_metadata, quote_metadata: base_metadata }
+    }
+
+    #[test_only]
+    public fun mint_fa_apt_to_market_registrant() {
+        aptos_coin::mint_fa_to_primary_fungible_store_for_test(
+            MARKET_REGISTRANT_FOR_TEST,
+            GENESIS_MARKET_REGISTRATION_FEE
+        );
+    }
+
+    #[test_only]
     public fun ensure_market_initialized_for_test() acquires Registry {
         ensure_module_initialized_for_test();
         let trading_pair = get_test_trading_pair();
         let registry_ref = borrow_global<Registry>(@econia);
         if (table::contains(&registry_ref.trading_pair_market_ids, trading_pair)) return;
-        aptos_coin::mint_fa_to_primary_fungible_store_for_test(
-            MARKET_REGISTRANT_FOR_TEST,
-            GENESIS_MARKET_REGISTRATION_FEE
-        );
-        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        mint_fa_apt_to_market_registrant();
+        let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
         register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
+    }
+
+    #[test_only]
+    public fun ensure_markets_initialized_for_test() acquires Registry {
+        ensure_market_initialized_for_test();
+        let trading_pair_flipped = get_test_trading_pair_flipped();
+        let registry_ref = borrow_global<Registry>(@econia);
+        if (table::contains(&registry_ref.trading_pair_market_ids, trading_pair_flipped)) return;
+        mint_fa_apt_to_market_registrant();
+        register_market(
+            &get_signer(MARKET_REGISTRANT_FOR_TEST),
+            trading_pair_flipped.base_metadata,
+            trading_pair_flipped.quote_metadata
+        );
+    }
+
+    #[test_only]
+    public fun get_signer(addr: address): signer { account::create_signer_for_test(addr) }
+
+    #[test, expected_failure(abort_code = E_NOT_ECONIA)]
+    fun test_assert_signer_is_econia_not_econia() {
+        assert_signer_is_econia(&get_signer(@0x0));
     }
 
     #[test]
@@ -207,20 +278,11 @@ module econia::core {
 
     #[test]
     fun test_register_market() acquires Market, Registry {
-        ensure_market_initialized_for_test();
-        aptos_coin::mint_fa_to_primary_fungible_store_for_test(
-            MARKET_REGISTRANT_FOR_TEST,
-            GENESIS_MARKET_REGISTRATION_FEE
-        );
-        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
-        let trading_pair = get_test_trading_pair();
-        let trading_pair_flipped = TradingPair {
-            base_metadata: trading_pair.quote_metadata,
-            quote_metadata: trading_pair.base_metadata,
-        };
-        register_market(&registrant, trading_pair.quote_metadata, trading_pair.base_metadata);
+        ensure_markets_initialized_for_test();
         let registry_ref = borrow_global<Registry>(@econia);
         let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
+        let trading_pair = get_test_trading_pair();
+        let trading_pair_flipped = get_test_trading_pair_flipped();
         assert!(*table::borrow(trading_pair_market_ids_ref, trading_pair) == 1, 0);
         assert!(*table::borrow(trading_pair_market_ids_ref, trading_pair_flipped) == 2, 0);
         let default_market_parameters = registry_ref.default_market_parameters;
@@ -246,9 +308,9 @@ module econia::core {
 
     #[test, expected_failure(abort_code = E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET)]
     fun test_register_market_not_enough_utility_asset() acquires Registry {
-        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
         ensure_market_initialized_for_test();
         let trading_pair = get_test_trading_pair();
+        let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
         register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
     }
 
@@ -256,12 +318,33 @@ module econia::core {
     fun test_register_market_trading_pair_already_registered() acquires Registry {
         ensure_market_initialized_for_test();
         let trading_pair = get_test_trading_pair();
-        aptos_coin::mint_fa_to_primary_fungible_store_for_test(
-            MARKET_REGISTRANT_FOR_TEST,
-            GENESIS_MARKET_REGISTRATION_FEE
-        );
-        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        mint_fa_apt_to_market_registrant();
+        let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
         register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
+    }
+
+    #[test]
+    fun test_update_recognized_markets() acquires Registry {
+        ensure_markets_initialized_for_test();
+        let registry_ref = borrow_registry();
+        assert!(!smart_table::contains(&registry_ref.recognized_market_ids, 1), 0);
+        assert!(!smart_table::contains(&registry_ref.recognized_market_ids, 2), 0);
+        update_recognized_markets(&get_signer(@econia), vector[2], vector[]);
+        update_recognized_markets(&get_signer(@econia), vector[1, 2], vector[]);
+        let registry_ref = borrow_registry();
+        assert!(smart_table::contains(&registry_ref.recognized_market_ids, 1), 0);
+        assert!(smart_table::contains(&registry_ref.recognized_market_ids, 2), 0);
+        update_recognized_markets(&get_signer(@econia), vector[], vector[1]);
+        update_recognized_markets(&get_signer(@econia), vector[], vector[1, 2]);
+        let registry_ref = borrow_registry();
+        assert!(!smart_table::contains(&registry_ref.recognized_market_ids, 1), 0);
+        assert!(!smart_table::contains(&registry_ref.recognized_market_ids, 2), 0);
+    }
+
+    #[test, expected_failure(abort_code = E_INVALID_MARKET_ID)]
+    fun test_update_recognized_markets_invalid_market_id() acquires Registry {
+        ensure_module_initialized_for_test();
+        update_recognized_markets(&get_signer(@econia), vector[1], vector[]);
     }
 
 }
