@@ -17,8 +17,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Fee rates `SHALL` be expressed in basis points.
 1. Price `SHALL` be restricted to a certain number of significant figures, based
    on the market, per [`aptos-core` #11950].
-1. The minimum permissible post amount `SHALL` be mediated via a mixture of
-   eviction criteria and governance.
+1. The minimum permissible post amount `SHALL` be mediated via dynamic eviction
+   eviction criteria.
 
 ### Significant figures
 
@@ -36,11 +36,14 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. In the default case, a market `SHALL` have a minimum post amount that is
    calculated based on existing liquidity: the amount of base locked in all asks
    or the amount of quote locked in all bids. For example the minimum post
-   amount may be calculated as 1 basis point of all liquidity for the given
-   side.
-1. Alternatively, governance `MAY` override the default minimum post size and
-   specify a minimum base and quote amount to post. This could be necessary for
-   high-liquidity markets, to avoid flash loan attacks.
+   amount may be calculated as 0.1 basis point of all liquidity for the given
+   side, implemented as a fixed decimal divisor.
+1. Alternatively, governance `MAY` be given the ability to set a static minimum
+   post amount, to eliminate the possibility of griefing via a flash loan. Here,
+   the minimum post amount for base and quote must be stipulated separately in
+   case the other side of the book is emptied, in which case base collateral on
+   asks could not be priced. Notably, this approach implies a reference price
+   that may need to be tuned on occasion (ratio of quote to base).
 1. A low-pass filter or similar `MAY` be used to calculate time weighted average
    liquidity.
 1. The dynamic calculations `SHALL NOT` use a logarithmic formula to calculate
@@ -56,11 +59,11 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    every new market, with a governance override enabling a new fee rate for
    select markets.
 1. Integrators `SHALL` have the ability to collect fees via an
-   `integrator_fee_rate_bps: u8` argument on public functions, deposited into a
-   specific fungible asset store reserved for that market, to enable parallelism
-   for integrators who facilitate trades across multiple markets. Hence there
-   `SHALL` also be an `integrator_fee_store: Object<T>` argument. Integrator
-   fees `SHALL` be assessed in the quote asset for the pair.
+   `integrator_fee_rate_bps: u8` argument on public functions, deposited into an
+   integrator's market account, to enable parallelism for integrators who
+   facilitate trades across multiple markets. Hence there `SHALL` also be an
+   `integrator_market_account: Object<T>` argument. Integrator fees `SHALL` be
+   assessed in the quote asset for the pair.
 1. The market's liquidity pool `SHALL` also charge a fee, mediated via market
    parameters, denominated in basis points. Within liquidity pool operations
    fees must be assessed in both base and quote, but `SHALL` be normalized to
@@ -68,17 +71,25 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ### Eviction
 
-1. Markets `SHALL` permit a fixed number of orders per side, for example 1000.
+1. Markets `SHALL` permit a fixed tree height per side, for example 5.
 1. Orders `SHALL` be evicted if the ratio formed by their price and the best ask
    or bid price exceeds a fixed value, for example 10.
+1. Eviction from anywhere in the price-time queue `SHALL` be enabled via a
+   public API available outside of order posting.
+1. Public eviction APIs `MAY` be incentivized via an eviction bounty for a fixed
+   amount of the remaining collateral available on an evictable order, for
+   example 5 basis points, deposited straight to the eviction executor's market
+   account. If bounties are available, they `SHALL` be assessed on either all
+   evictions or none, including those instigated by order posts, such that
+   orders at the back of the price-time queue are not immune from bounty loss.
+1. Should a bounty not be implemented for fear of promoting adversarial
+   behaviors, eviction stewardship for the middle of the price-time queue `MAY`
+   be implemented as a duty good, whereby oracle operations that access order
+   book state, for example, (or even those that do not) are required to randomly
+   scan the order book for the given market and evict orders as needed.
 1. When an order is placed, the head and tail of the book for the given side
-   `SHALL` be checked, and evicted if they are below the minimum post size for
-   the market.
-1. Eviction from anywhere in the price-time queue `MAY` be incentivized via an
-   eviction bounty program via a public API, where bounty hunters are paid a
-   fixed amount of the remaining collateral available on an evictable order, for
-   example 5 basis points, deposited straight to the bounty hunter's primary
-   fungible asset store.
+   `MAY` be checked, and evicted if market eviction criteria are met to ensure
+   that eviction is at least checked during tree grow operations.
 
 ### Oracle queries
 
@@ -181,15 +192,27 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    has 552 quote to fill against. However, truncation issues of the sort will
    be assumed by the taker, and in practice subunits amounts will be of much
    larger orders of magnitude.
+1. Orders `SHALL` stipulate the original size or volume posted, such that they
+   can be evaluated for eviction.
+1. An order that would post to the tail of a queue that is above the eviction
+   height threshold `SHALL` be prohibited from posting.
 
 ### Order books
 
 1. Order books `SHALL` implement a B+ tree-based architecture, with each key
    containing a price and an effective sequence number for that price,
    denoting the price-time priority of the order, represented as a `u256` of the
-   form `price_as_decimal_fixed_u128 << 64 | sequence_number_at_level`. The
+   form `price_as_decimal_fixed_u128 << 64 | sequence_number_flag`. The
    sequence number for the level `SHALL` be generated dynamically upon insertion
    such that the first order at a new price level assumes the sequence number 1.
+1. Each market `SHALL` have a B+ tree for each side, which caches the best price
+   and its leaf node's address, and has a sort order direction such that the
+   sequence number flag for bids, of descending sort order direction, is
+   `HI_64 - sequence_number_at_level`. The tail of the tree `SHALL NOT` be
+   cached, to avoid serialization griefing from the worst order in the queue.
+1. The B+ tree `MAY` track its height at the root node, for ease of eviction
+   monitoring, though insertion and lookup mechanics will be able to track
+   height on the fly.
 
 ### Extensions
 
@@ -199,17 +222,16 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ## Implementation details
 
-### Simulator
+### Matching
 
-1. A runtime-level simulator `SHALL` determine in/out values for trades, to
-   determine the results of a proposed trade ahead of time, in order to enable
-   fill-or-kill orders as well as simulations from calling functions.
-1. The simulator `SHALL` accept the same arguments as the order APIs, returning
-   asset in consumed, the asset out amount, and if the order would result in a
-   post.
-1. The simulator `SHALL` use the same underlying logic as the matching engine,
-   incorporating, for example, self-match behavior and absentee integrator
-   handling logic.
+1. The matching engine `SHALL` implement a two-phase model to first evaluate a
+   match, then commit it, with an intermediate "match result" data structure
+   that tabulates the orders to fill/decrement, self match orders to cancel,
+   pool changes, etc.
+1. The intermediate match result `SHALL` be considered before evaluating
+   fill-or-kill orders.
+1. The intermediate match result `SHALL` be made publicly available during
+   runtime via an oracle function.
 
 ### Eviction
 
@@ -219,6 +241,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    price is divided by the proposed bid price before threshold comparisons.
 1. Eviction of a full order book `SHALL NOT` be possible within a single
    transaction.
+1. Eviction liquidity divisors `SHALL` similarly be mediated via optimistic
+   division.
 
 ### Error codes
 
@@ -252,6 +276,12 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 1. Move package size `SHALL` be under the max transaction limit, to enable
    package publication using a single transaction.
+
+### Indexer
+
+1. The "Data Service Stack" `SHALL` be renamed the "indexer".
+1. The indexer `SHALL` track a single table with rows for the last updated
+   transaction version number for each pipeline.
 
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [`aptos-core` #11950]: https://github.com/aptos-labs/aptos-core/pull/11950
