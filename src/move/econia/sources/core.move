@@ -11,8 +11,11 @@ module econia::core {
     #[test_only]
     use aptos_framework::account;
     #[test_only]
+    use aptos_framework::aptos_coin;
+    #[test_only]
     use econia::test_assets;
 
+    const GENESIS_UTILITY_ASSET_METADATA_ADDRESS: address = @aptos_framework;
     const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100_000_000;
     const GENESIS_ORACLE_FEE: u64 = 1_000;
 
@@ -118,35 +121,32 @@ module econia::core {
             E_TRADING_PAIR_ALREADY_REGISTERED,
         );
         let markets_ref_mut = &mut registry_ref_mut.markets;
-        let market_id = table_with_length::length(markets_ref_mut);
+        let market_id = table_with_length::length(markets_ref_mut) + 1;
         let constructor_ref = object::create_object(@econia);
-        let market_object = object::object_from_constructor_ref(&constructor_ref);
         let market_parameters = registry_ref_mut.default_market_parameters;
-        let market_metadata = MarketMetadata {
-            market_id,
-            market_object,
-            trading_pair,
-            market_parameters,
-        };
         let market_signer = object::generate_signer(&constructor_ref);
         move_to(&market_signer, Market {
             market_id,
             trading_pair,
             market_parameters,
         });
+        let market_metadata = MarketMetadata {
+            market_id,
+            market_object: object::object_from_constructor_ref(&constructor_ref),
+            trading_pair,
+            market_parameters,
+        };
         table_with_length::add(markets_ref_mut, market_id, market_metadata);
         table::add(trading_pair_market_ids_ref_mut, trading_pair, market_id);
     }
 
-    fun init_module_internal(
-        econia: &signer,
-        utility_asset_metadata: Object<Metadata>
-    ) {
+    fun init_module(econia: &signer) {
         move_to(econia, Registry {
             markets: table_with_length::new(),
             trading_pair_market_ids: table::new(),
             recognized_market_ids: smart_table::new(),
-            utility_asset_metadata,
+            utility_asset_metadata:
+                object::address_to_object<Metadata>(GENESIS_UTILITY_ASSET_METADATA_ADDRESS),
             market_registration_fee: GENESIS_MARKET_REGISTRATION_FEE,
             oracle_fee: GENESIS_ORACLE_FEE,
             default_market_parameters: MarketParameters {
@@ -162,18 +162,33 @@ module econia::core {
     }
 
     #[test_only]
-    public fun init_module_test() {
-        let (_, quote_asset) = test_assets::get_metadata();
-        init_module_internal(&account::create_signer_for_test(@econia), quote_asset);
+    const MARKET_REGISTRANT_FOR_TEST: address = @0xace;
+
+    #[test_only]
+    public fun ensure_module_initialized_for_test() {
+        aptos_coin::ensure_initialized_with_fa_metadata_for_test();
+        if (!exists<Registry>(@econia)) init_module(&account::create_signer_for_test(@econia));
+    }
+
+    #[test_only]
+    public fun init_market_for_test() acquires Registry {
+        ensure_module_initialized_for_test();
+        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        aptos_coin::mint_fa_to_primary_fungible_store_for_test(
+            MARKET_REGISTRANT_FOR_TEST,
+            GENESIS_MARKET_REGISTRATION_FEE
+        );
+        let (base_metadata, quote_metadata) = test_assets::get_metadata();
+        register_market(&registrant, base_metadata, quote_metadata);
     }
 
     #[test]
     fun test_genesis_values() acquires Registry {
-        init_module_test();
-        let registry_ref_mut = borrow_global_mut<Registry>(@econia);
-        assert!(registry_ref_mut.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
-        assert!(registry_ref_mut.oracle_fee == GENESIS_ORACLE_FEE, 0);
-        let params = registry_ref_mut.default_market_parameters;
+        ensure_module_initialized_for_test();
+        let registry_ref = borrow_global<Registry>(@econia);
+        assert!(registry_ref.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
+        assert!(registry_ref.oracle_fee == GENESIS_ORACLE_FEE, 0);
+        let params = registry_ref.default_market_parameters;
         assert!(params.pool_fee_rate_bps == GENESIS_DEFAULT_POOL_FEE_RATE_BPS, 0);
         assert!(params.taker_fee_rate_bps == FEE_RATE_NULL, 0);
         assert!(params.max_price_sig_figs == GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS, 0);
@@ -182,4 +197,15 @@ module econia::core {
         assert!(params.eviction_price_divisor_bid == GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID, 0);
         assert!(params.eviction_liquidity_divisor == GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR, 0);
     }
+
+    #[test]
+    fun test_market_registration() acquires Registry {
+        init_market_for_test();
+        let registry_ref = borrow_global<Registry>(@econia);
+        let (base_metadata, quote_metadata) = test_assets::get_metadata();
+        let trading_pair = TradingPair { base_metadata, quote_metadata };
+        let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
+        assert!(*table::borrow(trading_pair_market_ids_ref, trading_pair) == 1, 0);
+    }
+
 }
