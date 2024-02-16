@@ -1,3 +1,4 @@
+// # cspell:words unrecognize
 module econia::core {
 
     use aptos_framework::fungible_asset::Metadata;
