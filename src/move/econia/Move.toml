@@ -1,9 +1,11 @@
+# cspell:words lightmark
+
 [addresses]
 econia = "_"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "mainnet"
+rev = "lightmark/fa_migrate_optimized"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dev-addresses]
