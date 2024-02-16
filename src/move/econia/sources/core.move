@@ -19,9 +19,10 @@ module econia::core {
     const GENESIS_DEFAULT_POOL_FEE_RATE_BPS: u8 = 30;
     const GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS: u8 = 4;
     const GENESIS_DEFAULT_MAX_POSTED_ORDERS_PER_SIDE: u32 = 1000;
-    const GENESIS_DEFAULT_EVICTION_BOUNTY_BPS: u8 = 10;
+    const GENESIS_DEFAULT_EVICTION_TREE_HEIGHT: u8 = 5;
     const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK: u128 = 100_000_000_000_000_000_000;
     const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID: u128 = 100_000_000_000_000_000_000;
+    const GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR: u128 = 1_000_000_000_000_000_000_000_000;
 
     const MIN_POST_AMOUNT_NULL: u64 = 0;
     const FEE_RATE_NULL: u8 = 0;
@@ -48,13 +49,11 @@ module econia::core {
     struct MarketParameters has copy, drop, store {
         pool_fee_rate_bps: u8,
         taker_fee_rate_bps: u8,
-        min_post_amount_base: u64,
-        min_post_amount_quote: u64,
         max_price_sig_figs: u8,
-        max_posted_orders_per_side: u32,
+        eviction_tree_height: u8,
         eviction_price_divisor_ask: u128,
         eviction_price_divisor_bid: u128,
-        eviction_bounty_bps: u8,
+        eviction_liquidity_divisor: u128,
     }
 
     #[resource_group_member(group = ObjectGroup)]
@@ -153,13 +152,11 @@ module econia::core {
             default_market_parameters: MarketParameters {
                 pool_fee_rate_bps: GENESIS_DEFAULT_POOL_FEE_RATE_BPS,
                 taker_fee_rate_bps: FEE_RATE_NULL,
-                min_post_amount_base: MIN_POST_AMOUNT_NULL,
-                min_post_amount_quote: MIN_POST_AMOUNT_NULL,
                 max_price_sig_figs: GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
-                max_posted_orders_per_side: GENESIS_DEFAULT_MAX_POSTED_ORDERS_PER_SIDE,
+                eviction_tree_height: GENESIS_DEFAULT_EVICTION_TREE_HEIGHT,
                 eviction_price_divisor_ask: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
                 eviction_price_divisor_bid: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
-                eviction_bounty_bps: GENESIS_DEFAULT_EVICTION_BOUNTY_BPS,
+                eviction_liquidity_divisor: GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR,
             },
         });
     }
@@ -179,12 +176,10 @@ module econia::core {
         let params = registry_ref_mut.default_market_parameters;
         assert!(params.pool_fee_rate_bps == GENESIS_DEFAULT_POOL_FEE_RATE_BPS, 0);
         assert!(params.taker_fee_rate_bps == FEE_RATE_NULL, 0);
-        assert!(params.min_post_amount_base == MIN_POST_AMOUNT_NULL, 0);
-        assert!(params.min_post_amount_quote == MIN_POST_AMOUNT_NULL, 0);
         assert!(params.max_price_sig_figs == GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS, 0);
-        assert!(params.max_posted_orders_per_side == GENESIS_DEFAULT_MAX_POSTED_ORDERS_PER_SIDE, 0);
+        assert!(params.eviction_tree_height == GENESIS_DEFAULT_EVICTION_TREE_HEIGHT, 0);
         assert!(params.eviction_price_divisor_ask == GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK, 0);
         assert!(params.eviction_price_divisor_bid == GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID, 0);
-        assert!(params.eviction_bounty_bps == GENESIS_DEFAULT_EVICTION_BOUNTY_BPS, 0);
+        assert!(params.eviction_liquidity_divisor == GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR, 0);
     }
 }
