@@ -27,7 +27,6 @@ module econia::core {
     const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID: u128 = 100_000_000_000_000_000_000;
     const GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR: u128 = 1_000_000_000_000_000_000_000_000;
 
-    const MIN_POST_AMOUNT_NULL: u64 = 0;
     const FEE_RATE_NULL: u8 = 0;
 
     /// Registrant's utility asset primary fungible store balance is below market registration fee.
@@ -42,7 +41,7 @@ module econia::core {
         market_parameters: MarketParameters,
     }
 
-    struct MarketMetadata has copy, store {
+    struct MarketMetadata has copy, drop, store {
         market_id: u64,
         market_object: Object<Market>,
         trading_pair: TradingPair,
@@ -171,15 +170,23 @@ module econia::core {
     }
 
     #[test_only]
-    public fun init_market_for_test() acquires Registry {
+    public fun get_test_trading_pair(): TradingPair {
+        let (base_metadata, quote_metadata) = test_assets::get_metadata();
+        TradingPair { base_metadata, quote_metadata }
+    }
+
+    #[test_only]
+    public fun ensure_market_initialized_for_test() acquires Registry {
         ensure_module_initialized_for_test();
-        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        let trading_pair = get_test_trading_pair();
+        let registry_ref = borrow_global<Registry>(@econia);
+        if (table::contains(&registry_ref.trading_pair_market_ids, trading_pair)) return;
         aptos_coin::mint_fa_to_primary_fungible_store_for_test(
             MARKET_REGISTRANT_FOR_TEST,
             GENESIS_MARKET_REGISTRATION_FEE
         );
-        let (base_metadata, quote_metadata) = test_assets::get_metadata();
-        register_market(&registrant, base_metadata, quote_metadata);
+        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
     }
 
     #[test]
@@ -199,13 +206,62 @@ module econia::core {
     }
 
     #[test]
-    fun test_market_registration() acquires Registry {
-        init_market_for_test();
+    fun test_register_market() acquires Market, Registry {
+        ensure_market_initialized_for_test();
+        aptos_coin::mint_fa_to_primary_fungible_store_for_test(
+            MARKET_REGISTRANT_FOR_TEST,
+            GENESIS_MARKET_REGISTRATION_FEE
+        );
+        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        let trading_pair = get_test_trading_pair();
+        let trading_pair_flipped = TradingPair {
+            base_metadata: trading_pair.quote_metadata,
+            quote_metadata: trading_pair.base_metadata,
+        };
+        register_market(&registrant, trading_pair.quote_metadata, trading_pair.base_metadata);
         let registry_ref = borrow_global<Registry>(@econia);
-        let (base_metadata, quote_metadata) = test_assets::get_metadata();
-        let trading_pair = TradingPair { base_metadata, quote_metadata };
         let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
         assert!(*table::borrow(trading_pair_market_ids_ref, trading_pair) == 1, 0);
+        assert!(*table::borrow(trading_pair_market_ids_ref, trading_pair_flipped) == 2, 0);
+        let default_market_parameters = registry_ref.default_market_parameters;
+        let market_metadata = *table_with_length::borrow(&registry_ref.markets, 1);
+        assert!(market_metadata.market_id == 1, 0);
+        assert!(market_metadata.trading_pair == trading_pair, 0);
+        assert!(market_metadata.market_parameters == default_market_parameters, 0);
+        let market_address = object::object_address(&market_metadata.market_object);
+        let market_ref = borrow_global<Market>(market_address);
+        assert!(market_ref.market_id == 1, 0);
+        assert!(market_ref.trading_pair == trading_pair, 0);
+        assert!(market_ref.market_parameters == default_market_parameters, 0);
+        market_metadata = *table_with_length::borrow(&registry_ref.markets, 2);
+        assert!(market_metadata.market_id == 2, 0);
+        assert!(market_metadata.trading_pair == trading_pair_flipped, 0);
+        assert!(market_metadata.market_parameters == default_market_parameters, 0);
+        market_address = object::object_address(&market_metadata.market_object);
+        market_ref = borrow_global<Market>(market_address);
+        assert!(market_ref.market_id == 2, 0);
+        assert!(market_ref.trading_pair == trading_pair_flipped, 0);
+        assert!(market_ref.market_parameters == default_market_parameters, 0);
+    }
+
+    #[test, expected_failure(abort_code = E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET)]
+    fun test_register_market_not_enough_utility_asset() acquires Registry {
+        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        ensure_market_initialized_for_test();
+        let trading_pair = get_test_trading_pair();
+        register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
+    }
+
+    #[test, expected_failure(abort_code = E_TRADING_PAIR_ALREADY_REGISTERED)]
+    fun test_register_market_trading_pair_already_registered() acquires Registry {
+        ensure_market_initialized_for_test();
+        let trading_pair = get_test_trading_pair();
+        aptos_coin::mint_fa_to_primary_fungible_store_for_test(
+            MARKET_REGISTRANT_FOR_TEST,
+            GENESIS_MARKET_REGISTRATION_FEE
+        );
+        let registrant = account::create_signer_for_test(MARKET_REGISTRANT_FOR_TEST);
+        register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
     }
 
 }
