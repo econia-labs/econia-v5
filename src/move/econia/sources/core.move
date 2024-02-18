@@ -84,13 +84,17 @@ module econia::core {
 
     struct Null has drop, store {}
 
+    struct RegistryParameters has copy, drop, store {
+        utility_asset_metadata: Object<Metadata>,
+        market_registration_fee: u64,
+        oracle_fee: u64,
+    }
+
     struct Registry has key {
         markets: TableWithLength<u64, MarketMetadata>,
         trading_pair_market_ids: Table<TradingPair, u64>,
         recognized_market_ids: SmartTable<u64, Null>,
-        utility_asset_metadata: Object<Metadata>,
-        market_registration_fee: u64,
-        oracle_fee: u64,
+        registry_parameters: RegistryParameters,
         default_market_parameters: MarketParameters,
     }
 
@@ -105,12 +109,12 @@ module econia::core {
         quote_metadata: Object<Metadata>,
     ) acquires Registry {
         let registry_ref_mut = borrow_registry_mut();
-        let utility_asset_metadata = registry_ref_mut.utility_asset_metadata;
+        let utility_asset_metadata = registry_ref_mut.registry_parameters.utility_asset_metadata;
+        let market_registration_fee = registry_ref_mut.registry_parameters.market_registration_fee;
         let registrant_balance = primary_fungible_store::balance(
             signer::address_of(registrant),
             utility_asset_metadata
         );
-        let market_registration_fee = registry_ref_mut.market_registration_fee;
         assert!(
             registrant_balance >= market_registration_fee,
             E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET,
@@ -174,10 +178,12 @@ module econia::core {
             markets: table_with_length::new(),
             trading_pair_market_ids: table::new(),
             recognized_market_ids: smart_table::new(),
-            utility_asset_metadata:
-                object::address_to_object<Metadata>(GENESIS_UTILITY_ASSET_METADATA_ADDRESS),
-            market_registration_fee: GENESIS_MARKET_REGISTRATION_FEE,
-            oracle_fee: GENESIS_ORACLE_FEE,
+            registry_parameters: RegistryParameters {
+                utility_asset_metadata:
+                    object::address_to_object<Metadata>(GENESIS_UTILITY_ASSET_METADATA_ADDRESS),
+                market_registration_fee: GENESIS_MARKET_REGISTRATION_FEE,
+                oracle_fee: GENESIS_ORACLE_FEE,
+            },
             default_market_parameters: MarketParameters {
                 pool_fee_rate_bps: GENESIS_DEFAULT_POOL_FEE_RATE_BPS,
                 taker_fee_rate_bps: FEE_RATE_NULL,
@@ -264,8 +270,13 @@ module econia::core {
     fun test_genesis_values() acquires Registry {
         ensure_module_initialized_for_test();
         let registry_ref = borrow_global<Registry>(@econia);
-        assert!(registry_ref.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
-        assert!(registry_ref.oracle_fee == GENESIS_ORACLE_FEE, 0);
+        let registry_parameters = registry_ref.registry_parameters;
+        let utility_asset_metadata_address = object::object_address(
+            &registry_parameters.utility_asset_metadata
+        );
+        assert!(utility_asset_metadata_address == GENESIS_UTILITY_ASSET_METADATA_ADDRESS, 0);
+        assert!(registry_parameters.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
+        assert!(registry_parameters.oracle_fee == GENESIS_ORACLE_FEE, 0);
         let params = registry_ref.default_market_parameters;
         assert!(params.pool_fee_rate_bps == GENESIS_DEFAULT_POOL_FEE_RATE_BPS, 0);
         assert!(params.taker_fee_rate_bps == FEE_RATE_NULL, 0);
