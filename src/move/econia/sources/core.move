@@ -39,6 +39,8 @@ module econia::core {
     const E_NOT_ECONIA: u64 = 2;
     /// Market ID is not valid.
     const E_INVALID_MARKET_ID: u64 = 3;
+    /// An option represented as a vector has more than 1 element.
+    const E_OPTION_VECTOR_TOO_LONG: u64 = 4;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -173,6 +175,31 @@ module econia::core {
         });
     }
 
+    public entry fun update_registry_parameters(
+        econia: &signer,
+        utility_asset_metadata_address_option: vector<address>,
+        market_registration_fee_option: vector<u64>,
+        oracle_fee_option: vector<u64>,
+    ) acquires Registry {
+        assert_signer_is_econia(econia);
+        assert_vector_option_is_valid_length(&utility_asset_metadata_address_option);
+        assert_vector_option_is_valid_length(&market_registration_fee_option);
+        assert_vector_option_is_valid_length(&oracle_fee_option);
+        let registry_parameters_ref_mut = &mut borrow_registry_mut().registry_parameters;
+        if (!vector::is_empty(&utility_asset_metadata_address_option)) {
+            registry_parameters_ref_mut.utility_asset_metadata = object::address_to_object(
+                *vector::borrow(&utility_asset_metadata_address_option, 0)
+            );
+        };
+        if (!vector::is_empty(&market_registration_fee_option)) {
+            registry_parameters_ref_mut.market_registration_fee =
+                *vector::borrow(&market_registration_fee_option, 0);
+        };
+        if (!vector::is_empty(&oracle_fee_option)) {
+            registry_parameters_ref_mut.oracle_fee = *vector::borrow(&oracle_fee_option, 0);
+        };
+    }
+
     fun init_module(econia: &signer) {
         move_to(econia, Registry {
             markets: table_with_length::new(),
@@ -198,6 +225,10 @@ module econia::core {
 
     fun assert_signer_is_econia(account: &signer) {
         assert!(signer::address_of(account) == @econia, E_NOT_ECONIA);
+    }
+
+    fun assert_vector_option_is_valid_length<T>(vector_option_ref: &vector<T>) {
+        assert!(vector::length(vector_option_ref) <= 1, E_OPTION_VECTOR_TOO_LONG);
     }
 
     inline fun borrow_registry(): &Registry { borrow_global<Registry>(@econia) }
@@ -266,17 +297,20 @@ module econia::core {
         assert_signer_is_econia(&get_signer(@0x0));
     }
 
+    #[test, expected_failure(abort_code = E_OPTION_VECTOR_TOO_LONG)]
+    fun test_assert_vector_option_is_valid_length_option_vector_too_long() {
+        assert_vector_option_is_valid_length(&vector[0, 0]);
+    }
+
     #[test]
     fun test_genesis_values() acquires Registry {
         ensure_module_initialized_for_test();
         let registry_ref = borrow_global<Registry>(@econia);
-        let registry_parameters = registry_ref.registry_parameters;
-        let utility_asset_metadata_address = object::object_address(
-            &registry_parameters.utility_asset_metadata
-        );
+        let params = registry_ref.registry_parameters;
+        let utility_asset_metadata_address = object::object_address(&params.utility_asset_metadata);
         assert!(utility_asset_metadata_address == GENESIS_UTILITY_ASSET_METADATA_ADDRESS, 0);
-        assert!(registry_parameters.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
-        assert!(registry_parameters.oracle_fee == GENESIS_ORACLE_FEE, 0);
+        assert!(params.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
+        assert!(params.oracle_fee == GENESIS_ORACLE_FEE, 0);
         let params = registry_ref.default_market_parameters;
         assert!(params.pool_fee_rate_bps == GENESIS_DEFAULT_POOL_FEE_RATE_BPS, 0);
         assert!(params.taker_fee_rate_bps == FEE_RATE_NULL, 0);
@@ -356,6 +390,27 @@ module econia::core {
     fun test_update_recognized_markets_invalid_market_id() acquires Registry {
         ensure_module_initialized_for_test();
         update_recognized_markets(&get_signer(@econia), vector[1], vector[]);
+    }
+
+    #[test]
+    fun test_update_registry_parameters() acquires Registry {
+        ensure_module_initialized_for_test();
+        let econia = get_signer(@econia);
+        update_registry_parameters(&econia, vector[], vector[], vector[]);
+        let params = borrow_registry().registry_parameters;
+        let utility_asset_metadata_address = object::object_address(&params.utility_asset_metadata);
+        assert!(utility_asset_metadata_address == GENESIS_UTILITY_ASSET_METADATA_ADDRESS, 0);
+        assert!(params.market_registration_fee == GENESIS_MARKET_REGISTRATION_FEE, 0);
+        assert!(params.oracle_fee == GENESIS_ORACLE_FEE, 0);
+        test_assets::ensure_assets_initialized();
+        let (new_metadata, _) = test_assets::get_metadata();
+        let new_metadata_address = object::object_address(&new_metadata);
+        update_registry_parameters(&econia, vector[new_metadata_address], vector[1], vector[2]);
+        params = borrow_registry().registry_parameters;
+        utility_asset_metadata_address = object::object_address(&params.utility_asset_metadata);
+        assert!(utility_asset_metadata_address == new_metadata_address, 0);
+        assert!(params.market_registration_fee == 1, 0);
+        assert!(params.oracle_fee == 2, 0);
     }
 
 }
