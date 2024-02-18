@@ -2,7 +2,7 @@
 module econia::core {
 
     use aptos_framework::fungible_asset::Metadata;
-    use aptos_framework::object::{Self, Object, ObjectGroup};
+    use aptos_framework::object::{Self, ExtendRef, Object, ObjectGroup};
     use aptos_framework::table::{Self, Table};
     use aptos_framework::table_with_length::{Self, TableWithLength};
     use aptos_framework::primary_fungible_store;
@@ -31,20 +31,21 @@ module econia::core {
 
     /// Registrant's utility asset primary fungible store balance is below market registration fee.
     const E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET: u64 = 0;
-    /// A market is already registered for the given trading pair.
-    const E_TRADING_PAIR_ALREADY_REGISTERED: u64 = 1;
     /// Signer is not Econia.
-    const E_NOT_ECONIA: u64 = 2;
+    const E_NOT_ECONIA: u64 = 1;
     /// Market ID is not valid.
-    const E_INVALID_MARKET_ID: u64 = 3;
+    const E_INVALID_MARKET_ID: u64 = 2;
     /// An option represented as a vector has more than 1 element.
-    const E_OPTION_VECTOR_TOO_LONG: u64 = 4;
+    const E_OPTION_VECTOR_TOO_LONG: u64 = 3;
+    /// Base and quote metadata are identical.
+    const E_BASE_QUOTE_METADATA_SAME: u64 = 4;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
         market_id: u64,
         trading_pair: TradingPair,
         market_parameters: MarketParameters,
+        extend_ref: ExtendRef,
     }
 
     struct MarketMetadata has copy, drop, store {
@@ -67,19 +68,26 @@ module econia::core {
     #[resource_group_member(group = ObjectGroup)]
     struct MarketAccount has key {
         market_id: u64,
+        trading_pair: TradingPair,
         market_object: Object<Market>,
         user: address,
+        extend_ref: ExtendRef,
+        base_available: u64,
+        base_total: u64,
+        quote_available: u64,
+        quote_total: u64,
     }
 
-    struct MarketAccountMetadata has store {
+    struct MarketAccountMetadata has copy, drop, store {
         market_id: u64,
+        trading_pair: TradingPair,
         market_object: Object<Market>,
         user: address,
         market_account_object: Object<MarketAccount>,
     }
 
     struct MarketAccounts has key {
-        market_accounts: SmartTable<u64, MarketAccountMetadata>,
+        map: SmartTable<TradingPair, MarketAccountMetadata>,
     }
 
     struct Null has drop, store {}
@@ -103,12 +111,16 @@ module econia::core {
         quote_metadata: Object<Metadata>,
     }
 
-    public entry fun register_market(
+    public entry fun ensure_market_registered(
         registrant: &signer,
         base_metadata: Object<Metadata>,
         quote_metadata: Object<Metadata>,
     ) acquires Registry {
         let registry_ref_mut = borrow_registry_mut();
+        let trading_pair = TradingPair { base_metadata, quote_metadata };
+        let trading_pair_market_ids_ref_mut = &mut registry_ref_mut.trading_pair_market_ids;
+        if (table::contains(trading_pair_market_ids_ref_mut, trading_pair)) return;
+        assert!(base_metadata != quote_metadata, E_BASE_QUOTE_METADATA_SAME);
         let utility_asset_metadata = registry_ref_mut.registry_parameters.utility_asset_metadata;
         let market_registration_fee = registry_ref_mut.registry_parameters.market_registration_fee;
         let registrant_balance = primary_fungible_store::balance(
@@ -125,21 +137,19 @@ module econia::core {
             @econia,
             market_registration_fee,
         );
-        let trading_pair = TradingPair { base_metadata, quote_metadata };
-        let trading_pair_market_ids_ref_mut = &mut registry_ref_mut.trading_pair_market_ids;
-        assert!(
-            !table::contains(trading_pair_market_ids_ref_mut, trading_pair),
-            E_TRADING_PAIR_ALREADY_REGISTERED,
-        );
         let markets_ref_mut = &mut registry_ref_mut.markets;
         let market_id = table_with_length::length(markets_ref_mut) + 1;
         let constructor_ref = object::create_object(@econia);
+        let transfer_ref = object::generate_transfer_ref(&constructor_ref);
+        object::disable_ungated_transfer(&transfer_ref);
+        let extend_ref = object::generate_extend_ref(&constructor_ref);
         let market_parameters = registry_ref_mut.default_market_parameters;
         let market_signer = object::generate_signer(&constructor_ref);
         move_to(&market_signer, Market {
             market_id,
             trading_pair,
             market_parameters,
+            extend_ref,
         });
         let market_metadata = MarketMetadata {
             market_id,
@@ -149,6 +159,52 @@ module econia::core {
         };
         table_with_length::add(markets_ref_mut, market_id, market_metadata);
         table::add(trading_pair_market_ids_ref_mut, trading_pair, market_id);
+    }
+
+    public entry fun ensure_market_account_registered(
+        user: &signer,
+        base_metadata: Object<Metadata>,
+        quote_metadata: Object<Metadata>,
+    ) acquires MarketAccounts, Registry {
+        let user_address = signer::address_of(user);
+        if (!exists<MarketAccounts>(user_address)) {
+            move_to(user, MarketAccounts { map: smart_table::new() });
+        };
+        let trading_pair = TradingPair { base_metadata, quote_metadata };
+        let market_accounts_map_ref_mut = &mut borrow_global_mut<MarketAccounts>(user_address).map;
+        if (smart_table::contains(market_accounts_map_ref_mut, trading_pair)) return;
+        ensure_market_registered(user, base_metadata, quote_metadata);
+        let registry_ref = borrow_registry();
+        let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
+        let market_id = *table::borrow(trading_pair_market_ids_ref, trading_pair);
+        let market_object =
+            table_with_length::borrow(&registry_ref.markets, market_id).market_object;
+        let constructor_ref = object::create_sticky_object(user_address);
+        let transfer_ref = object::generate_transfer_ref(&constructor_ref);
+        object::disable_ungated_transfer(&transfer_ref);
+        let extend_ref = object::generate_extend_ref(&constructor_ref);
+        move_to(&object::generate_signer(&constructor_ref), MarketAccount {
+            market_id,
+            trading_pair,
+            market_object,
+            user: user_address,
+            extend_ref,
+            base_available: 0,
+            base_total: 0,
+            quote_available: 0,
+            quote_total: 0,
+        });
+        smart_table::add(
+            market_accounts_map_ref_mut,
+            trading_pair,
+            MarketAccountMetadata {
+                market_id,
+                trading_pair,
+                market_object,
+                user: user_address,
+                market_account_object: object::object_from_constructor_ref(&constructor_ref),
+            }
+        );
     }
 
     public entry fun update_market_parameters(
@@ -316,6 +372,8 @@ module econia::core {
 
     #[test_only]
     const MARKET_REGISTRANT_FOR_TEST: address = @0xace;
+    #[test_only]
+    const USER_FOR_TEST: address = @0xbee;
 
     #[test_only]
     public fun assert_market_parameters(
@@ -352,6 +410,32 @@ module econia::core {
     }
 
     #[test_only]
+    public fun assert_market_account_fields(
+        market_account_object: Object<MarketAccount>,
+        market_id: u64,
+        trading_pair: TradingPair,
+        market_object: Object<Market>,
+        user: address,
+        base_available: u64,
+        base_total: u64,
+        quote_available: u64,
+        quote_total: u64,
+    ) acquires MarketAccount {
+        let market_account_object_address = object::object_address(&market_account_object);
+        let market_account_ref = borrow_global<MarketAccount>(market_account_object_address);
+        assert!(market_account_ref.market_id == market_id, 0);
+        assert!(market_account_ref.trading_pair == trading_pair, 0);
+        assert!(market_account_ref.market_object == market_object, 0);
+        assert!(market_account_ref.user == user, 0);
+        let extend_ref_address = object::address_from_extend_ref(&market_account_ref.extend_ref);
+        assert!(extend_ref_address == market_account_object_address, 0);
+        assert!(market_account_ref.base_available == base_available, 0);
+        assert!(market_account_ref.base_total == base_total, 0);
+        assert!(market_account_ref.quote_available == quote_available, 0);
+        assert!(market_account_ref.quote_total == quote_total, 0);
+    }
+
+    #[test_only]
     public fun ensure_module_initialized_for_test() {
         aptos_coin::ensure_initialized_with_fa_metadata_for_test();
         if (!exists<Registry>(@econia)) init_module(&get_signer(@econia));
@@ -378,24 +462,28 @@ module econia::core {
     }
 
     #[test_only]
-    public fun ensure_market_initialized_for_test() acquires Registry {
+    public fun ensure_market_registered_for_test() acquires Registry {
         ensure_module_initialized_for_test();
         let trading_pair = get_test_trading_pair();
         let registry_ref = borrow_global<Registry>(@econia);
         if (table::contains(&registry_ref.trading_pair_market_ids, trading_pair)) return;
         mint_fa_apt_to_market_registrant();
         let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
-        register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
+        ensure_market_registered(
+            &registrant,
+            trading_pair.base_metadata,
+            trading_pair.quote_metadata
+        );
     }
 
     #[test_only]
-    public fun ensure_markets_initialized_for_test() acquires Registry {
-        ensure_market_initialized_for_test();
+    public fun ensure_markets_registered_for_test() acquires Registry {
+        ensure_market_registered_for_test();
         let trading_pair_flipped = get_test_trading_pair_flipped();
         let registry_ref = borrow_global<Registry>(@econia);
         if (table::contains(&registry_ref.trading_pair_market_ids, trading_pair_flipped)) return;
         mint_fa_apt_to_market_registrant();
-        register_market(
+        ensure_market_registered(
             &get_signer(MARKET_REGISTRANT_FOR_TEST),
             trading_pair_flipped.base_metadata,
             trading_pair_flipped.quote_metadata
@@ -438,8 +526,8 @@ module econia::core {
     }
 
     #[test]
-    fun test_register_market() acquires Market, Registry {
-        ensure_markets_initialized_for_test();
+    fun test_ensure_market_registered() acquires Market, Registry {
+        ensure_markets_registered_for_test();
         let registry_ref = borrow_registry();
         let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
         let trading_pair = get_test_trading_pair();
@@ -448,6 +536,9 @@ module econia::core {
         assert!(*table::borrow(trading_pair_market_ids_ref, trading_pair_flipped) == 2, 0);
         let default_market_parameters = registry_ref.default_market_parameters;
         let market_metadata = *table_with_length::borrow(&registry_ref.markets, 1);
+        let market_object = market_metadata.market_object;
+        assert!(!object::ungated_transfer_allowed(market_object), 0);
+        assert!(object::owner(market_object) == @econia, 0);
         assert!(market_metadata.market_id == 1, 0);
         assert!(market_metadata.trading_pair == trading_pair, 0);
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
@@ -457,6 +548,9 @@ module econia::core {
         assert!(market_ref.trading_pair == trading_pair, 0);
         assert!(market_ref.market_parameters == default_market_parameters, 0);
         market_metadata = *table_with_length::borrow(&registry_ref.markets, 2);
+        market_object = market_metadata.market_object;
+        assert!(!object::ungated_transfer_allowed(market_object), 0);
+        assert!(object::owner(market_object) == @econia, 0);
         assert!(market_metadata.market_id == 2, 0);
         assert!(market_metadata.trading_pair == trading_pair_flipped, 0);
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
@@ -468,25 +562,67 @@ module econia::core {
     }
 
     #[test, expected_failure(abort_code = E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET)]
-    fun test_register_market_not_enough_utility_asset() acquires Registry {
-        ensure_market_initialized_for_test();
-        let trading_pair = get_test_trading_pair();
-        let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
-        register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
+    fun test_ensure_market_registered_not_enough_utility_asset() acquires Registry {
+        ensure_market_registered_for_test();
+        let (base_metadata, quote_metadata) = test_assets::get_metadata();
+        ensure_market_registered(
+            &get_signer(MARKET_REGISTRANT_FOR_TEST),
+            quote_metadata,
+            base_metadata,
+        );
     }
 
-    #[test, expected_failure(abort_code = E_TRADING_PAIR_ALREADY_REGISTERED)]
-    fun test_register_market_trading_pair_already_registered() acquires Registry {
-        ensure_market_initialized_for_test();
-        let trading_pair = get_test_trading_pair();
-        mint_fa_apt_to_market_registrant();
-        let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
-        register_market(&registrant, trading_pair.base_metadata, trading_pair.quote_metadata);
+    #[test, expected_failure(abort_code = E_BASE_QUOTE_METADATA_SAME)]
+    fun test_ensure_market_registered_base_quote_metadata_same() acquires Registry {
+        ensure_module_initialized_for_test();
+        let (metadata, _) = test_assets::get_metadata();
+        ensure_market_registered(&get_signer(MARKET_REGISTRANT_FOR_TEST), metadata, metadata);
+    }
+
+    #[test]
+    fun test_ensure_market_account_registered() acquires MarketAccount, MarketAccounts, Registry {
+        ensure_market_registered_for_test();
+        let (base_metadata, quote_metadata) = test_assets::get_metadata();
+        ensure_market_account_registered(
+            &get_signer(USER_FOR_TEST),
+            base_metadata,
+            quote_metadata
+        );
+        let registry = borrow_registry();
+        let market_id = 1;
+        let market_metadata = *table_with_length::borrow(&registry.markets, 1);
+        let trading_pair = market_metadata.trading_pair;
+        let market_object = market_metadata.market_object;
+        let market_accounts_map_ref = &borrow_global<MarketAccounts>(USER_FOR_TEST).map;
+        let market_account_metadata = *smart_table::borrow(market_accounts_map_ref, trading_pair);
+        assert!(market_account_metadata.market_id == market_id, 0);
+        assert!(market_account_metadata.trading_pair == trading_pair, 0);
+        assert!(market_account_metadata.market_object == market_object, 0);
+        assert!(market_account_metadata.user == USER_FOR_TEST, 0);
+        let market_account_object = market_account_metadata.market_account_object;
+        assert!(!object::ungated_transfer_allowed(market_account_object), 0);
+        assert!(object::owner(market_account_object) == USER_FOR_TEST, 0);
+        assert_market_account_fields(
+            market_account_object,
+            market_id,
+            trading_pair,
+            market_object,
+            USER_FOR_TEST,
+            0,
+            0,
+            0,
+            0,
+        );
+        ensure_market_account_registered(
+            &get_signer(USER_FOR_TEST),
+            base_metadata,
+            quote_metadata
+        );
     }
 
     #[test]
     fun test_update_recognized_markets() acquires Registry {
-        ensure_markets_initialized_for_test();
+        ensure_markets_registered_for_test();
         let registry_ref = borrow_registry();
         assert!(!smart_table::contains(&registry_ref.recognized_market_ids, 1), 0);
         assert!(!smart_table::contains(&registry_ref.recognized_market_ids, 2), 0);
@@ -533,7 +669,7 @@ module econia::core {
 
     #[test]
     fun test_update_market_parameters() acquires Market, Registry {
-        ensure_market_initialized_for_test();
+        ensure_market_registered_for_test();
         let econia = get_signer(@econia);
         update_market_parameters(
             &econia,
@@ -589,7 +725,7 @@ module econia::core {
 
     #[test, expected_failure(abort_code = E_INVALID_MARKET_ID)]
     fun test_update_market_parameters_invalid_market_id() acquires Market, Registry {
-        ensure_market_initialized_for_test();
+        ensure_market_registered_for_test();
         update_market_parameters(
             &get_signer(@econia),
             vector[2],
