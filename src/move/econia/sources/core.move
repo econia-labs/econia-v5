@@ -29,6 +29,8 @@ module econia::core {
     const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK: u128 = 100_000_000_000_000_000_000;
     const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID: u128 = 100_000_000_000_000_000_000;
     const GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR: u128 = 1_000_000_000_000_000_000_000_000;
+    const GENESIS_DEFAULT_INNER_NODE_ORDER: u8 = 10;
+    const GENESIS_DEFAULT_LEAF_NODE_ORDER: u8 = 5;
 
     /// Registrant's utility asset primary fungible store balance is below market registration fee.
     const E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET: u64 = 0;
@@ -64,6 +66,8 @@ module econia::core {
         eviction_price_divisor_ask: u128,
         eviction_price_divisor_bid: u128,
         eviction_liquidity_divisor: u128,
+        inner_node_order: u8,
+        leaf_node_order: u8,
     }
 
     #[resource_group_member(group = ObjectGroup)]
@@ -269,6 +273,8 @@ module econia::core {
         eviction_price_divisor_ask_option: vector<u128>,
         eviction_price_divisor_bid_option: vector<u128>,
         eviction_liquidity_divisor_option: vector<u128>,
+        inner_node_order_option: vector<u8>,
+        leaf_node_order_option: vector<u8>,
     ) acquires Market, Registry {
         assert_signer_is_econia(econia);
         assert_option_vector_is_valid_length(&market_id_option);
@@ -314,6 +320,14 @@ module econia::core {
         set_value_via_option_vector(
             &mut market_parameters_ref_mut.eviction_liquidity_divisor,
             &eviction_liquidity_divisor_option,
+        );
+        set_value_via_option_vector(
+            &mut market_parameters_ref_mut.inner_node_order,
+            &inner_node_order_option,
+        );
+        set_value_via_option_vector(
+            &mut market_parameters_ref_mut.leaf_node_order,
+            &leaf_node_order_option,
         );
         if (!updating_default_parameters) {
             borrow_global_mut<Market>(market_address).market_parameters =
@@ -410,6 +424,8 @@ module econia::core {
                 eviction_price_divisor_ask: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
                 eviction_price_divisor_bid: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
                 eviction_liquidity_divisor: GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR,
+                inner_node_order: GENESIS_DEFAULT_INNER_NODE_ORDER,
+                leaf_node_order: GENESIS_DEFAULT_LEAF_NODE_ORDER,
             },
         });
     }
@@ -465,6 +481,8 @@ module econia::core {
         eviction_price_divisor_ask: u128,
         eviction_price_divisor_bid: u128,
         eviction_liquidity_divisor: u128,
+        inner_node_order: u8,
+        leaf_node_order: u8,
     ) {
         assert!(market_parameters.pool_fee_rate_bps == pool_fee_rate_bps, 0);
         assert!(market_parameters.taker_fee_rate_bps == taker_fee_rate_bps, 0);
@@ -473,6 +491,8 @@ module econia::core {
         assert!(market_parameters.eviction_price_divisor_ask == eviction_price_divisor_ask, 0);
         assert!(market_parameters.eviction_price_divisor_bid == eviction_price_divisor_bid, 0);
         assert!(market_parameters.eviction_liquidity_divisor == eviction_liquidity_divisor, 0);
+        assert!(market_parameters.inner_node_order == inner_node_order, 0);
+        assert!(market_parameters.leaf_node_order == leaf_node_order, 0);
     }
 
     #[test_only]
@@ -638,6 +658,8 @@ module econia::core {
             GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
             GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
             GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR,
+            GENESIS_DEFAULT_INNER_NODE_ORDER,
+            GENESIS_DEFAULT_LEAF_NODE_ORDER,
         );
     }
 
@@ -839,6 +861,8 @@ module econia::core {
             vector[],
             vector[],
             vector[],
+            vector[],
+            vector[],
         );
         let registry = borrow_registry();
         let markets_ref = &registry.markets;
@@ -856,7 +880,8 @@ module econia::core {
             GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
             GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
             GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR,
-
+            GENESIS_DEFAULT_INNER_NODE_ORDER,
+            GENESIS_DEFAULT_LEAF_NODE_ORDER,
         );
         update_market_parameters(
             &econia,
@@ -868,6 +893,8 @@ module econia::core {
             vector[6],
             vector[7],
             vector[8],
+            vector[9],
+            vector[10],
         );
         assert_market_parameters(
             borrow_registry().default_market_parameters,
@@ -878,6 +905,8 @@ module econia::core {
             6,
             7,
             8,
+            9,
+            10,
         )
     }
 
@@ -887,6 +916,8 @@ module econia::core {
         update_market_parameters(
             &get_signer(@econia),
             vector[2],
+            vector[],
+            vector[],
             vector[],
             vector[],
             vector[],
