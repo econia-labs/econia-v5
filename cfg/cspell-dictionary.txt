@@ -1,4 +1,6 @@
 aptos
+auid
+bitshift
 econia
 octas
 struct

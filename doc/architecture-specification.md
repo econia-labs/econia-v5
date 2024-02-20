@@ -87,6 +87,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    be implemented as a duty good, whereby oracle operations that access order
    book state, for example, (or even those that do not) are required to randomly
    scan the order book for the given market and evict orders as needed.
+1. The source of randomness for eviction duty `MAY` use transaction hash, Aptos
+   unique identifier (AUID), on-chain randomness, cyclical redundancy check or
+   similar bitshift technique, at each level in the tree, to determine which
+   branch to iterate to next.
 1. When an order is placed, the head and tail of the book for the given side
    `MAY` be checked, and evicted if market eviction criteria are met to ensure
    that eviction is at least checked during tree grow operations.
@@ -96,7 +100,7 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Queries for information like best bid/ask `SHALL` be possible through public
    APIs, to enable composability. These APIs `MAY` charge a small amount, for
    example 100 octas, to reduce excessive queries for contended state.
-1. Oracle fees `SHALL` be paid to a primary fungible store for each market,
+1. Oracle fees `MAY` be paid to a primary fungible store for each market,
    denominated in the protocol utility coin, with the oracle query amount
    tracked in a global registry.
 1. Runtime oracle functions `SHALL` be implemented as a public wrapper around
@@ -159,6 +163,7 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Each user `SHALL` have a market accounts map of type
    `aptos_std::smart_table::SmartTable` which lists the markets they have open
    market accounts for.
+1. Market account objects `SHALL` be non-transferrable.
 
 ### Market vaults
 
@@ -196,6 +201,9 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    can be evaluated for eviction.
 1. An order that would post to the tail of a queue that is above the eviction
    height threshold `SHALL` be prohibited from posting.
+1. Orders `MAY` be given the opportunity to specify time in force, though this
+   approach would increase overall execution gas for a feature that is not
+   necessarily a requirement for most market makers.
 
 ### Order books
 
@@ -206,13 +214,16 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    sequence number for the level `SHALL` be generated dynamically upon insertion
    such that the first order at a new price level assumes the sequence number 1.
 1. Each market `SHALL` have a B+ tree for each side, which caches the best price
-   and its leaf node's address, and has a sort order direction such that the
-   sequence number flag for bids, of descending sort order direction, is
-   `HI_64 - sequence_number_at_level`. The tail of the tree `SHALL NOT` be
-   cached, to avoid serialization griefing from the worst order in the queue.
-1. The B+ tree `MAY` track its height at the root node, for ease of eviction
-   monitoring, though insertion and lookup mechanics will be able to track
+   and its leaf node's address, the worst price and its leaf node's address,
+   and has a sort order direction such that the sequence number flag for bids,
+   of descending sort order direction, is `HI_64 - sequence_number_at_level`.
+1. The B+ tree `SHALL` track its height at the root node, for ease of eviction
+   monitoring, though insertion and lookup mechanics `MAY` be able to track
    height on the fly.
+1. Each level in the B+ tree `SHALL` implement a doubly linked list of elements.
+1. The B+ tree `SHALL` support dynamically-updated configuration parameters
+   like order within a tree level, such that these parameters can be tuned via
+   governance.
 
 ### Extensions
 
@@ -221,6 +232,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    to enable unforeseen backwards-compatible feature upgrades.
 
 ## Implementation details
+
+### Objects
+
+1. Objects `SHALL` be non-transferrable.
 
 ### Matching
 
@@ -232,6 +247,9 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    fill-or-kill orders.
 1. The intermediate match result `SHALL` be made publicly available during
    runtime via an oracle function.
+1. For order types that do not require a two-phase model, matching `SHALL` be
+   evaluated on the fly to reduce overhead associated with the prepare/commit
+   paradigm.
 
 ### Eviction
 
