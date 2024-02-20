@@ -2,7 +2,7 @@
 module econia::core {
 
     use aptos_framework::fungible_asset::Metadata;
-    use aptos_framework::object::{Self, ExtendRef, Object, ObjectGroup};
+    use aptos_framework::object::{Self, ConstructorRef, ExtendRef, Object, ObjectGroup};
     use aptos_framework::table::{Self, Table};
     use aptos_framework::table_with_length::{Self, TableWithLength};
     use aptos_framework::primary_fungible_store;
@@ -139,10 +139,7 @@ module econia::core {
         );
         let markets_ref_mut = &mut registry_ref_mut.markets;
         let market_id = table_with_length::length(markets_ref_mut) + 1;
-        let constructor_ref = object::create_object(@econia);
-        let transfer_ref = object::generate_transfer_ref(&constructor_ref);
-        object::disable_ungated_transfer(&transfer_ref);
-        let extend_ref = object::generate_extend_ref(&constructor_ref);
+        let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(@econia);
         let market_parameters = registry_ref_mut.default_market_parameters;
         let market_signer = object::generate_signer(&constructor_ref);
         move_to(&market_signer, Market {
@@ -179,10 +176,7 @@ module econia::core {
         let market_id = *table::borrow(trading_pair_market_ids_ref, trading_pair);
         let market_object =
             table_with_length::borrow(&registry_ref.markets, market_id).market_object;
-        let constructor_ref = object::create_sticky_object(user_address);
-        let transfer_ref = object::generate_transfer_ref(&constructor_ref);
-        object::disable_ungated_transfer(&transfer_ref);
-        let extend_ref = object::generate_extend_ref(&constructor_ref);
+        let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(user_address);
         move_to(&object::generate_signer(&constructor_ref), MarketAccount {
             market_id,
             trading_pair,
@@ -311,6 +305,14 @@ module econia::core {
             &mut registry_parameters_ref_mut.oracle_fee,
             &oracle_fee_option
         );
+    }
+
+    fun create_nontransferrable_sticky_object(owner: address): (ConstructorRef, ExtendRef) {
+        let constructor_ref = object::create_sticky_object(owner);
+        let transfer_ref = object::generate_transfer_ref(&constructor_ref);
+        object::disable_ungated_transfer(&transfer_ref);
+        let extend_ref = object::generate_extend_ref(&constructor_ref);
+        (constructor_ref, extend_ref)
     }
 
     fun init_module(econia: &signer) {
