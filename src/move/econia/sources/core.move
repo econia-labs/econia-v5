@@ -19,7 +19,7 @@ module econia::core {
 
     const GENESIS_UTILITY_ASSET_METADATA_ADDRESS: address = @aptos_framework;
     const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100_000_000;
-    const GENESIS_ORACLE_FEE: u64 = 1_000;
+    const GENESIS_ORACLE_FEE: u64 = 0;
 
     const GENESIS_DEFAULT_POOL_FEE_RATE_BPS: u8 = 30;
     const GENESIS_DEFAULT_TAKER_FEE_RATE_BPS: u8 = 0;
