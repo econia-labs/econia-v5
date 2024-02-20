@@ -20,6 +20,7 @@ module econia::core {
     const GENESIS_UTILITY_ASSET_METADATA_ADDRESS: address = @aptos_framework;
     const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100_000_000;
     const GENESIS_ORACLE_FEE: u64 = 0;
+    const GENESIS_INTEGRATOR_WITHDRAWAL_FEE: u64 = 0;
 
     const GENESIS_DEFAULT_POOL_FEE_RATE_BPS: u8 = 30;
     const GENESIS_DEFAULT_TAKER_FEE_RATE_BPS: u8 = 0;
@@ -118,6 +119,7 @@ module econia::core {
         utility_asset_metadata: Object<Metadata>,
         market_registration_fee: u64,
         oracle_fee: u64,
+        integrator_withdrawal_fee: u64,
     }
 
     struct Registry has key {
@@ -346,6 +348,7 @@ module econia::core {
         utility_asset_metadata_address_option: vector<address>,
         market_registration_fee_option: vector<u64>,
         oracle_fee_option: vector<u64>,
+        integrator_withdrawal_fee_option: vector<u64>,
     ) acquires Registry {
         assert_signer_is_econia(econia);
         let registry_parameters_ref_mut = &mut borrow_registry_mut().registry_parameters;
@@ -355,11 +358,15 @@ module econia::core {
         );
         set_value_via_option_vector(
             &mut registry_parameters_ref_mut.market_registration_fee,
-            &market_registration_fee_option
+            &market_registration_fee_option,
         );
         set_value_via_option_vector(
             &mut registry_parameters_ref_mut.oracle_fee,
-            &oracle_fee_option
+            &oracle_fee_option,
+        );
+        set_value_via_option_vector(
+            &mut registry_parameters_ref_mut.integrator_withdrawal_fee,
+            &integrator_withdrawal_fee_option,
         );
     }
 
@@ -393,6 +400,7 @@ module econia::core {
                     object::address_to_object<Metadata>(GENESIS_UTILITY_ASSET_METADATA_ADDRESS),
                 market_registration_fee: GENESIS_MARKET_REGISTRATION_FEE,
                 oracle_fee: GENESIS_ORACLE_FEE,
+                integrator_withdrawal_fee: GENESIS_INTEGRATOR_WITHDRAWAL_FEE,
             },
             default_market_parameters: MarketParameters {
                 pool_fee_rate_bps: GENESIS_DEFAULT_POOL_FEE_RATE_BPS,
@@ -473,12 +481,14 @@ module econia::core {
         utility_asset_metadata_address: address,
         market_registration_fee: u64,
         oracle_fee: u64,
+        integrator_withdrawal_fee: u64,
     ) {
         let utility_asset_metadata_address_to_check =
             object::object_address(&registry_parameters.utility_asset_metadata);
         assert!(utility_asset_metadata_address_to_check == utility_asset_metadata_address, 0);
         assert!(registry_parameters.market_registration_fee == market_registration_fee, 0);
         assert!(registry_parameters.oracle_fee == oracle_fee, 0);
+        assert!(registry_parameters.integrator_withdrawal_fee == integrator_withdrawal_fee, 0);
     }
 
     #[test_only]
@@ -617,6 +627,7 @@ module econia::core {
             GENESIS_UTILITY_ASSET_METADATA_ADDRESS,
             GENESIS_MARKET_REGISTRATION_FEE,
             GENESIS_ORACLE_FEE,
+            GENESIS_INTEGRATOR_WITHDRAWAL_FEE,
         );
         assert_market_parameters(
             registry_ref.default_market_parameters,
@@ -787,22 +798,30 @@ module econia::core {
     fun test_update_registry_parameters() acquires Registry {
         ensure_module_initialized_for_test();
         let econia = get_signer(@econia);
-        update_registry_parameters(&econia, vector[], vector[], vector[]);
+        update_registry_parameters(&econia, vector[], vector[], vector[], vector[]);
         assert_registry_parameters(
             borrow_registry().registry_parameters,
             GENESIS_UTILITY_ASSET_METADATA_ADDRESS,
             GENESIS_MARKET_REGISTRATION_FEE,
             GENESIS_ORACLE_FEE,
+            GENESIS_INTEGRATOR_WITHDRAWAL_FEE,
         );
         test_assets::ensure_assets_initialized();
         let (new_metadata, _) = test_assets::get_metadata();
         let new_metadata_address = object::object_address(&new_metadata);
-        update_registry_parameters(&econia, vector[new_metadata_address], vector[1], vector[2]);
+        update_registry_parameters(
+            &econia,
+            vector[new_metadata_address],
+            vector[1],
+            vector[2],
+            vector[3]
+        );
         assert_registry_parameters(
             borrow_registry().registry_parameters,
             new_metadata_address,
             1,
             2,
+            3,
         );
     }
 
