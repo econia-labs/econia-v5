@@ -90,7 +90,7 @@ module econia::core {
         map: SmartTable<TradingPair, MarketAccountMetadata>,
     }
 
-    struct Null has drop, store {}
+    struct Null has drop, key, store {}
 
     struct RegistryParameters has copy, drop, store {
         utility_asset_metadata: Object<Metadata>,
@@ -506,6 +506,15 @@ module econia::core {
     }
 
     #[test]
+    fun test_create_nontransferrable_sticky_object() {
+        let (constructor_ref, _) = create_nontransferrable_sticky_object(@econia);
+        move_to(&object::generate_signer(&constructor_ref), Null {});
+        let object = object::object_from_constructor_ref(&constructor_ref);
+        assert!(!object::ungated_transfer_allowed<Null>(object), 0);
+        assert!(object::owner(object) == @econia, 0);
+    }
+
+    #[test]
     fun test_genesis_values() acquires Registry {
         ensure_module_initialized_for_test();
         let registry_ref = borrow_registry();
@@ -538,9 +547,6 @@ module econia::core {
         assert!(*table::borrow(trading_pair_market_ids_ref, trading_pair_flipped) == 2, 0);
         let default_market_parameters = registry_ref.default_market_parameters;
         let market_metadata = *table_with_length::borrow(&registry_ref.markets, 1);
-        let market_object = market_metadata.market_object;
-        assert!(!object::ungated_transfer_allowed(market_object), 0);
-        assert!(object::owner(market_object) == @econia, 0);
         assert!(market_metadata.market_id == 1, 0);
         assert!(market_metadata.trading_pair == trading_pair, 0);
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
@@ -550,9 +556,6 @@ module econia::core {
         assert!(market_ref.trading_pair == trading_pair, 0);
         assert!(market_ref.market_parameters == default_market_parameters, 0);
         market_metadata = *table_with_length::borrow(&registry_ref.markets, 2);
-        market_object = market_metadata.market_object;
-        assert!(!object::ungated_transfer_allowed(market_object), 0);
-        assert!(object::owner(market_object) == @econia, 0);
         assert!(market_metadata.market_id == 2, 0);
         assert!(market_metadata.trading_pair == trading_pair_flipped, 0);
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
@@ -602,8 +605,6 @@ module econia::core {
         assert!(market_account_metadata.market_object == market_object, 0);
         assert!(market_account_metadata.user == USER_FOR_TEST, 0);
         let market_account_object = market_account_metadata.market_account_object;
-        assert!(!object::ungated_transfer_allowed(market_account_object), 0);
-        assert!(object::owner(market_account_object) == USER_FOR_TEST, 0);
         assert_market_account_fields(
             market_account_object,
             market_id,
