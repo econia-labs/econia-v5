@@ -65,7 +65,8 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 ### Move
 
 1. [Reference][move references] variable names `MUST` end in either `_ref` or
-   `_ref_mut`, depending on mutability.
+   `_ref_mut`, depending on mutability, unless they refer to
+   [signers][move signer].
 1. [Doc comments] `MUST` use Markdown syntax.
 1. Variable names `SHOULD` be descriptive, with minor exceptions for scenarios
    like math utility functions.
@@ -77,6 +78,7 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 [github actions]: https://docs.github.com/en/actions
 [linear]: https://pre-commit.com/hooks.html
 [move references]: https://move-language.github.io/move/references.html
+[move signer]: https://move-language.github.io/move/signer.html
 [pre-commit hook]: https://pre-commit.com/hooks.html
 [reference links]: https://mdformat.readthedocs.io/en/stable/users/style.html#reference-links
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
