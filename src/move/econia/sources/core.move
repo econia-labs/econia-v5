@@ -90,6 +90,28 @@ module econia::core {
         map: SmartTable<TradingPair, MarketAccountMetadata>,
     }
 
+    #[resource_group_member(group = ObjectGroup)]
+    struct IntegratorFeeStore has key {
+        market_id: u64,
+        trading_pair: TradingPair,
+        market_object: Object<Market>,
+        integrator: address,
+        extend_ref: ExtendRef,
+        quote_available: u64,
+    }
+
+    struct IntegratorFeeStoreMetadata has copy, drop, store {
+        market_id: u64,
+        trading_pair: TradingPair,
+        market_object: Object<Market>,
+        integrator: address,
+        integrator_fee_store_object: Object<IntegratorFeeStore>,
+    }
+
+    struct IntegratorFeeStores has key {
+        map: SmartTable<TradingPair, IntegratorFeeStoreMetadata>,
+    }
+
     struct Null has drop, key, store {}
 
     struct RegistryParameters has copy, drop, store {
@@ -167,15 +189,11 @@ module econia::core {
         if (!exists<MarketAccounts>(user_address)) {
             move_to(user, MarketAccounts { map: smart_table::new() });
         };
-        let trading_pair = TradingPair { base_metadata, quote_metadata };
         let market_accounts_map_ref_mut = &mut borrow_global_mut<MarketAccounts>(user_address).map;
+        let trading_pair = TradingPair { base_metadata, quote_metadata };
         if (smart_table::contains(market_accounts_map_ref_mut, trading_pair)) return;
         ensure_market_registered(user, base_metadata, quote_metadata);
-        let registry_ref = borrow_registry();
-        let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
-        let market_id = *table::borrow(trading_pair_market_ids_ref, trading_pair);
-        let market_object =
-            table_with_length::borrow(&registry_ref.markets, market_id).market_object;
+        let (market_id, market_object) = get_market_id_and_object_for_registered_pair(trading_pair);
         let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(user_address);
         move_to(&object::generate_signer(&constructor_ref), MarketAccount {
             market_id,
@@ -197,6 +215,44 @@ module econia::core {
                 market_object,
                 user: user_address,
                 market_account_object: object::object_from_constructor_ref(&constructor_ref),
+            }
+        );
+    }
+
+    public entry fun ensure_integrator_fee_store_registered(
+        integrator: &signer,
+        base_metadata: Object<Metadata>,
+        quote_metadata: Object<Metadata>,
+    ) acquires IntegratorFeeStores, Registry {
+        let integrator_address = signer::address_of(integrator);
+        if (!exists<IntegratorFeeStores>(integrator_address)) {
+            move_to(integrator, IntegratorFeeStores { map: smart_table::new() });
+        };
+        let integrator_fee_stores_map_ref_mut =
+            &mut borrow_global_mut<IntegratorFeeStores>(integrator_address).map;
+        let trading_pair = TradingPair { base_metadata, quote_metadata };
+        if (smart_table::contains(integrator_fee_stores_map_ref_mut, trading_pair)) return;
+        ensure_market_registered(integrator, base_metadata, quote_metadata);
+        let (market_id, market_object) = get_market_id_and_object_for_registered_pair(trading_pair);
+        let (constructor_ref, extend_ref) =
+            create_nontransferrable_sticky_object(integrator_address);
+        move_to(&object::generate_signer(&constructor_ref), IntegratorFeeStore {
+            market_id,
+            trading_pair,
+            market_object,
+            integrator: integrator_address,
+            extend_ref,
+            quote_available: 0,
+        });
+        smart_table::add(
+            integrator_fee_stores_map_ref_mut,
+            trading_pair,
+            IntegratorFeeStoreMetadata {
+                market_id,
+                trading_pair,
+                market_object,
+                integrator: integrator_address,
+                integrator_fee_store_object: object::object_from_constructor_ref(&constructor_ref),
             }
         );
     }
@@ -315,6 +371,18 @@ module econia::core {
         (constructor_ref, extend_ref)
     }
 
+    fun get_market_id_and_object_for_registered_pair(trading_pair: TradingPair): (
+        u64,
+        Object<Market>,
+    ) acquires Registry {
+        let registry_ref = borrow_registry();
+        let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
+        let market_id = *table::borrow(trading_pair_market_ids_ref, trading_pair);
+        let market_object =
+            table_with_length::borrow(&registry_ref.markets, market_id).market_object;
+        (market_id, market_object)
+    }
+
     fun init_module(econia: &signer) {
         move_to(econia, Registry {
             markets: table_with_length::new(),
@@ -376,6 +444,8 @@ module econia::core {
     const MARKET_REGISTRANT_FOR_TEST: address = @0xace;
     #[test_only]
     const USER_FOR_TEST: address = @0xbee;
+    #[test_only]
+    const INTEGRATOR_FOR_TEST: address = @0xcad;
 
     #[test_only]
     public fun assert_market_parameters(
@@ -436,6 +506,30 @@ module econia::core {
         assert!(market_account_ref.quote_available == quote_available, 0);
         assert!(market_account_ref.quote_total == quote_total, 0);
     }
+
+    #[test_only]
+    public fun assert_integrator_fee_store_fields(
+        integrator_fee_store_object: Object<IntegratorFeeStore>,
+        market_id: u64,
+        trading_pair: TradingPair,
+        market_object: Object<Market>,
+        integrator: address,
+        quote_available: u64,
+    ) acquires IntegratorFeeStore {
+        let integrator_fee_store_object_address =
+            object::object_address(&integrator_fee_store_object);
+        let integrator_fee_store_ref =
+            borrow_global<IntegratorFeeStore>(integrator_fee_store_object_address);
+        assert!(integrator_fee_store_ref.market_id == market_id, 0);
+        assert!(integrator_fee_store_ref.trading_pair == trading_pair, 0);
+        assert!(integrator_fee_store_ref.market_object == market_object, 0);
+        assert!(integrator_fee_store_ref.integrator == integrator, 0);
+        let extend_ref_address =
+            object::address_from_extend_ref(&integrator_fee_store_ref.extend_ref);
+        assert!(extend_ref_address == integrator_fee_store_object_address, 0);
+        assert!(integrator_fee_store_ref.quote_available == quote_available, 0);
+    }
+
 
     #[test_only]
     public fun ensure_module_initialized_for_test() {
@@ -618,6 +712,48 @@ module econia::core {
         );
         ensure_market_account_registered(
             &get_signer(USER_FOR_TEST),
+            base_metadata,
+            quote_metadata
+        );
+    }
+
+    #[test]
+    fun test_ensure_integrator_fee_store_registered() acquires
+        IntegratorFeeStore,
+        IntegratorFeeStores,
+        Registry
+    {
+        ensure_market_registered_for_test();
+        let (base_metadata, quote_metadata) = test_assets::get_metadata();
+        ensure_integrator_fee_store_registered(
+            &get_signer(INTEGRATOR_FOR_TEST),
+            base_metadata,
+            quote_metadata
+        );
+        let registry = borrow_registry();
+        let market_id = 1;
+        let market_metadata = *table_with_length::borrow(&registry.markets, 1);
+        let trading_pair = market_metadata.trading_pair;
+        let market_object = market_metadata.market_object;
+        let integrator_fee_stores_map_ref =
+            &borrow_global<IntegratorFeeStores>(INTEGRATOR_FOR_TEST).map;
+        let integrator_fee_store_metadata =
+            *smart_table::borrow(integrator_fee_stores_map_ref, trading_pair);
+        assert!(integrator_fee_store_metadata.market_id == market_id, 0);
+        assert!(integrator_fee_store_metadata.trading_pair == trading_pair, 0);
+        assert!(integrator_fee_store_metadata.market_object == market_object, 0);
+        assert!(integrator_fee_store_metadata.integrator == INTEGRATOR_FOR_TEST, 0);
+        let integrator_fee_store_object = integrator_fee_store_metadata.integrator_fee_store_object;
+        assert_integrator_fee_store_fields(
+            integrator_fee_store_object,
+            market_id,
+            trading_pair,
+            market_object,
+            INTEGRATOR_FOR_TEST,
+            0,
+        );
+        ensure_integrator_fee_store_registered(
+            &get_signer(INTEGRATOR_FOR_TEST),
             base_metadata,
             quote_metadata
         );
