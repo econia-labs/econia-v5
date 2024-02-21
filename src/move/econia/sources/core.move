@@ -67,7 +67,7 @@ module econia::core {
 
     struct MarketMetadata has copy, drop, store {
         market_id: u64,
-        market_object: Object<Market>,
+        market_address: address,
         trading_pair: TradingPair,
         market_parameters: MarketParameters,
     }
@@ -88,7 +88,7 @@ module econia::core {
     struct MarketAccount has key {
         market_id: u64,
         trading_pair: TradingPair,
-        market_object: Object<Market>,
+        market_address: address,
         user: address,
         extend_ref: ExtendRef,
         base_balances: MarketAccountBalances,
@@ -103,9 +103,9 @@ module econia::core {
     struct MarketAccountMetadata has copy, drop, store {
         market_id: u64,
         trading_pair: TradingPair,
-        market_object: Object<Market>,
+        market_address: address,
         user: address,
-        market_account_object: Object<MarketAccount>,
+        market_account_address: address,
     }
 
     struct MarketAccounts has key {
@@ -116,7 +116,7 @@ module econia::core {
     struct IntegratorFeeStore has key {
         market_id: u64,
         trading_pair: TradingPair,
-        market_object: Object<Market>,
+        market_address: address,
         integrator: address,
         extend_ref: ExtendRef,
         quote_available: u64,
@@ -125,9 +125,9 @@ module econia::core {
     struct IntegratorFeeStoreMetadata has copy, drop, store {
         market_id: u64,
         trading_pair: TradingPair,
-        market_object: Object<Market>,
+        market_address: address,
         integrator: address,
-        integrator_fee_store_object: Object<IntegratorFeeStore>,
+        integrator_fee_store_address: address,
     }
 
     struct IntegratorFeeStores has key {
@@ -199,7 +199,7 @@ module econia::core {
         });
         let market_metadata = MarketMetadata {
             market_id,
-            market_object: object::object_from_constructor_ref(&constructor_ref),
+            market_address: object::address_from_constructor_ref(&constructor_ref),
             trading_pair,
             market_parameters,
         };
@@ -220,13 +220,14 @@ module econia::core {
         let trading_pair = TradingPair { base_metadata, quote_metadata };
         if (smart_table::contains(market_accounts_map_ref_mut, trading_pair)) return;
         ensure_market_registered(user, base_metadata, quote_metadata);
-        let (market_id, market_object) = get_market_id_and_object_for_registered_pair(trading_pair);
+        let (market_id, market_address) =
+            get_market_id_and_address_for_registered_pair(trading_pair);
         let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(user_address);
         let no_balances = MarketAccountBalances { available: 0, total: 0 };
         move_to(&object::generate_signer(&constructor_ref), MarketAccount {
             market_id,
             trading_pair,
-            market_object,
+            market_address,
             user: user_address,
             extend_ref,
             base_balances: no_balances,
@@ -238,9 +239,9 @@ module econia::core {
             MarketAccountMetadata {
                 market_id,
                 trading_pair,
-                market_object,
+                market_address,
                 user: user_address,
-                market_account_object: object::object_from_constructor_ref(&constructor_ref),
+                market_account_address: object::address_from_constructor_ref(&constructor_ref),
             }
         );
     }
@@ -259,13 +260,14 @@ module econia::core {
         let trading_pair = TradingPair { base_metadata, quote_metadata };
         if (smart_table::contains(integrator_fee_stores_map_ref_mut, trading_pair)) return;
         ensure_market_registered(integrator, base_metadata, quote_metadata);
-        let (market_id, market_object) = get_market_id_and_object_for_registered_pair(trading_pair);
+        let (market_id, market_address) =
+            get_market_id_and_address_for_registered_pair(trading_pair);
         let (constructor_ref, extend_ref) =
             create_nontransferrable_sticky_object(integrator_address);
         move_to(&object::generate_signer(&constructor_ref), IntegratorFeeStore {
             market_id,
             trading_pair,
-            market_object,
+            market_address,
             integrator: integrator_address,
             extend_ref,
             quote_available: 0,
@@ -276,9 +278,10 @@ module econia::core {
             IntegratorFeeStoreMetadata {
                 market_id,
                 trading_pair,
-                market_object,
+                market_address,
                 integrator: integrator_address,
-                integrator_fee_store_object: object::object_from_constructor_ref(&constructor_ref),
+                integrator_fee_store_address:
+                    object::address_from_constructor_ref(&constructor_ref),
             }
         );
     }
@@ -310,7 +313,7 @@ module econia::core {
             let market_metadata_ref_mut = table_with_length::borrow_mut(markets_ref_mut, market_id);
             (
                 &mut market_metadata_ref_mut.market_parameters,
-                object::object_address(&market_metadata_ref_mut.market_object),
+                market_metadata_ref_mut.market_address,
             )
         };
         set_value_via_option_vector(
@@ -413,8 +416,8 @@ module econia::core {
         assert_market_account_owner(market_account, signer::address_of(user));
         let market_account_address = object::object_address(&market_account);
         let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
-        assert_market_fully_collateralized(market_account_ref_mut.market_object);
-        let market_address = object::object_address<Market>(&market_account_ref_mut.market_object);
+        assert_market_fully_collateralized(market_account_ref_mut.market_address);
+        let market_address = market_account_ref_mut.market_address;
         primary_fungible_store::transfer(
             user,
             market_account_ref_mut.trading_pair.base_metadata,
@@ -444,23 +447,22 @@ module econia::core {
         assert!(object::owner(market_account) == user_address, E_DOES_NOT_OWN_MARKET_ACCOUNT);
     }
 
-    fun assert_market_fully_collateralized(market_object: Object<Market>) acquires Market {
+    fun assert_market_fully_collateralized(market_address: address) acquires Market {
         assert_asset_fully_collateralized(
-            market_object,
+            market_address,
             true,
         );
         assert_asset_fully_collateralized(
-            market_object,
+            market_address,
             false,
         );
 
     }
 
     fun assert_asset_fully_collateralized(
-        market_object: Object<Market>,
+        market_address: address,
         check_base: bool,
     ) acquires Market {
-        let market_address = object::object_address(&market_object);
         let market_ref = borrow_global<Market>(market_address);
         let (asset_metadata, asset_amounts, error_code) = if (check_base) (
             market_ref.trading_pair.base_metadata,
@@ -484,16 +486,16 @@ module econia::core {
         (constructor_ref, extend_ref)
     }
 
-    fun get_market_id_and_object_for_registered_pair(trading_pair: TradingPair): (
+    fun get_market_id_and_address_for_registered_pair(trading_pair: TradingPair): (
         u64,
-        Object<Market>,
+        address,
     ) acquires Registry {
         let registry_ref = borrow_registry();
         let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
         let market_id = *table::borrow(trading_pair_market_ids_ref, trading_pair);
-        let market_object =
-            table_with_length::borrow(&registry_ref.markets, market_id).market_object;
-        (market_id, market_object)
+        let market_address =
+            table_with_length::borrow(&registry_ref.markets, market_id).market_address;
+        (market_id, market_address)
     }
 
     fun init_module(econia: &signer) {
@@ -605,24 +607,23 @@ module econia::core {
 
     #[test_only]
     public fun assert_market_account_fields(
-        market_account_object: Object<MarketAccount>,
+        market_account_address: address,
         market_id: u64,
         trading_pair: TradingPair,
-        market_object: Object<Market>,
+        market_address: address,
         user: address,
         base_available: u64,
         base_total: u64,
         quote_available: u64,
         quote_total: u64,
     ) acquires MarketAccount {
-        let market_account_object_address = object::object_address(&market_account_object);
-        let market_account_ref = borrow_global<MarketAccount>(market_account_object_address);
+        let market_account_ref = borrow_global<MarketAccount>(market_account_address);
         assert!(market_account_ref.market_id == market_id, 0);
         assert!(market_account_ref.trading_pair == trading_pair, 0);
-        assert!(market_account_ref.market_object == market_object, 0);
+        assert!(market_account_ref.market_address == market_address, 0);
         assert!(market_account_ref.user == user, 0);
         let extend_ref_address = object::address_from_extend_ref(&market_account_ref.extend_ref);
-        assert!(extend_ref_address == market_account_object_address, 0);
+        assert!(extend_ref_address == market_account_address, 0);
         assert!(market_account_ref.base_balances.available == base_available, 0);
         assert!(market_account_ref.base_balances.total == base_total, 0);
         assert!(market_account_ref.quote_balances.available == quote_available, 0);
@@ -631,24 +632,22 @@ module econia::core {
 
     #[test_only]
     public fun assert_integrator_fee_store_fields(
-        integrator_fee_store_object: Object<IntegratorFeeStore>,
+        integrator_fee_store_address: address,
         market_id: u64,
         trading_pair: TradingPair,
-        market_object: Object<Market>,
+        market_address: address,
         integrator: address,
         quote_available: u64,
     ) acquires IntegratorFeeStore {
-        let integrator_fee_store_object_address =
-            object::object_address(&integrator_fee_store_object);
         let integrator_fee_store_ref =
-            borrow_global<IntegratorFeeStore>(integrator_fee_store_object_address);
+            borrow_global<IntegratorFeeStore>(integrator_fee_store_address);
         assert!(integrator_fee_store_ref.market_id == market_id, 0);
         assert!(integrator_fee_store_ref.trading_pair == trading_pair, 0);
-        assert!(integrator_fee_store_ref.market_object == market_object, 0);
+        assert!(integrator_fee_store_ref.market_address == market_address, 0);
         assert!(integrator_fee_store_ref.integrator == integrator, 0);
         let extend_ref_address =
             object::address_from_extend_ref(&integrator_fee_store_ref.extend_ref);
-        assert!(extend_ref_address == integrator_fee_store_object_address, 0);
+        assert!(extend_ref_address == integrator_fee_store_address, 0);
         assert!(integrator_fee_store_ref.quote_available == quote_available, 0);
     }
 
@@ -769,8 +768,7 @@ module econia::core {
         assert!(market_metadata.market_id == 1, 0);
         assert!(market_metadata.trading_pair == trading_pair, 0);
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
-        let market_address = object::object_address(&market_metadata.market_object);
-        let market_ref = borrow_global<Market>(market_address);
+        let market_ref = borrow_global<Market>(market_metadata.market_address);
         assert!(market_ref.market_id == 1, 0);
         assert!(market_ref.trading_pair == trading_pair, 0);
         assert!(market_ref.market_parameters == default_market_parameters, 0);
@@ -778,8 +776,7 @@ module econia::core {
         assert!(market_metadata.market_id == 2, 0);
         assert!(market_metadata.trading_pair == trading_pair_flipped, 0);
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
-        market_address = object::object_address(&market_metadata.market_object);
-        market_ref = borrow_global<Market>(market_address);
+        market_ref = borrow_global<Market>(market_metadata.market_address);
         assert!(market_ref.market_id == 2, 0);
         assert!(market_ref.trading_pair == trading_pair_flipped, 0);
         assert!(market_ref.market_parameters == default_market_parameters, 0);
@@ -816,19 +813,18 @@ module econia::core {
         let market_id = 1;
         let market_metadata = *table_with_length::borrow(&registry.markets, 1);
         let trading_pair = market_metadata.trading_pair;
-        let market_object = market_metadata.market_object;
+        let market_address = market_metadata.market_address;
         let market_accounts_map_ref = &borrow_global<MarketAccounts>(USER_FOR_TEST).map;
         let market_account_metadata = *smart_table::borrow(market_accounts_map_ref, trading_pair);
         assert!(market_account_metadata.market_id == market_id, 0);
         assert!(market_account_metadata.trading_pair == trading_pair, 0);
-        assert!(market_account_metadata.market_object == market_object, 0);
+        assert!(market_account_metadata.market_address == market_address, 0);
         assert!(market_account_metadata.user == USER_FOR_TEST, 0);
-        let market_account_object = market_account_metadata.market_account_object;
         assert_market_account_fields(
-            market_account_object,
+            market_account_metadata.market_account_address,
             market_id,
             trading_pair,
-            market_object,
+            market_address,
             USER_FOR_TEST,
             0,
             0,
@@ -859,21 +855,20 @@ module econia::core {
         let market_id = 1;
         let market_metadata = *table_with_length::borrow(&registry.markets, 1);
         let trading_pair = market_metadata.trading_pair;
-        let market_object = market_metadata.market_object;
+        let market_address = market_metadata.market_address;
         let integrator_fee_stores_map_ref =
             &borrow_global<IntegratorFeeStores>(INTEGRATOR_FOR_TEST).map;
         let integrator_fee_store_metadata =
             *smart_table::borrow(integrator_fee_stores_map_ref, trading_pair);
         assert!(integrator_fee_store_metadata.market_id == market_id, 0);
         assert!(integrator_fee_store_metadata.trading_pair == trading_pair, 0);
-        assert!(integrator_fee_store_metadata.market_object == market_object, 0);
+        assert!(integrator_fee_store_metadata.market_address == market_address, 0);
         assert!(integrator_fee_store_metadata.integrator == INTEGRATOR_FOR_TEST, 0);
-        let integrator_fee_store_object = integrator_fee_store_metadata.integrator_fee_store_object;
         assert_integrator_fee_store_fields(
-            integrator_fee_store_object,
+            integrator_fee_store_metadata.integrator_fee_store_address,
             market_id,
             trading_pair,
-            market_object,
+            market_address,
             INTEGRATOR_FOR_TEST,
             0,
         );
@@ -959,9 +954,8 @@ module econia::core {
         let registry = borrow_registry();
         let markets_ref = &registry.markets;
         let market_metadata = *table_with_length::borrow(markets_ref, 1);
-        let market_address = object::object_address(&market_metadata.market_object);
         let market_parameters = market_metadata.market_parameters;
-        let market_ref = borrow_global<Market>(market_address);
+        let market_ref = borrow_global<Market>(market_metadata.market_address);
         assert!(market_ref.market_parameters == market_parameters, 0);
         assert_market_parameters(
             market_parameters,
