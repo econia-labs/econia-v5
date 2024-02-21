@@ -42,6 +42,12 @@ module econia::core {
     const E_OPTION_VECTOR_TOO_LONG: u64 = 3;
     /// Base and quote metadata are identical.
     const E_BASE_QUOTE_METADATA_SAME: u64 = 4;
+    /// Market is not fully collateralized with base asset.
+    const E_MARKET_NOT_COLLATERALIZED_BASE: u64 = 5;
+    /// Market is not fully collateralized with quote asset.
+    const E_MARKET_NOT_COLLATERALIZED_QUOTE: u64 = 6;
+    /// Specified user does not own the given market account.
+    const E_DOES_NOT_OWN_MARKET_ACCOUNT: u64 = 7;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -49,6 +55,14 @@ module econia::core {
         trading_pair: TradingPair,
         market_parameters: MarketParameters,
         extend_ref: ExtendRef,
+        base_amounts: MarketAssetAmounts,
+        quote_amounts: MarketAssetAmounts,
+    }
+
+    struct MarketAssetAmounts has copy, drop, store {
+        market_account_deposits: u64,
+        book_liquidity: u64,
+        pool_liquidity: u64,
     }
 
     struct MarketMetadata has copy, drop, store {
@@ -77,10 +91,13 @@ module econia::core {
         market_object: Object<Market>,
         user: address,
         extend_ref: ExtendRef,
-        base_available: u64,
-        base_total: u64,
-        quote_available: u64,
-        quote_total: u64,
+        base_amounts: MarketAccountAssetAmounts,
+        quote_amounts: MarketAccountAssetAmounts,
+    }
+
+    struct MarketAccountAssetAmounts has copy, store {
+        available: u64,
+        total: u64,
     }
 
     struct MarketAccountMetadata has copy, drop, store {
@@ -170,11 +187,15 @@ module econia::core {
         let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(@econia);
         let market_parameters = registry_ref_mut.default_market_parameters;
         let market_signer = object::generate_signer(&constructor_ref);
+        let no_assets =
+            MarketAssetAmounts { market_account_deposits: 0, book_liquidity: 0, pool_liquidity: 0};
         move_to(&market_signer, Market {
             market_id,
             trading_pair,
             market_parameters,
             extend_ref,
+            base_amounts: no_assets,
+            quote_amounts: no_assets,
         });
         let market_metadata = MarketMetadata {
             market_id,
@@ -201,16 +222,15 @@ module econia::core {
         ensure_market_registered(user, base_metadata, quote_metadata);
         let (market_id, market_object) = get_market_id_and_object_for_registered_pair(trading_pair);
         let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(user_address);
+        let no_assets = MarketAccountAssetAmounts { available: 0, total: 0 };
         move_to(&object::generate_signer(&constructor_ref), MarketAccount {
             market_id,
             trading_pair,
             market_object,
             user: user_address,
             extend_ref,
-            base_available: 0,
-            base_total: 0,
-            quote_available: 0,
-            quote_total: 0,
+            base_amounts: no_assets,
+            quote_amounts: no_assets,
         });
         smart_table::add(
             market_accounts_map_ref_mut,
@@ -384,6 +404,78 @@ module econia::core {
         );
     }
 
+    public entry fun deposit(
+        user: &signer,
+        market_account: Object<MarketAccount>,
+        base_amount: u64,
+        quote_amount: u64,
+    ) acquires Market, MarketAccount {
+        assert_market_account_owner(market_account, signer::address_of(user));
+        let market_account_address = object::object_address(&market_account);
+        let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
+        assert_market_fully_collateralized(market_account_ref_mut.market_object);
+        let market_address = object::object_address<Market>(&market_account_ref_mut.market_object);
+        primary_fungible_store::transfer(
+            user,
+            market_account_ref_mut.trading_pair.base_metadata,
+            market_address,
+            base_amount,
+        );
+        primary_fungible_store::transfer(
+            user,
+            market_account_ref_mut.trading_pair.quote_metadata,
+            market_address,
+            quote_amount,
+        );
+        market_account_ref_mut.base_amounts.available =
+            market_account_ref_mut.base_amounts.available + base_amount;
+        market_account_ref_mut.base_amounts.total =
+            market_account_ref_mut.base_amounts.total + base_amount;
+        market_account_ref_mut.quote_amounts.available =
+            market_account_ref_mut.quote_amounts.available + quote_amount;
+        market_account_ref_mut.quote_amounts.total =
+            market_account_ref_mut.quote_amounts.total + quote_amount;
+    }
+
+    fun assert_market_account_owner(
+        market_account: Object<MarketAccount>,
+        user_address: address,
+    ) {
+        assert!(object::owner(market_account) == user_address, E_DOES_NOT_OWN_MARKET_ACCOUNT);
+    }
+
+    fun assert_market_fully_collateralized(market_object: Object<Market>) acquires Market {
+        assert_asset_fully_collateralized(
+            market_object,
+            true,
+        );
+        assert_asset_fully_collateralized(
+            market_object,
+            false,
+        );
+
+    }
+
+    fun assert_asset_fully_collateralized(
+        market_object: Object<Market>,
+        check_base: bool,
+    ) acquires Market {
+        let market_address = object::object_address(&market_object);
+        let market_ref = borrow_global<Market>(market_address);
+        let (asset_metadata, asset_amounts, error_code) = if (check_base) (
+            market_ref.trading_pair.base_metadata,
+            market_ref.base_amounts,
+            E_MARKET_NOT_COLLATERALIZED_BASE,
+        ) else (
+            market_ref.trading_pair.quote_metadata,
+            market_ref.quote_amounts,
+            E_MARKET_NOT_COLLATERALIZED_QUOTE,
+        );
+        let balance = primary_fungible_store::balance(market_address, asset_metadata);
+        let minimum_balance = asset_amounts.market_account_deposits + asset_amounts.pool_liquidity;
+        assert!(balance >= minimum_balance, error_code);
+    }
+
     fun create_nontransferrable_sticky_object(owner: address): (ConstructorRef, ExtendRef) {
         let constructor_ref = object::create_sticky_object(owner);
         let transfer_ref = object::generate_transfer_ref(&constructor_ref);
@@ -531,10 +623,10 @@ module econia::core {
         assert!(market_account_ref.user == user, 0);
         let extend_ref_address = object::address_from_extend_ref(&market_account_ref.extend_ref);
         assert!(extend_ref_address == market_account_object_address, 0);
-        assert!(market_account_ref.base_available == base_available, 0);
-        assert!(market_account_ref.base_total == base_total, 0);
-        assert!(market_account_ref.quote_available == quote_available, 0);
-        assert!(market_account_ref.quote_total == quote_total, 0);
+        assert!(market_account_ref.base_amounts.available == base_available, 0);
+        assert!(market_account_ref.base_amounts.total == base_total, 0);
+        assert!(market_account_ref.quote_amounts.available == quote_available, 0);
+        assert!(market_account_ref.quote_amounts.total == quote_total, 0);
     }
 
     #[test_only]
