@@ -55,11 +55,11 @@ module econia::core {
         trading_pair: TradingPair,
         market_parameters: MarketParameters,
         extend_ref: ExtendRef,
-        base_amounts: MarketAssetAmounts,
-        quote_amounts: MarketAssetAmounts,
+        base_balances: MarketBalances,
+        quote_balances: MarketBalances,
     }
 
-    struct MarketAssetAmounts has copy, drop, store {
+    struct MarketBalances has copy, drop, store {
         market_account_deposits: u64,
         book_liquidity: u64,
         pool_liquidity: u64,
@@ -91,11 +91,11 @@ module econia::core {
         market_object: Object<Market>,
         user: address,
         extend_ref: ExtendRef,
-        base_amounts: MarketAccountAssetAmounts,
-        quote_amounts: MarketAccountAssetAmounts,
+        base_balances: MarketAccountBalances,
+        quote_balances: MarketAccountBalances,
     }
 
-    struct MarketAccountAssetAmounts has copy, store {
+    struct MarketAccountBalances has copy, store {
         available: u64,
         total: u64,
     }
@@ -187,15 +187,15 @@ module econia::core {
         let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(@econia);
         let market_parameters = registry_ref_mut.default_market_parameters;
         let market_signer = object::generate_signer(&constructor_ref);
-        let no_assets =
-            MarketAssetAmounts { market_account_deposits: 0, book_liquidity: 0, pool_liquidity: 0};
+        let no_balances =
+            MarketBalances { market_account_deposits: 0, book_liquidity: 0, pool_liquidity: 0};
         move_to(&market_signer, Market {
             market_id,
             trading_pair,
             market_parameters,
             extend_ref,
-            base_amounts: no_assets,
-            quote_amounts: no_assets,
+            base_balances: no_balances,
+            quote_balances: no_balances,
         });
         let market_metadata = MarketMetadata {
             market_id,
@@ -222,15 +222,15 @@ module econia::core {
         ensure_market_registered(user, base_metadata, quote_metadata);
         let (market_id, market_object) = get_market_id_and_object_for_registered_pair(trading_pair);
         let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(user_address);
-        let no_assets = MarketAccountAssetAmounts { available: 0, total: 0 };
+        let no_balances = MarketAccountBalances { available: 0, total: 0 };
         move_to(&object::generate_signer(&constructor_ref), MarketAccount {
             market_id,
             trading_pair,
             market_object,
             user: user_address,
             extend_ref,
-            base_amounts: no_assets,
-            quote_amounts: no_assets,
+            base_balances: no_balances,
+            quote_balances: no_balances,
         });
         smart_table::add(
             market_accounts_map_ref_mut,
@@ -427,14 +427,14 @@ module econia::core {
             market_address,
             quote_amount,
         );
-        market_account_ref_mut.base_amounts.available =
-            market_account_ref_mut.base_amounts.available + base_amount;
-        market_account_ref_mut.base_amounts.total =
-            market_account_ref_mut.base_amounts.total + base_amount;
-        market_account_ref_mut.quote_amounts.available =
-            market_account_ref_mut.quote_amounts.available + quote_amount;
-        market_account_ref_mut.quote_amounts.total =
-            market_account_ref_mut.quote_amounts.total + quote_amount;
+        market_account_ref_mut.base_balances.available =
+            market_account_ref_mut.base_balances.available + base_amount;
+        market_account_ref_mut.base_balances.total =
+            market_account_ref_mut.base_balances.total + base_amount;
+        market_account_ref_mut.quote_balances.available =
+            market_account_ref_mut.quote_balances.available + quote_amount;
+        market_account_ref_mut.quote_balances.total =
+            market_account_ref_mut.quote_balances.total + quote_amount;
     }
 
     fun assert_market_account_owner(
@@ -464,11 +464,11 @@ module econia::core {
         let market_ref = borrow_global<Market>(market_address);
         let (asset_metadata, asset_amounts, error_code) = if (check_base) (
             market_ref.trading_pair.base_metadata,
-            market_ref.base_amounts,
+            market_ref.base_balances,
             E_MARKET_NOT_COLLATERALIZED_BASE,
         ) else (
             market_ref.trading_pair.quote_metadata,
-            market_ref.quote_amounts,
+            market_ref.quote_balances,
             E_MARKET_NOT_COLLATERALIZED_QUOTE,
         );
         let balance = primary_fungible_store::balance(market_address, asset_metadata);
@@ -623,10 +623,10 @@ module econia::core {
         assert!(market_account_ref.user == user, 0);
         let extend_ref_address = object::address_from_extend_ref(&market_account_ref.extend_ref);
         assert!(extend_ref_address == market_account_object_address, 0);
-        assert!(market_account_ref.base_amounts.available == base_available, 0);
-        assert!(market_account_ref.base_amounts.total == base_total, 0);
-        assert!(market_account_ref.quote_amounts.available == quote_available, 0);
-        assert!(market_account_ref.quote_amounts.total == quote_total, 0);
+        assert!(market_account_ref.base_balances.available == base_available, 0);
+        assert!(market_account_ref.base_balances.total == base_total, 0);
+        assert!(market_account_ref.quote_balances.available == quote_available, 0);
+        assert!(market_account_ref.quote_balances.total == quote_total, 0);
     }
 
     #[test_only]
