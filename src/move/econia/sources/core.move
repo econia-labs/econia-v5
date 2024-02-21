@@ -48,6 +48,8 @@ module econia::core {
     const E_MARKET_NOT_COLLATERALIZED_QUOTE: u64 = 6;
     /// Specified user does not own the given market account.
     const E_DOES_NOT_OWN_MARKET_ACCOUNT: u64 = 7;
+    /// Market account does not exist at given address.
+    const E_NO_MARKET_ACCOUNT: u64 = 8;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -409,12 +411,11 @@ module econia::core {
 
     public entry fun deposit(
         user: &signer,
-        market_account: Object<MarketAccount>,
+        market_account_address: address,
         base_amount: u64,
         quote_amount: u64,
     ) acquires Market, MarketAccount {
-        assert_market_account_owner(market_account, signer::address_of(user));
-        let market_account_address = object::object_address(&market_account);
+        assert_market_account_ownership(market_account_address, signer::address_of(user));
         let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
         assert_market_fully_collateralized(market_account_ref_mut.market_address);
         let market_address = market_account_ref_mut.market_address;
@@ -440,11 +441,13 @@ module econia::core {
             market_account_ref_mut.quote_balances.total + quote_amount;
     }
 
-    fun assert_market_account_owner(
-        market_account: Object<MarketAccount>,
+    fun assert_market_account_ownership(
+        market_account_address: address,
         user_address: address,
-    ) {
-        assert!(object::owner(market_account) == user_address, E_DOES_NOT_OWN_MARKET_ACCOUNT);
+    ) acquires MarketAccount {
+        assert!(exists<MarketAccount>(market_account_address), E_NO_MARKET_ACCOUNT);
+        let market_account_ref = borrow_global<MarketAccount>(market_account_address);
+        assert!(market_account_ref.user == user_address, E_DOES_NOT_OWN_MARKET_ACCOUNT);
     }
 
     fun assert_market_fully_collateralized(market_address: address) acquires Market {
@@ -456,7 +459,6 @@ module econia::core {
             market_address,
             false,
         );
-
     }
 
     fun assert_asset_fully_collateralized(
