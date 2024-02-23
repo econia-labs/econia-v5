@@ -1,4 +1,4 @@
-// # cspell:words ungated, unrecognize
+// # cspell:words ungated
 module econia::core {
 
     use aptos_framework::fungible_asset::Metadata;
@@ -97,9 +97,14 @@ module econia::core {
         quote_balances: MarketAccountBalances,
     }
 
-    struct MarketAccountBalances has copy, store {
+    struct MarketAccountBalances has copy, drop, store {
         available: u64,
         total: u64,
+    }
+
+    struct MarketAccountBalancesView has copy, drop, store {
+        base_balances: MarketAccountBalances,
+        quote_balances: MarketAccountBalances,
     }
 
     struct MarketAccountMetadata has copy, drop, store {
@@ -186,7 +191,7 @@ module econia::core {
         );
         let markets_ref_mut = &mut registry_ref_mut.markets;
         let market_id = table_with_length::length(markets_ref_mut) + 1;
-        let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(@econia);
+        let (constructor_ref, extend_ref) = create_nontransferable_sticky_object(@econia);
         let market_parameters = registry_ref_mut.default_market_parameters;
         let market_signer = object::generate_signer(&constructor_ref);
         let no_balances =
@@ -224,7 +229,7 @@ module econia::core {
         ensure_market_registered(user, base_metadata, quote_metadata);
         let (market_id, market_address) =
             get_market_id_and_address_for_registered_pair(trading_pair);
-        let (constructor_ref, extend_ref) = create_nontransferrable_sticky_object(user_address);
+        let (constructor_ref, extend_ref) = create_nontransferable_sticky_object(user_address);
         let no_balances = MarketAccountBalances { available: 0, total: 0 };
         move_to(&object::generate_signer(&constructor_ref), MarketAccount {
             market_id,
@@ -265,7 +270,7 @@ module econia::core {
         let (market_id, market_address) =
             get_market_id_and_address_for_registered_pair(trading_pair);
         let (constructor_ref, extend_ref) =
-            create_nontransferrable_sticky_object(integrator_address);
+            create_nontransferable_sticky_object(integrator_address);
         move_to(&object::generate_signer(&constructor_ref), IntegratorFeeStore {
             market_id,
             trading_pair,
@@ -449,11 +454,29 @@ module econia::core {
         *market_balance_ref_mut = *market_balance_ref_mut + amount;
     }
 
+    #[view]
+    public fun market_account_balances(
+        market_account_address: address
+    ): MarketAccountBalancesView
+    acquires MarketAccount {
+        assert_market_account_exists(market_account_address);
+        let market_account_ref = borrow_global<MarketAccount>(market_account_address);
+        let base_balances = market_account_ref.base_balances;
+        let quote_balances = market_account_ref.quote_balances;
+        MarketAccountBalancesView { base_balances, quote_balances }
+    }
+
+    fun assert_market_account_exists(
+        market_account_address: address,
+    ) {
+        assert!(exists<MarketAccount>(market_account_address), E_NO_MARKET_ACCOUNT);
+    }
+
     fun assert_market_account_ownership(
         market_account_address: address,
         user_address: address,
     ) acquires MarketAccount {
-        assert!(exists<MarketAccount>(market_account_address), E_NO_MARKET_ACCOUNT);
+        assert_market_account_exists(market_account_address);
         let market_account_ref = borrow_global<MarketAccount>(market_account_address);
         assert!(market_account_ref.user == user_address, E_DOES_NOT_OWN_MARKET_ACCOUNT);
     }
@@ -488,7 +511,7 @@ module econia::core {
         assert!(balance >= minimum_balance, error_code);
     }
 
-    fun create_nontransferrable_sticky_object(owner: address): (ConstructorRef, ExtendRef) {
+    fun create_nontransferable_sticky_object(owner: address): (ConstructorRef, ExtendRef) {
         let constructor_ref = object::create_sticky_object(owner);
         let transfer_ref = object::generate_transfer_ref(&constructor_ref);
         object::disable_ungated_transfer(&transfer_ref);
@@ -615,6 +638,21 @@ module econia::core {
         assert!(registry_parameters.market_registration_fee == market_registration_fee, 0);
         assert!(registry_parameters.oracle_fee == oracle_fee, 0);
         assert!(registry_parameters.integrator_withdrawal_fee == integrator_withdrawal_fee, 0);
+    }
+
+    #[test_only]
+    public fun assert_market_account_balances(
+        market_account_address: address,
+        base_available: u64,
+        base_total: u64,
+        quote_available: u64,
+        quote_total: u64,
+    ) acquires MarketAccount {
+        let balances_view = market_account_balances(market_account_address);
+        assert!(balances_view.base_balances.available == base_available, 0);
+        assert!(balances_view.base_balances.total == base_total, 0);
+        assert!(balances_view.quote_balances.available == quote_available, 0);
+        assert!(balances_view.quote_balances.total == quote_total, 0);
     }
 
     #[test_only]
@@ -755,9 +793,57 @@ module econia::core {
         assert_option_vector_is_valid_length(&vector[0, 0]);
     }
 
+    #[test, expected_failure(abort_code = E_NO_MARKET_ACCOUNT)]
+    fun test_assert_market_account_exists_no_market_account() {
+        assert_market_account_exists(@0x0);
+    }
+
+    #[test, expected_failure(abort_code = E_DOES_NOT_OWN_MARKET_ACCOUNT)]
+    fun test_assert_market_account_ownership_does_not_own_market_account()
+    acquires
+        MarketAccount,
+        MarketAccounts,
+        Registry,
+    {
+        let (_, market_account_address) = ensure_market_account_registered_for_test();
+        assert_market_account_ownership(market_account_address, @0x0);
+    }
+
+    #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_BASE)]
+    fun test_assert_market_fully_collateralized_market_not_collateralized_base()
+    acquires
+        MarketAccount,
+        MarketAccounts,
+        Market,
+        Registry,
+    {
+        let (_, market_account_address) = ensure_market_account_registered_for_test();
+        test_assets::mint(USER_FOR_TEST, 100, 200);
+        deposit(&get_signer(USER_FOR_TEST), market_account_address, 100, 200);
+        let market_address = get_test_market_address();
+        test_assets::burn(market_address, 1, 0);
+        assert_market_fully_collateralized(market_address);
+    }
+
+    #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_QUOTE)]
+    fun test_assert_market_fully_collateralized_market_not_collateralized_quote()
+    acquires
+        MarketAccount,
+        MarketAccounts,
+        Market,
+        Registry,
+    {
+        let (_, market_account_address) = ensure_market_account_registered_for_test();
+        test_assets::mint(USER_FOR_TEST, 100, 200);
+        deposit(&get_signer(USER_FOR_TEST), market_account_address, 100, 200);
+        let market_address = get_test_market_address();
+        test_assets::burn(market_address, 0, 1);
+        assert_market_fully_collateralized(market_address);
+    }
+
     #[test]
-    fun test_create_nontransferrable_sticky_object() {
-        let (constructor_ref, _) = create_nontransferrable_sticky_object(@econia);
+    fun test_create_nontransferable_sticky_object() {
+        let (constructor_ref, _) = create_nontransferable_sticky_object(@econia);
         move_to(&object::generate_signer(&constructor_ref), Null {});
         let object = object::object_from_constructor_ref(&constructor_ref);
         assert!(!object::ungated_transfer_allowed<Null>(object), 0);
@@ -765,8 +851,17 @@ module econia::core {
     }
 
     #[test]
-    fun test_deposit() acquires MarketAccounts, Registry {
-        let (market_address, market_account_address) = ensure_market_account_registered_for_test();
+    fun test_deposit() acquires Market, MarketAccount, MarketAccounts, Registry {
+        let (_, market_account_address) = ensure_market_account_registered_for_test();
+        test_assets::mint(USER_FOR_TEST, 123, 456);
+        deposit(&get_signer(USER_FOR_TEST), market_account_address, 100, 200);
+        assert_market_account_balances(
+            market_account_address,
+            100,
+            100,
+            200,
+            200,
+        )
     }
 
     #[test]
