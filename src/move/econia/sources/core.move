@@ -424,53 +424,60 @@ module econia::core {
         let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
         assert_market_fully_collateralized(market_account_ref_mut.market_address);
         let market_ref_mut = borrow_global_mut<Market>(market_account_ref_mut.market_address);
-        deposit_asset(user, market_account_ref_mut, market_ref_mut, base_amount, true);
-        deposit_asset(user, market_account_ref_mut, market_ref_mut, quote_amount, false);
+        market_account_transfer(
+            user,
+            market_account_ref_mut,
+            market_ref_mut,
+            base_amount,
+            true,
+            true,
+        );
+        market_account_transfer(
+            user,
+            market_account_ref_mut,
+            market_ref_mut,
+            quote_amount,
+            false,
+            true,
+        );
     }
 
-    fun deposit_asset(
+    public entry fun withdraw(
+        user: &signer,
+        market_account_address: address,
+        base_amount: u64,
+        quote_amount: u64,
+    ) acquires Market, MarketAccount {
+        assert_market_account_ownership(market_account_address, signer::address_of(user));
+        let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
+        let market_ref_mut = borrow_global_mut<Market>(market_account_ref_mut.market_address);
+        market_account_transfer(
+            user,
+            market_account_ref_mut,
+            market_ref_mut,
+            base_amount,
+            true,
+            false,
+        );
+        market_account_transfer(
+            user,
+            market_account_ref_mut,
+            market_ref_mut,
+            quote_amount,
+            false,
+            false,
+        );
+    }
+
+    fun market_account_transfer(
         user: &signer,
         market_account_ref_mut: &mut MarketAccount,
         market_ref_mut: &mut Market,
         amount: u64,
-        deposit_base: bool,
-    ) {
-        let (
-            metadata,
-            user_balances_ref_mut,
-            market_balance_ref_mut,
-            market_address,
-        ) = preposition_market_account_transfer_vars(
-            market_account_ref_mut,
-            market_ref_mut,
-            deposit_base,
-        );
-        primary_fungible_store::transfer(
-            user,
-            metadata,
-            market_address,
-            amount,
-        );
-        user_balances_ref_mut.total = user_balances_ref_mut.total + amount;
-        user_balances_ref_mut.available = user_balances_ref_mut.available + amount;
-        *market_balance_ref_mut = *market_balance_ref_mut + amount;
-    }
-
-    fun preposition_market_account_transfer_vars(
-        market_account_ref_mut: &mut MarketAccount,
-        market_ref_mut: &mut Market,
         transfer_base: bool,
-    ): (
-        Object<Metadata>,
-        &mut MarketAccountBalances,
-        &mut u64,
-        address,
+        deposit: bool,
     ) {
-        let (
-            metadata,
-            user_balances_ref_mut,
-            market_balance_ref_mut,
-        ) = if (transfer_base) (
+        let (metadata, user_balances_ref_mut, market_balance_ref_mut) = if (transfer_base) (
             market_account_ref_mut.trading_pair.base_metadata,
             &mut market_account_ref_mut.base_balances,
             &mut market_ref_mut.base_balances.market_account_deposits,
@@ -479,11 +486,46 @@ module econia::core {
             &mut market_account_ref_mut.quote_balances,
             &mut market_ref_mut.quote_balances.market_account_deposits,
         );
-        (
-            metadata,
-            user_balances_ref_mut,
-            market_balance_ref_mut,
-            market_account_ref_mut.market_address,
+        let (sender, recipient, user_total, user_available, market_balance) = if (deposit) {
+            (
+                user,
+                market_account_ref_mut.market_address,
+                user_balances_ref_mut.total + amount,
+                user_balances_ref_mut.available + amount,
+                *market_balance_ref_mut + amount,
+            )
+        } else {
+            (
+                &object::generate_signer_for_extending(&market_ref_mut.extend_ref),
+                signer::address_of(user),
+                user_balances_ref_mut.total - amount,
+                user_balances_ref_mut.available - amount,
+                *market_balance_ref_mut - amount,
+            )
+        };
+        primary_fungible_store::transfer(sender, metadata, recipient, amount);
+        user_balances_ref_mut.total = user_total;
+        user_balances_ref_mut.available = user_available;
+        *market_balance_ref_mut = market_balance;
+    }
+
+    fun get_market_account_transfer_vars(
+        market_account_ref_mut: &mut MarketAccount,
+        market_ref_mut: &mut Market,
+        transfer_base: bool,
+    ): (
+        Object<Metadata>,
+        &mut MarketAccountBalances,
+        &mut u64,
+    ) {
+        if (transfer_base) (
+            market_account_ref_mut.trading_pair.base_metadata,
+            &mut market_account_ref_mut.base_balances,
+            &mut market_ref_mut.base_balances.market_account_deposits,
+        ) else (
+            market_account_ref_mut.trading_pair.quote_metadata,
+            &mut market_account_ref_mut.quote_balances,
+            &mut market_ref_mut.quote_balances.market_account_deposits,
         )
     }
 
