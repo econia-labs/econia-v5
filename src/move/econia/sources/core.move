@@ -423,18 +423,54 @@ module econia::core {
         assert_market_account_ownership(market_account_address, signer::address_of(user));
         let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
         assert_market_fully_collateralized(market_account_ref_mut.market_address);
-        deposit_asset(user, market_account_ref_mut, base_amount, true);
-        deposit_asset(user, market_account_ref_mut, quote_amount, false);
+        let market_ref_mut = borrow_global_mut<Market>(market_account_ref_mut.market_address);
+        deposit_asset(user, market_account_ref_mut, market_ref_mut, base_amount, true);
+        deposit_asset(user, market_account_ref_mut, market_ref_mut, quote_amount, false);
     }
 
     fun deposit_asset(
         user: &signer,
         market_account_ref_mut: &mut MarketAccount,
+        market_ref_mut: &mut Market,
         amount: u64,
         deposit_base: bool,
-    ) acquires Market {
-        let market_ref_mut = borrow_global_mut<Market>(market_account_ref_mut.market_address);
-        let (metadata, user_balances_ref_mut, market_balance_ref_mut) = if (deposit_base) (
+    ) {
+        let (
+            metadata,
+            user_balances_ref_mut,
+            market_balance_ref_mut,
+            market_address,
+        ) = preposition_market_account_transfer_vars(
+            market_account_ref_mut,
+            market_ref_mut,
+            deposit_base,
+        );
+        primary_fungible_store::transfer(
+            user,
+            metadata,
+            market_address,
+            amount,
+        );
+        user_balances_ref_mut.total = user_balances_ref_mut.total + amount;
+        user_balances_ref_mut.available = user_balances_ref_mut.available + amount;
+        *market_balance_ref_mut = *market_balance_ref_mut + amount;
+    }
+
+    fun preposition_market_account_transfer_vars(
+        market_account_ref_mut: &mut MarketAccount,
+        market_ref_mut: &mut Market,
+        transfer_base: bool,
+    ): (
+        Object<Metadata>,
+        &mut MarketAccountBalances,
+        &mut u64,
+        address,
+    ) {
+        let (
+            metadata,
+            user_balances_ref_mut,
+            market_balance_ref_mut,
+        ) = if (transfer_base) (
             market_account_ref_mut.trading_pair.base_metadata,
             &mut market_account_ref_mut.base_balances,
             &mut market_ref_mut.base_balances.market_account_deposits,
@@ -443,15 +479,12 @@ module econia::core {
             &mut market_account_ref_mut.quote_balances,
             &mut market_ref_mut.quote_balances.market_account_deposits,
         );
-        primary_fungible_store::transfer(
-            user,
+        (
             metadata,
+            user_balances_ref_mut,
+            market_balance_ref_mut,
             market_account_ref_mut.market_address,
-            amount,
-        );
-        user_balances_ref_mut.total = user_balances_ref_mut.total + amount;
-        user_balances_ref_mut.available = user_balances_ref_mut.available + amount;
-        *market_balance_ref_mut = *market_balance_ref_mut + amount;
+        )
     }
 
     #[view]
