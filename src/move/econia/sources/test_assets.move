@@ -27,20 +27,19 @@ module econia::test_assets {
         transfer_ref: TransferRef,
     }
 
-    public fun ensure_assets_initialized() {
-        if (!exists<TestAssetsMetadata>(@econia)) init_test_assets();
-    }
-
     public fun get_metadata(): (
         Object<Metadata>,
         Object<Metadata>,
     ) acquires TestAssetsMetadata {
         ensure_assets_initialized();
-        let test_assets_ref = borrow_global<TestAssetsMetadata>(@econia);
-        (test_assets_ref.base_metadata, test_assets_ref.quote_metadata)
+        let test_assets_metadata_ref = borrow_global<TestAssetsMetadata>(@econia);
+        (
+            test_assets_metadata_ref.base_metadata,
+            test_assets_metadata_ref.quote_metadata
+        )
     }
 
-    public fun init_test_assets() {
+    public fun ensure_assets_initialized() {
         if (exists<TestAssetsMetadata>(@econia)) return;
         let framework = account::create_signer_for_test(@std);
         features::change_feature_flags(&framework, vector[features::get_auids()], vector[]);
@@ -51,6 +50,53 @@ module econia::test_assets {
                 quote_metadata: init_test_asset(QUOTE_SYMBOL, QUOTE_DECIMALS),
             }
         )
+    }
+
+    public fun burn(
+        owner: address,
+        base_amount: u64,
+        quote_amount: u64
+    ) acquires
+        AssetRefs,
+        TestAssetsMetadata
+    {
+        ensure_assets_initialized();
+        let test_assets_metadata_ref = borrow_global<TestAssetsMetadata>(@econia);
+        burn_from_metadata(owner, test_assets_metadata_ref.base_metadata, base_amount);
+        burn_from_metadata(owner, test_assets_metadata_ref.quote_metadata, quote_amount);
+    }
+
+    public fun mint(
+        owner: address,
+        base_amount: u64,
+        quote_amount: u64
+    ) acquires
+        AssetRefs,
+        TestAssetsMetadata
+    {
+        let test_assets_metadata_ref = borrow_global<TestAssetsMetadata>(@econia);
+        mint_from_metadata(owner, test_assets_metadata_ref.base_metadata, base_amount);
+        mint_from_metadata(owner, test_assets_metadata_ref.quote_metadata, quote_amount);
+    }
+
+    public fun burn_from_metadata(
+        owner: address,
+        metadata: Object<Metadata>,
+        amount: u64,
+    ) acquires AssetRefs {
+        ensure_assets_initialized();
+        let asset_refs_ref = borrow_global<AssetRefs>(object::object_address(&metadata));
+        primary_fungible_store::burn(&asset_refs_ref.burn_ref, owner, amount);
+    }
+
+    public fun mint_from_metadata(
+        owner: address,
+        metadata: Object<Metadata>,
+        amount: u64,
+    ) acquires AssetRefs {
+        ensure_assets_initialized();
+        let asset_refs_ref = borrow_global<AssetRefs>(object::object_address(&metadata));
+        primary_fungible_store::mint(&asset_refs_ref.mint_ref, owner, amount);
     }
 
     fun init_test_asset(
