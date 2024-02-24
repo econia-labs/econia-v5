@@ -7,6 +7,7 @@ module econia::core {
     use aptos_framework::table_with_length::{Self, TableWithLength};
     use aptos_framework::primary_fungible_store;
     use aptos_framework::smart_table::{Self, SmartTable};
+    use aptos_std::math64;
     use std::signer;
     use std::vector;
 
@@ -54,6 +55,7 @@ module econia::core {
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
         market_id: u64,
+        market_address: address,
         trading_pair: TradingPair,
         market_parameters: MarketParameters,
         extend_ref: ExtendRef,
@@ -65,6 +67,7 @@ module econia::core {
         market_account_deposits: u64,
         book_liquidity: u64,
         pool_liquidity: u64,
+        unclaimed_integrator_fees: u64,
     }
 
     struct MarketMetadata has copy, drop, store {
@@ -92,6 +95,7 @@ module econia::core {
         trading_pair: TradingPair,
         market_address: address,
         user: address,
+        market_account_address: address,
         extend_ref: ExtendRef,
         base_balances: MarketAccountBalances,
         quote_balances: MarketAccountBalances,
@@ -194,10 +198,16 @@ module econia::core {
         let (constructor_ref, extend_ref) = create_nontransferable_sticky_object(@econia);
         let market_parameters = registry_ref_mut.default_market_parameters;
         let market_signer = object::generate_signer(&constructor_ref);
-        let no_balances =
-            MarketBalances { market_account_deposits: 0, book_liquidity: 0, pool_liquidity: 0};
+        let market_address = object::address_from_constructor_ref(&constructor_ref);
+        let no_balances = MarketBalances {
+            market_account_deposits: 0,
+            book_liquidity: 0,
+            pool_liquidity: 0,
+            unclaimed_integrator_fees: 0,
+        };
         move_to(&market_signer, Market {
             market_id,
+            market_address,
             trading_pair,
             market_parameters,
             extend_ref,
@@ -206,7 +216,7 @@ module econia::core {
         });
         let market_metadata = MarketMetadata {
             market_id,
-            market_address: object::address_from_constructor_ref(&constructor_ref),
+            market_address,
             trading_pair,
             market_parameters,
         };
@@ -231,11 +241,13 @@ module econia::core {
             get_market_id_and_address_for_registered_pair(trading_pair);
         let (constructor_ref, extend_ref) = create_nontransferable_sticky_object(user_address);
         let no_balances = MarketAccountBalances { available: 0, total: 0 };
+        let market_account_address = object::address_from_constructor_ref(&constructor_ref);
         move_to(&object::generate_signer(&constructor_ref), MarketAccount {
             market_id,
             trading_pair,
             market_address,
             user: user_address,
+            market_account_address,
             extend_ref,
             base_balances: no_balances,
             quote_balances: no_balances,
@@ -248,7 +260,7 @@ module econia::core {
                 trading_pair,
                 market_address,
                 user: user_address,
-                market_account_address: object::address_from_constructor_ref(&constructor_ref),
+                market_account_address,
             }
         );
     }
@@ -420,10 +432,11 @@ module econia::core {
         base_amount: u64,
         quote_amount: u64,
     ) acquires Market, MarketAccount {
-        assert_market_account_ownership(market_account_address, signer::address_of(user));
-        let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
-        assert_market_fully_collateralized(market_account_ref_mut.market_address);
-        let market_ref_mut = borrow_global_mut<Market>(market_account_ref_mut.market_address);
+        let (market_ref_mut, market_account_ref_mut) = get_market_and_market_account_ref_mut(
+            user,
+            market_account_address,
+        );
+        assert_market_fully_collateralized(market_ref_mut);
         market_account_transfer(
             user,
             market_account_ref_mut,
@@ -448,9 +461,10 @@ module econia::core {
         base_amount: u64,
         quote_amount: u64,
     ) acquires Market, MarketAccount {
-        assert_market_account_ownership(market_account_address, signer::address_of(user));
-        let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
-        let market_ref_mut = borrow_global_mut<Market>(market_account_ref_mut.market_address);
+        let (market_ref_mut, market_account_ref_mut) = get_market_and_market_account_ref_mut(
+            user,
+            market_account_address,
+        );
         market_account_transfer(
             user,
             market_account_ref_mut,
@@ -477,14 +491,16 @@ module econia::core {
         transfer_base: bool,
         deposit: bool,
     ) {
-        let (metadata, user_balances_ref_mut, market_balance_ref_mut) = if (transfer_base) (
+        let actual_transfer_amount = if (deposit) amount else
+            socialize_withdrawal_amount(market_ref_mut, amount, transfer_base);
+        let (metadata, user_balances_ref_mut, market_balances_ref_mut) = if (transfer_base) (
             market_account_ref_mut.trading_pair.base_metadata,
             &mut market_account_ref_mut.base_balances,
-            &mut market_ref_mut.base_balances.market_account_deposits,
+            &mut market_ref_mut.base_balances,
         ) else (
             market_account_ref_mut.trading_pair.quote_metadata,
             &mut market_account_ref_mut.quote_balances,
-            &mut market_ref_mut.quote_balances.market_account_deposits,
+            &mut market_ref_mut.quote_balances,
         );
         let (sender, recipient, user_total, user_available, market_balance) = if (deposit) {
             (
@@ -492,7 +508,7 @@ module econia::core {
                 market_account_ref_mut.market_address,
                 user_balances_ref_mut.total + amount,
                 user_balances_ref_mut.available + amount,
-                *market_balance_ref_mut + amount,
+                market_balances_ref_mut.market_account_deposits + amount,
             )
         } else {
             (
@@ -500,33 +516,13 @@ module econia::core {
                 signer::address_of(user),
                 user_balances_ref_mut.total - amount,
                 user_balances_ref_mut.available - amount,
-                *market_balance_ref_mut - amount,
+                market_balances_ref_mut.market_account_deposits - amount,
             )
         };
-        primary_fungible_store::transfer(sender, metadata, recipient, amount);
         user_balances_ref_mut.total = user_total;
         user_balances_ref_mut.available = user_available;
-        *market_balance_ref_mut = market_balance;
-    }
-
-    fun get_market_account_transfer_vars(
-        market_account_ref_mut: &mut MarketAccount,
-        market_ref_mut: &mut Market,
-        transfer_base: bool,
-    ): (
-        Object<Metadata>,
-        &mut MarketAccountBalances,
-        &mut u64,
-    ) {
-        if (transfer_base) (
-            market_account_ref_mut.trading_pair.base_metadata,
-            &mut market_account_ref_mut.base_balances,
-            &mut market_ref_mut.base_balances.market_account_deposits,
-        ) else (
-            market_account_ref_mut.trading_pair.quote_metadata,
-            &mut market_account_ref_mut.quote_balances,
-            &mut market_ref_mut.quote_balances.market_account_deposits,
-        )
+        market_balances_ref_mut.market_account_deposits = market_balance;
+        primary_fungible_store::transfer(sender, metadata, recipient, actual_transfer_amount);
     }
 
     #[view]
@@ -547,31 +543,16 @@ module econia::core {
         assert!(exists<MarketAccount>(market_account_address), E_NO_MARKET_ACCOUNT);
     }
 
-    fun assert_market_account_ownership(
-        market_account_address: address,
-        user_address: address,
-    ) acquires MarketAccount {
-        assert_market_account_exists(market_account_address);
-        let market_account_ref = borrow_global<MarketAccount>(market_account_address);
-        assert!(market_account_ref.user == user_address, E_DOES_NOT_OWN_MARKET_ACCOUNT);
+    fun assert_market_account_owner(market_account_ref: &MarketAccount, user: address) {
+        assert!(market_account_ref.user == user, E_DOES_NOT_OWN_MARKET_ACCOUNT);
     }
 
-    fun assert_market_fully_collateralized(market_address: address) acquires Market {
-        assert_asset_fully_collateralized(
-            market_address,
-            true,
-        );
-        assert_asset_fully_collateralized(
-            market_address,
-            false,
-        );
+    fun assert_market_fully_collateralized(market_ref: &Market) {
+        assert_asset_fully_collateralized(market_ref, true);
+        assert_asset_fully_collateralized(market_ref, false);
     }
 
-    fun assert_asset_fully_collateralized(
-        market_address: address,
-        check_base: bool,
-    ) acquires Market {
-        let market_ref = borrow_global<Market>(market_address);
+    fun assert_asset_fully_collateralized(market_ref: &Market, check_base: bool) {
         let (asset_metadata, asset_amounts, error_code) = if (check_base) (
             market_ref.trading_pair.base_metadata,
             market_ref.base_balances,
@@ -581,7 +562,7 @@ module econia::core {
             market_ref.quote_balances,
             E_MARKET_NOT_COLLATERALIZED_QUOTE,
         );
-        let balance = primary_fungible_store::balance(market_address, asset_metadata);
+        let balance = primary_fungible_store::balance(market_ref.market_address, asset_metadata);
         let minimum_balance = asset_amounts.market_account_deposits + asset_amounts.pool_liquidity;
         assert!(balance >= minimum_balance, error_code);
     }
@@ -662,9 +643,47 @@ module econia::core {
         }
     }
 
+    fun socialize_withdrawal_amount(
+        market_ref: &Market,
+        amount: u64,
+        withdraw_base: bool,
+    ): u64 {
+        let (balances_ref, asset_metadata) = if (withdraw_base) (
+            market_ref.base_balances,
+            market_ref.trading_pair.base_metadata,
+        ) else (
+            market_ref.quote_balances,
+            market_ref.trading_pair.quote_metadata,
+        );
+        let expected_vault_balance =
+            balances_ref.market_account_deposits +
+            balances_ref.pool_liquidity +
+            balances_ref.unclaimed_integrator_fees;
+        let actual_vault_balance = primary_fungible_store::balance(
+            market_ref.market_address,
+            asset_metadata,
+        );
+        if (actual_vault_balance >= expected_vault_balance) amount else
+        math64::mul_div(amount, actual_vault_balance, expected_vault_balance)
+    }
+
     inline fun borrow_registry(): &Registry { borrow_global<Registry>(@econia) }
 
     inline fun borrow_registry_mut(): &mut Registry { borrow_global_mut<Registry>(@econia) }
+
+    inline fun get_market_and_market_account_ref_mut(
+        user: &signer,
+        market_account_address: address,
+    ): (
+        &mut Market,
+        &mut MarketAccount,
+    ) {
+        assert_market_account_exists(market_account_address);
+        let market_account_ref_mut = borrow_global_mut<MarketAccount>(market_account_address);
+        assert_market_account_owner(market_account_ref_mut, signer::address_of(user));
+        let market_ref_mut = borrow_global_mut<Market>(market_account_ref_mut.market_address);
+        (market_ref_mut, market_account_ref_mut)
+    }
 
     #[test_only]
     const MARKET_REGISTRANT_FOR_TEST: address = @0xace;
@@ -697,6 +716,58 @@ module econia::core {
         assert!(market_parameters.eviction_liquidity_divisor == eviction_liquidity_divisor, 0);
         assert!(market_parameters.inner_node_order == inner_node_order, 0);
         assert!(market_parameters.leaf_node_order == leaf_node_order, 0);
+    }
+
+    #[test_only]
+    public fun assert_market_balances(
+        market_address: address,
+        base_market_account_deposits: u64,
+        base_book_liquidity: u64,
+        base_pool_liquidity: u64,
+        base_unclaimed_integrator_fees: u64,
+        quote_market_account_deposits: u64,
+        quote_book_liquidity: u64,
+        quote_pool_liquidity: u64,
+        quote_unclaimed_integrator_fees: u64,
+    ) acquires Market {
+        let market_ref = borrow_global<Market>(market_address);
+        let base_balances = market_ref.base_balances;
+        assert!(base_balances.market_account_deposits == base_market_account_deposits, 0);
+        assert!(base_balances.book_liquidity == base_book_liquidity, 0);
+        assert!(base_balances.pool_liquidity == base_pool_liquidity, 0);
+        assert!(base_balances.unclaimed_integrator_fees == base_unclaimed_integrator_fees, 0);
+        let quote_balances = market_ref.quote_balances;
+        assert!(quote_balances.market_account_deposits == quote_market_account_deposits, 0);
+        assert!(quote_balances.book_liquidity == quote_book_liquidity, 0);
+        assert!(quote_balances.pool_liquidity == quote_pool_liquidity, 0);
+        assert!(quote_balances.unclaimed_integrator_fees == quote_unclaimed_integrator_fees, 0);
+    }
+
+    #[test_only]
+    public fun assert_vault_values(
+        market_address: address,
+        base_expected: u64,
+        quote_expected: u64,
+    ) acquires Market {
+        let market_ref = borrow_global<Market>(market_address);
+        let metadata = market_ref.trading_pair.base_metadata;
+        assert!(primary_fungible_store::balance(market_address, metadata) == base_expected, 0);
+        metadata = market_ref.trading_pair.quote_metadata;
+        assert!(primary_fungible_store::balance(market_address, metadata) == quote_expected, 0);
+    }
+
+    #[test_only]
+    public fun assert_wallet_balances(
+        market_account_address: address,
+        base_expected: u64,
+        quote_expected: u64,
+    ) acquires MarketAccount {
+        let market_account_ref = borrow_global<MarketAccount>(market_account_address);
+        let user = market_account_ref.user;
+        let base_metadata = market_account_ref.trading_pair.base_metadata;
+        let quote_metadata = market_account_ref.trading_pair.quote_metadata;
+        assert!(primary_fungible_store::balance(user, base_metadata) == base_expected, 0);
+        assert!(primary_fungible_store::balance(user, quote_metadata) == quote_expected, 0);
     }
 
     #[test_only]
@@ -747,6 +818,7 @@ module econia::core {
         assert!(market_account_ref.trading_pair == trading_pair, 0);
         assert!(market_account_ref.market_address == market_address, 0);
         assert!(market_account_ref.user == user, 0);
+        assert!(market_account_ref.market_account_address == market_account_address, 0);
         let extend_ref_address = object::address_from_extend_ref(&market_account_ref.extend_ref);
         assert!(extend_ref_address == market_account_address, 0);
         assert!(market_account_ref.base_balances.available == base_available, 0);
@@ -881,7 +953,7 @@ module econia::core {
         Registry,
     {
         let (_, market_account_address) = ensure_market_account_registered_for_test();
-        assert_market_account_ownership(market_account_address, @0x0);
+        assert_market_account_owner(borrow_global<MarketAccount>(market_account_address), @0x0);
     }
 
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_BASE)]
@@ -897,7 +969,7 @@ module econia::core {
         deposit(&get_signer(USER_FOR_TEST), market_account_address, 100, 200);
         let market_address = get_test_market_address();
         test_assets::burn(market_address, 1, 0);
-        assert_market_fully_collateralized(market_address);
+        assert_market_fully_collateralized(borrow_global<Market>(market_address));
     }
 
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_QUOTE)]
@@ -913,7 +985,7 @@ module econia::core {
         deposit(&get_signer(USER_FOR_TEST), market_account_address, 100, 200);
         let market_address = get_test_market_address();
         test_assets::burn(market_address, 0, 1);
-        assert_market_fully_collateralized(market_address);
+        assert_market_fully_collateralized(borrow_global<Market>(market_address));
     }
 
     #[test]
@@ -926,17 +998,127 @@ module econia::core {
     }
 
     #[test]
-    fun test_deposit() acquires Market, MarketAccount, MarketAccounts, Registry {
-        let (_, market_account_address) = ensure_market_account_registered_for_test();
-        test_assets::mint(USER_FOR_TEST, 123, 456);
-        deposit(&get_signer(USER_FOR_TEST), market_account_address, 100, 200);
+    fun test_deposit_withdraw() acquires Market, MarketAccount, MarketAccounts, Registry {
+        let (market_address, market_account_address) = ensure_market_account_registered_for_test();
+        let start_base = 123;
+        let start_quote = 456;
+        let deposit_base = 100;
+        let deposit_quote = 200;
+        let normal_withdraw_base = 50;
+        let normal_withdraw_quote = 75;
+        let wallet_after_deposit_base = start_base - deposit_base;
+        let wallet_after_deposit_quote = start_quote - deposit_quote;
+        let wallet_after_withdrawal_1_base = wallet_after_deposit_base + normal_withdraw_base;
+        let wallet_after_withdrawal_1_quote = wallet_after_deposit_quote + normal_withdraw_quote;
+        let burn_base = 25;
+        let burn_quote = 50;
+        let socialized_withdraw_base = 20;
+        let socialized_withdraw_quote = 70;
+        let balance_after_withdraw_1_base = deposit_base - normal_withdraw_base;
+        let balance_after_withdraw_1_quote = deposit_quote - normal_withdraw_quote;
+        let balance_after_withdraw_2_base =
+            balance_after_withdraw_1_base - socialized_withdraw_base;
+        let balance_after_withdraw_2_quote =
+            balance_after_withdraw_1_quote - socialized_withdraw_quote;
+        let vault_after_burn_base = balance_after_withdraw_1_base - burn_base;
+        let vault_after_burn_quote = balance_after_withdraw_1_quote - burn_quote;
+        let socialized_transfer_amount_base =
+            socialized_withdraw_base * vault_after_burn_base / balance_after_withdraw_1_base;
+        let socialized_transfer_amount_quote =
+            socialized_withdraw_quote * vault_after_burn_quote / balance_after_withdraw_1_quote;
+        let vault_final_base = vault_after_burn_base - socialized_transfer_amount_base;
+        let vault_final_quote = vault_after_burn_quote - socialized_transfer_amount_quote;
+        let wallet_final_base = wallet_after_withdrawal_1_base + socialized_transfer_amount_base;
+        let wallet_final_quote = wallet_after_withdrawal_1_quote + socialized_transfer_amount_quote;
+        test_assets::mint(USER_FOR_TEST, start_base, start_quote);
+        assert_wallet_balances(market_account_address, start_base, start_quote);
+        let user = get_signer(USER_FOR_TEST);
+        deposit(&user, market_account_address, deposit_base, deposit_quote);
         assert_market_account_balances(
             market_account_address,
-            100,
-            100,
-            200,
-            200,
-        )
+            deposit_base,
+            deposit_base,
+            deposit_quote,
+            deposit_quote,
+        );
+        assert_market_balances(
+            market_address,
+            deposit_base,
+            0,
+            0,
+            0,
+            deposit_quote,
+            0,
+            0,
+            0,
+        );
+        assert_wallet_balances(
+            market_account_address,
+            wallet_after_deposit_base,
+            wallet_after_deposit_quote,
+        );
+        assert_vault_values(market_address, deposit_base, deposit_quote);
+        withdraw(&user, market_account_address, normal_withdraw_base, normal_withdraw_quote);
+        assert_market_account_balances(
+            market_account_address,
+            balance_after_withdraw_1_base,
+            balance_after_withdraw_1_base,
+            balance_after_withdraw_1_quote,
+            balance_after_withdraw_1_quote,
+        );
+        assert_market_balances(
+            market_address,
+            balance_after_withdraw_1_base,
+            0,
+            0,
+            0,
+            balance_after_withdraw_1_quote,
+            0,
+            0,
+            0,
+        );
+        assert_wallet_balances(
+            market_account_address,
+            wallet_after_withdrawal_1_base,
+            wallet_after_withdrawal_1_quote,
+        );
+        assert_vault_values(
+            market_address,
+            balance_after_withdraw_1_base,
+            balance_after_withdraw_1_quote,
+        );
+        test_assets::burn(market_address, burn_base, burn_quote);
+        assert_vault_values(market_address, vault_after_burn_base, vault_after_burn_quote);
+        withdraw(
+            &user,
+            market_account_address,
+            socialized_withdraw_base,
+            socialized_withdraw_quote,
+        );
+        assert_market_account_balances(
+            market_account_address,
+            balance_after_withdraw_2_base,
+            balance_after_withdraw_2_base,
+            balance_after_withdraw_2_quote,
+            balance_after_withdraw_2_quote,
+        );
+        assert_market_balances(
+            market_address,
+            balance_after_withdraw_2_base,
+            0,
+            0,
+            0,
+            balance_after_withdraw_2_quote,
+            0,
+            0,
+            0,
+        );
+        assert_wallet_balances(
+            market_account_address,
+            wallet_final_base,
+            wallet_final_quote,
+        );
+        assert_vault_values(market_address, vault_final_base, vault_final_quote);
     }
 
     #[test]
@@ -980,16 +1162,20 @@ module econia::core {
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
         let market_ref = borrow_global<Market>(market_metadata.market_address);
         assert!(market_ref.market_id == MARKET_ID_FOR_TEST, 0);
+        assert!(market_ref.market_address == market_metadata.market_address, 0);
         assert!(market_ref.trading_pair == trading_pair, 0);
         assert!(market_ref.market_parameters == default_market_parameters, 0);
+        assert_market_balances(market_ref.market_address, 0, 0, 0, 0, 0, 0, 0, 0);
         market_metadata = *table_with_length::borrow(&registry_ref.markets, 2);
         assert!(market_metadata.market_id == 2, 0);
         assert!(market_metadata.trading_pair == trading_pair_flipped, 0);
         assert!(market_metadata.market_parameters == default_market_parameters, 0);
         market_ref = borrow_global<Market>(market_metadata.market_address);
         assert!(market_ref.market_id == 2, 0);
+        assert!(market_ref.market_address == market_metadata.market_address, 0);
         assert!(market_ref.trading_pair == trading_pair_flipped, 0);
         assert!(market_ref.market_parameters == default_market_parameters, 0);
+        assert_market_balances(market_ref.market_address, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     #[test, expected_failure(abort_code = E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET)]
