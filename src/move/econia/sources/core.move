@@ -7,7 +7,6 @@ module econia::core {
     use aptos_framework::table_with_length::{Self, TableWithLength};
     use aptos_framework::primary_fungible_store;
     use aptos_framework::smart_table::{Self, SmartTable};
-    use aptos_std::math64;
     use std::signer;
     use std::vector;
 
@@ -432,7 +431,7 @@ module econia::core {
         base_amount: u64,
         quote_amount: u64,
     ) acquires Market, MarketAccount {
-        let (market_ref_mut, market_account_ref_mut) = get_market_and_market_account_ref_mut(
+        let (market_ref_mut, market_account_ref_mut) = borrow_market_and_market_account_mut(
             user,
             market_account_address,
         );
@@ -461,7 +460,7 @@ module econia::core {
         base_amount: u64,
         quote_amount: u64,
     ) acquires Market, MarketAccount {
-        let (market_ref_mut, market_account_ref_mut) = get_market_and_market_account_ref_mut(
+        let (market_ref_mut, market_account_ref_mut) = borrow_market_and_market_account_mut(
             user,
             market_account_address,
         );
@@ -663,15 +662,17 @@ module econia::core {
             market_ref.market_address,
             asset_metadata,
         );
-        if (actual_vault_balance >= expected_vault_balance) amount else
-        math64::mul_div(amount, actual_vault_balance, expected_vault_balance)
+        if (actual_vault_balance >= expected_vault_balance) return amount;
+        let numerator = (amount as u128) * (actual_vault_balance as u128);
+        let denominator = (expected_vault_balance as u128);
+        (numerator / denominator as u64)
     }
 
     inline fun borrow_registry(): &Registry { borrow_global<Registry>(@econia) }
 
     inline fun borrow_registry_mut(): &mut Registry { borrow_global_mut<Registry>(@econia) }
 
-    inline fun get_market_and_market_account_ref_mut(
+    inline fun borrow_market_and_market_account_mut(
         user: &signer,
         market_account_address: address,
     ): (
