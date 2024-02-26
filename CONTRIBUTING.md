@@ -47,6 +47,21 @@ the tag capitalized. For example `[ECO-WXYZ] Update something in the repo`.
 
 Commit titles `SHOULD` use a similar format, but without a leading tag.
 
+## Move design phases
+
+### Preliminary
+
+1. During preliminary design phases, design `SHALL` emphasize abstraction and
+   ease of testing, with optimizations in mind, for example, to reduce borrows.
+1. Asserts `SHALL` be wrapped in helper functions to reduce failure tests.
+1. Inlining `SHALL` only be used for functions that pass up a reference to a
+   borrow out of global storage.
+
+### Optimization
+
+1. Function call paths `SHALL` be analyzed to minimize bytecode instructions in
+   key operations of placing/cancelling limit orders, and swapping.
+
 ## Style
 
 ### General
