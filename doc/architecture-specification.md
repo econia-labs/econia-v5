@@ -55,8 +55,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 ### Fees
 
 1. Fee rates `SHALL` be encoded as `u8` values, enabling fees up to 2.55%.
-1. Taker fees, assessed on the taker side of the trade, `SHALL` default to 0 for
-   every new market, with a governance override enabling a new fee rate for
+1. Protocol fees, assessed on the taker side of the trade, `SHALL` default to 0
+   for every new market, with a governance override enabling a new fee rate for
    select markets.
 1. Integrators `SHALL` have the ability to collect fees via an
    `integrator_fee_rate_bps: u8` argument on public functions, deposited into an
@@ -115,8 +115,11 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    that uses `HI_64` or `0` to indicate an immediate-or-cancel market order.
 1. Orders `SHALL` fill outside of a market account if the market account object
    address is passed as `0x0`.
-1. Size changes and order cancellations `SHALL` accept the price of the order to
-   cancel for the given user and market account object address.
+1. Order cancellations `SHALL` accept the price of the order to cancel for the
+   given user and market account object address.
+1. Due to low usage of size changes in Econia v4, size changes `SHALL NOT` be
+   supported, in order to simplify the implementation and reduce attack vectors.
+1. Posting `SHALL` abort if at a price that a user already has an open order at.
 1. Posting `SHALL NOT` be permitted outside of a market account.
 1. Restrictions and self match behavior `SHALL NOT` moderate behavior via abort
    statements, since this approach inhibits ease of indexing.
@@ -127,10 +130,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ### Transaction sponsorship
 
-1. Each market `SHALL` include fungible asset stores, that anyone can deposit
-   into, to enable transaction sponsorship. Transaction sponsorship `MAY` be
-   further segmented into specific buckets for things like placing limit orders,
-   placing swaps, etc.
+1. Each market `MAY` be designed to include fungible asset stores, that anyone
+   can deposit into, to enable transaction sponsorship. Transaction sponsorship
+   `MAY` be further segmented into specific buckets for things like placing
+   limit orders, placing swaps, etc.
 1. Users `MAY` be provided with the ability to pre-pay their own transactions,
    and have their sponsorship bucket be used only after applicable global
    transaction sponsorship.
@@ -220,10 +223,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. The B+ tree `SHALL` track its height at the root node, for ease of eviction
    monitoring, though insertion and lookup mechanics `MAY` be able to track
    height on the fly.
-1. Each level in the B+ tree `SHALL` implement a doubly linked list of elements.
-1. The B+ tree `SHALL` support dynamically-updated configuration parameters
-   like order within a tree level, such that these parameters can be tuned via
-   governance.
+1. Each inner node in the B+ tree `SHALL` implement a red-black tree.
+1. Each leaf node in the B+ tree `SHALL` implement a doubly linked list.
+1. The B+ tree `SHALL` use hard-coded order for inner and leaf nodes, optimized
+   for gas costs.
 
 ### Extensions
 
@@ -232,6 +235,12 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    to enable unforeseen backwards-compatible feature upgrades.
 
 ## Implementation details
+
+### Pausing
+
+1. A `status` resource `SHALL` contain an `active` field that can be modified by
+   governance, such that if the protocol is considered inactive then only
+   order cancellations and withdrawals are allowed.
 
 ### Objects
 
