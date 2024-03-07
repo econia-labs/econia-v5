@@ -1,12 +1,14 @@
 # cspell:words autofix, markdownlint, mdformat, shfmt
 ---
 repos:
-- repo: 'local'
+-
   hooks:
-  - id: 'ensure-shebang'
-    name: 'Ensure Shebang'
+  -
     entry: './src/sh/ensure_shebang.sh'
+    id: 'ensure-shebang'
     language: 'script'
+    name: 'Ensure Shebang'
+  repo: 'local'
 -
   hooks:
   - id: 'check-added-large-files'
