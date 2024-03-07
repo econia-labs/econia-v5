@@ -1,6 +1,12 @@
 # cspell:words autofix, markdownlint, mdformat, shfmt
 ---
 repos:
+- repo: 'local'
+  hooks:
+  - id: 'custom-bash-script'
+    name: 'Custom Bash Script'
+    entry: './src/sh/ensure_shebang.sh'
+    language: 'script'
 -
   hooks:
   - id: 'check-added-large-files'

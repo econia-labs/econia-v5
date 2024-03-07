@@ -29,7 +29,7 @@ rules:
     check-multi-line-strings: true
     indent-sequences: false
     spaces: 2
-  key-ordering: 'enable'
+  key-ordering: 'disable'
   octal-values: 'enable'
   quoted-strings:
     quote-type: 'single'
