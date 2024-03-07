@@ -87,11 +87,21 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
    like math utility functions.
 1. Error code names `MUST` start with `E_`, for example `E_NOT_ENOUGH_BASE`.
 1. Econia `SHALL` be implemented according to the [architecture specification].
+1. Where possible, functions of the form `ensure_property_x()`, which ensure
+   that some property holds, `SHALL` be favored over functions of the form
+   `assert_property_x()`, which abort if a property does not hold.
+1. Until a formatter or linter is available, lines `SHALL` break at 100
+   characters per the [Move formatting guidelines][move format].
+1. Events `SHALL` be titled in the form `Something`, as opposed to
+   `SomethingEvent`, and `SHALL` be emitted v2-style, consistent with
+   the [Aptos Framework v2 event refactors].
 
+[aptos framework v2 event refactors]: https://github.com/aptos-foundation/AIPs/issues/367
 [architecture specification]: doc/architecture-specification.md
 [doc comments]: https://move-language.github.io/move/coding-conventions.html?#comments
 [github actions]: https://docs.github.com/en/actions
 [linear]: https://pre-commit.com/hooks.html
+[move format]: https://move-language.github.io/move/coding-conventions.html#formatting
 [move references]: https://move-language.github.io/move/references.html
 [move signer]: https://move-language.github.io/move/signer.html
 [pre-commit hook]: https://pre-commit.com/hooks.html
