@@ -71,6 +71,7 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 1. Prefer compact code blocks, delimited by section comments rather than
    whitespace.
 1. Titles `SHALL` use `Title Case` while headers `SHALL` use `Sentence case`.
+1. Comments `SHALL` end with a period `.`, even if they are a single line.
 
 ### Markdown
 
