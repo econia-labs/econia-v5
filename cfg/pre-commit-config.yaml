@@ -3,8 +3,8 @@
 repos:
 - repo: 'local'
   hooks:
-  - id: 'custom-bash-script'
-    name: 'Custom Bash Script'
+  - id: 'ensure-shebang'
+    name: 'Ensure Shebang'
     entry: './src/sh/ensure_shebang.sh'
     language: 'script'
 -
