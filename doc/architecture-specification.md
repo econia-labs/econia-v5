@@ -14,7 +14,7 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Volume `SHALL` be expressed in terms of indivisible quote subunits.
 1. Prices `SHALL` be expressed as a `u128` fixed-point decimal per
    [`aptos-core` #11952], representing a ratio of volume to size.
-1. Fee rates `SHALL` be expressed in basis points.
+1. Fee rates `SHALL` be expressed in hundredths of a basis point.
 1. Price `SHALL` be restricted to a certain number of significant figures, based
    on the market, per [`aptos-core` #11950].
 1. The minimum permissible post amount `SHALL` be mediated via dynamic eviction
@@ -45,7 +45,7 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    asks could not be priced. Notably, this approach implies a reference price
    that may need to be tuned on occasion (ratio of quote to base).
 1. A low-pass filter or similar `MAY` be used to calculate time weighted average
-   liquidity.
+   liquidity, to prevent flash loan eviction attacks.
 1. The dynamic calculations `SHALL NOT` use a logarithmic formula to calculate
    minimum post size so as to avoid distortions between assets with different
    decimal amounts.
@@ -54,20 +54,19 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ### Fees
 
-1. Fee rates `SHALL` be encoded as `u8` values, enabling fees up to 2.55%.
+1. Protocol and integrator fees `SHALL` be assessed in the quote asset for a
+   pair.
+1. Fee rates `SHALL` be encoded as `u16` values, enabling fees up to 6.5535%.
 1. Protocol fees, assessed on the taker side of the trade, `SHALL` default to 0
    for every new market, with a governance override enabling a new fee rate for
    select markets.
-1. Integrators `SHALL` have the ability to collect fees via an
-   `integrator_fee_rate_bps: u8` argument on public functions, deposited into an
-   integrator's market account, to enable parallelism for integrators who
-   facilitate trades across multiple markets. Hence there `SHALL` also be an
-   `integrator_market_account: Object<T>` argument. Integrator fees `SHALL` be
-   assessed in the quote asset for the pair.
-1. The market's liquidity pool `SHALL` also charge a fee, mediated via market
-   parameters, denominated in basis points. Within liquidity pool operations
-   fees must be assessed in both base and quote, but `SHALL` be normalized to
-   quote-only outside of liquidity pool operations.
+1. Integrators `SHALL` have the ability to collect fees via `integrator_address`
+   and `integrator_fee_rate` arguments on public functions, with fees deposited
+   to the corresponding primary fungible store.
+1. The market's liquidity pool `SHALL` charge a dynamic fee based on volatility.
+   Fees `MAY` be assessed in both base and quote at the pool level as needed,
+   but `SHALL` be normalized outside of liquidity pool operations for ease of
+   slippage comparison.
 
 ### Eviction
 
@@ -78,9 +77,9 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    public API available outside of order posting.
 1. Public eviction APIs `MAY` be incentivized via an eviction bounty for a fixed
    amount of the remaining collateral available on an evictable order, for
-   example 5 basis points, deposited straight to the eviction executor's market
-   account. If bounties are available, they `SHALL` be assessed on either all
-   evictions or none, including those instigated by order posts, such that
+   example 5 basis points, deposited straight to the eviction executor's primary
+   fungible store. If bounties are available, they `SHALL` be assessed on either
+   all evictions or none, including those instigated by order posts, such that
    orders at the back of the price-time queue are not immune from bounty loss.
 1. Should a bounty not be implemented for fear of promoting adversarial
    behaviors, eviction stewardship for the middle of the price-time queue `MAY`
@@ -108,19 +107,21 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ### Trading
 
-1. Orders `SHALL` accept the object address of a user's market account, as well
-   as a size, limit price (worst execution price including fees), and
-   restriction.
+1. A user's open orders `SHALL` be tracked in an open orders object, such that
+   market makers can submit the address of the object for optimized order
+   placement.
+1. Orders `SHALL` accept a size, limit price (worst execution price including
+   fees), restriction, and open orders object address.
+1. Order APIs `SHALL` accept `0x0` for open orders address to indicate an
+   immediate-or-cancel order that settles to a user's primary fungible store.
 1. Limit orders, market orders, and swaps `SHALL` be moderated via a single API
-   that uses `HI_64` or `0` to indicate an immediate-or-cancel market order.
-1. Orders `SHALL` fill outside of a market account if the market account object
-   address is passed as `0x0`.
+   that uses `HI_64` or `0` for limit price to indicate an immediate-or-cancel
+   market order.
 1. Order cancellations `SHALL` accept the price of the order to cancel for the
-   given user and market account object address.
+   given user and the open orders object address.
 1. Due to low usage of size changes in Econia v4, size changes `SHALL NOT` be
    supported, in order to simplify the implementation and reduce attack vectors.
 1. Posting `SHALL` abort if at a price that a user already has an open order at.
-1. Posting `SHALL NOT` be permitted outside of a market account.
 1. Restrictions and self match behavior `SHALL NOT` moderate behavior via abort
    statements, since this approach inhibits ease of indexing.
 1. Self match behavior `SHALL` support `CANCEL_BOTH`, `CANCEL_MAKER`, and
@@ -147,7 +148,7 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    be subject to the same attack vectors as maps with a public insertion vector.
 1. Market IDs `SHALL` be 1-indexed.
 
-### Market accounts
+### Open orders
 
 1. A user's open orders `SHALL` be tracked via a red-black binary search tree,
    with order price as the lookup key. Hence each user will only be able to have
@@ -155,33 +156,30 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    of the last accessed key so that operations to check existence then borrow
    can occur without re-traversal. Bid and ask trees for a user `MAY` be
    combined into one single tree.
-1. Only available and total amounts for base and quote `SHALL` be tracked, since
-   deposits will be held in a global vault in order to reduce borrows. Since
-   anyone can deposit into the global vault store, there is no way to ensure the
-   global ceiling is static.
-1. When a user deposits to or withdraws from their market account, assets
-   `SHALL` transact against a global base/quote vault for the entire market.
 1. There `SHALL` be a hard-coded constant restricting the number of open orders
    each user is allowed to have.
-1. Each user `SHALL` have a market accounts map of type
+1. Each user `SHALL` have an open orders map of type
    `aptos_std::smart_table::SmartTable` which lists the markets they have open
-   market accounts for.
-1. Market account objects `SHALL` be non-transferrable.
+   orders objects for.
+1. Open orders objects `SHALL` be non-transferrable.
 
 ### Market vaults
 
-1. Markets `SHALL` have a global vault for base and quote, containing all user
-   and liquidity pool deposits.
+1. Markets `SHALL` have a global vault for base and quote, containing all posted
+   order collateral and liquidity pool deposits.
 1. It `SHALL` be assumed that no more than `HI_64` of assets will be
    consolidated in one place, to avoid excessive error checking. Hence the onus
-   is on asset issuers to regulate supply accordingly.
+   is on asset issuers to regulate supply accordingly. This style mimics the
+   `aptos_framework::coin` specification.
 
 ### Liquidity pools
 
 1. Liquidity pool logic `SHALL` take reasonable steps to ensure that no more
-   than `HI_64` of lp tokens are ever minted. For example for the first mint,
-   the number of tokens could be taken as the greater of base and quote
-   deposited.
+   than `HI_64` of liquidity provider tokens are ever minted. For example for
+   the first mint, the number of tokens could be taken as the greater of base
+   and quote deposited.
+1. Initialized ticks `SHALL` be organized in a B+ tree with an AVL tree at both
+   inner and leaf nodes.
 
 ### Parametric configurability
 
@@ -223,10 +221,12 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. The B+ tree `SHALL` track its height at the root node, for ease of eviction
    monitoring, though insertion and lookup mechanics `MAY` be able to track
    height on the fly.
-1. Each inner node in the B+ tree `SHALL` implement a red-black tree.
-1. Each leaf node in the B+ tree `SHALL` implement a doubly linked list.
+1. Each inner node in the B+ tree `SHALL` implement an AVL tree.
+1. Each leaf node in the B+ tree `SHALL` implement a doubly linked list or
+   red-black tree, for fast modifications.
 1. The B+ tree `SHALL` use hard-coded order for inner and leaf nodes, optimized
    for gas costs.
+1. The custom data structure `SHALL` be named `avl_plus_queue`.
 
 ### Extensions
 
@@ -288,7 +288,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 1. Since fungible assets may be seized at any time, deposits and withdrawals
    `SHALL` be assessed proportionally to socialize losses and avoid bank run
-   scenarios: if vaults are 50% empty, then deposits will be 50% of expected.
+   scenarios per [`aptos-core` #12240]: if vaults are 50% empty, then returned
+   amounts will be 50% of expected.
 
 ### Parameter updates
 
@@ -313,3 +314,4 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [`aptos-core` #11950]: https://github.com/aptos-labs/aptos-core/pull/11950
 [`aptos-core` #11952]: https://github.com/aptos-labs/aptos-core/pull/11952
+[`aptos-core` #12240]: https://github.com/aptos-labs/aptos-core/pull/12240
