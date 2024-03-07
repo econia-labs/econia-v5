@@ -3,6 +3,14 @@
 repos:
 -
   hooks:
+  -
+    entry: './src/sh/ensure_shebang.sh'
+    id: 'ensure-shebang'
+    language: 'script'
+    name: 'Ensure Shebang'
+  repo: 'local'
+-
+  hooks:
   - id: 'check-added-large-files'
   - id: 'check-case-conflict'
   - id: 'detect-private-key'
