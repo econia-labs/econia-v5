@@ -4,15 +4,6 @@ repos:
 -
   hooks:
   -
-    args:
-    - '--config'
-    - 'cfg/link-check-config.json'
-    id: 'markdown-link-check'
-  repo: 'https://github.com/tcort/markdown-link-check'
-  rev: 'v3.11.2'
--
-  hooks:
-  -
     entry: './src/sh/ensure_shebang.sh'
     id: 'ensure-shebang'
     language: 'script'
