@@ -703,14 +703,22 @@ module econia::core {
 
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_BASE)]
     fun test_assert_market_fully_collateralized_market_not_collateralized_base()
-    acquires Market {
-        assert_market_fully_collateralized(borrow_global<Market>(@0x0));
+    acquires Market, Registry {
+        ensure_market_registered_for_test();
+        let market_address = get_test_market_address();
+        let market_ref_mut = borrow_global_mut<Market>(market_address);
+        market_ref_mut.base_balances.pool_liquidity = 1;
+        assert_market_fully_collateralized(borrow_global<Market>(market_address));
     }
 
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_QUOTE)]
     fun test_assert_market_fully_collateralized_market_not_collateralized_quote()
-    acquires Market {
-        assert_market_fully_collateralized(borrow_global<Market>(@0x0));
+    acquires Market, Registry {
+        ensure_market_registered_for_test();
+        let market_address = get_test_market_address();
+        let market_ref_mut = borrow_global_mut<Market>(market_address);
+        market_ref_mut.quote_balances.pool_liquidity = 1;
+        assert_market_fully_collateralized(borrow_global<Market>(market_address));
     }
 
     #[test]
