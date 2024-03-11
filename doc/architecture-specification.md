@@ -12,8 +12,9 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 1. Size `SHALL` be expressed in terms of indivisible base subunits.
 1. Volume `SHALL` be expressed in terms of indivisible quote subunits.
-1. Prices `SHALL` be expressed as a `u128` fixed-point decimal per
-   [`aptos-core` #11952], representing a ratio of volume to size.
+1. Order book prices `SHALL` be expressed as a rational number via a `u64` each
+   for numerator and denominator, representing the ratio of quote to base, and
+   `MAY` be encoded as `numerator << 64 | denominator`.
 1. Fee rates `SHALL` be expressed in hundredths of a basis point.
 1. Price `SHALL` be restricted to a certain number of significant figures, based
    on the market, per [`aptos-core` #11950].
@@ -23,7 +24,9 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 ### Significant figures
 
 1. Price `SHALL` be restricted to a certain number of significant figures per
-   market.
+   market, using decimalized rational number representations with a base-10
+   denominator and a numerator having the specified number of significant
+   figures.
 1. A global registry `SHALL` track the default maximum price significant figure
    values for new markets, with defaults subject to modification per a
    governance vote.
@@ -178,8 +181,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    than `HI_64` of liquidity provider tokens are ever minted. For example for
    the first mint, the number of tokens could be taken as the greater of base
    and quote deposited.
-1. Initialized ticks `SHALL` be organized in a B+ tree with an AVL tree at both
-   inner and leaf nodes.
+1. Initialized ticks `SHALL` be organized in a B+ tree with a doubly linked list
+   at both inner and leaf nodes.
 
 ### Parametric configurability
 
@@ -210,10 +213,9 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 1. Order books `SHALL` implement a B+ tree-based architecture, with each key
    containing a price and an effective sequence number for that price,
-   denoting the price-time priority of the order, represented as a `u256` of the
-   form `price_as_decimal_fixed_u128 << 64 | sequence_number_flag`. The
-   sequence number for the level `SHALL` be generated dynamically upon insertion
-   such that the first order at a new price level assumes the sequence number 1.
+   denoting the price-time priority of the order. The sequence number for the
+   level `SHALL` be generated dynamically upon insertion such that the first
+   order at a new price level assumes the sequence number 0.
 1. Each market `SHALL` have a B+ tree for each side, which caches the best price
    and its leaf node's address, the worst price and its leaf node's address,
    and has a sort order direction such that the sequence number flag for bids,
@@ -221,12 +223,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. The B+ tree `SHALL` track its height at the root node, for ease of eviction
    monitoring, though insertion and lookup mechanics `MAY` be able to track
    height on the fly.
-1. Each inner node in the B+ tree `SHALL` implement an AVL tree.
-1. Each leaf node in the B+ tree `SHALL` implement a doubly linked list or
-   red-black tree, for fast modifications.
-1. The B+ tree `SHALL` use hard-coded order for inner and leaf nodes, optimized
-   for gas costs.
-1. The custom data structure `SHALL` be named `avl_plus_queue`.
+1. Each inner node in the B+ tree `SHALL` implement a doubly linked list.
+1. Each leaf node in the B+ tree `SHALL` implement a doubly linked list.
+1. The B+ tree `SHALL` accept inner and leaf node orders configured during
+   initialization, optimized for gas costs.
 
 ### Extensions
 
@@ -235,6 +235,17 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    to enable unforeseen backwards-compatible feature upgrades.
 
 ## Implementation details
+
+### B+ tree
+
+1. Since both orders and ticks rely on a B+ tree, the tree `SHALL` be designed
+   in a generalized format that can be used for both applications.
+1. The tree `SHALL` support a `Pointer` struct or similar, containing both node
+   address and vector index, that can be stored for caching/iteration purposes.
+1. Inner and leaf node order `SHALL` be configurable upon initialization, via a
+   `tree_order` market parameter or similar.
+1. An insertion API `SHALL` be provided with a `Pointer` return, to reduce
+   borrows.
 
 ### Pausing
 
@@ -262,10 +273,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ### Eviction
 
-1. Eviction price `SHALL` be mediated via optimistic division only per
-   [`aptos-core` #11952], via `eviction_price_divisor_ask` and `_bid`, such that
-   the proposed ask price is divided by the best ask price, and the best bid
-   price is divided by the proposed bid price before threshold comparisons.
+1. Eviction price `SHALL` be mediated via scaling per
+   `eviction_price_divisor_ask` and `_bid`, such that the proposed ask price is
+   divided by the best ask price, and the best bid price is divided by the
+   proposed bid price before threshold comparisons.
 1. Eviction of a full order book `SHALL NOT` be possible within a single
    transaction.
 1. Eviction liquidity divisors `SHALL` similarly be mediated via optimistic
@@ -274,8 +285,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 ### Error codes
 
 1. Error codes that are raised by multiple functions `SHALL` be wrapped with
-   inline helper functions containing a single assert, so that the inline
-   function can be failure tested, for ease of coverage.
+   helper functions containing a single assert, so that the helper function can
+   be failure tested alone, for ease of coverage testing.
 
 ### Events
 
@@ -300,10 +311,13 @@ These keywords `SHALL` be in `monospace` for ease of identification.
    ID `SHALL` be offered as a field, and if `none` the update corresponds to
    default parameter updates.
 
-### Package size
+### Package publication
 
 1. Move package size `SHALL` be under the max transaction limit, to enable
    package publication using a single transaction.
+1. The package `SHALL` not introduction publication conflicts with the Econia v4
+   package, such that it can be published at the same address, for example by
+   using non-overlapping module names.
 
 ### Indexer
 
@@ -313,5 +327,4 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [`aptos-core` #11950]: https://github.com/aptos-labs/aptos-core/pull/11950
-[`aptos-core` #11952]: https://github.com/aptos-labs/aptos-core/pull/11952
 [`aptos-core` #12240]: https://github.com/aptos-labs/aptos-core/pull/12240
