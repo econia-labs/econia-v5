@@ -25,7 +25,7 @@ module econia::core {
     const GENESIS_INTEGRATOR_WITHDRAWAL_FEE: u64 = 0;
 
     const GENESIS_DEFAULT_POOL_FEE_RATE: u16 = 3_000;
-    const GENESIS_DEFAULT_TAKER_FEE_RATE: u16 = 0;
+    const GENESIS_DEFAULT_PROTOCOL_FEE_RATE: u16 = 0;
     const GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS: u8 = 4;
     const GENESIS_DEFAULT_EVICTION_TREE_HEIGHT: u8 = 5;
     const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK: u128 = 100_000_000_000_000_000_000;
@@ -80,7 +80,7 @@ module econia::core {
 
     struct MarketParameters has copy, drop, store {
         pool_fee_rate: u16,
-        taker_fee_rate: u16,
+        protocol_fee_rate: u16,
         max_price_sig_figs: u8,
         eviction_tree_height: u8,
         eviction_price_divisor_ask: u128,
@@ -310,7 +310,7 @@ module econia::core {
         econia: &signer,
         market_id_option: vector<u64>,
         pool_fee_rate_option: vector<u16>,
-        taker_fee_rate_option: vector<u16>,
+        protocol_fee_rate_option: vector<u16>,
         max_price_sig_figs_option: vector<u8>,
         eviction_tree_height_option: vector<u8>,
         eviction_price_divisor_ask_option: vector<u128>,
@@ -341,8 +341,8 @@ module econia::core {
             &pool_fee_rate_option,
         );
         set_value_via_option_vector(
-            &mut market_parameters_ref_mut.taker_fee_rate,
-            &taker_fee_rate_option,
+            &mut market_parameters_ref_mut.protocol_fee_rate,
+            &protocol_fee_rate_option,
         );
         set_value_via_option_vector(
             &mut market_parameters_ref_mut.max_price_sig_figs,
@@ -602,7 +602,7 @@ module econia::core {
             },
             default_market_parameters: MarketParameters {
                 pool_fee_rate: GENESIS_DEFAULT_POOL_FEE_RATE,
-                taker_fee_rate: GENESIS_DEFAULT_TAKER_FEE_RATE,
+                protocol_fee_rate: GENESIS_DEFAULT_PROTOCOL_FEE_RATE,
                 max_price_sig_figs: GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
                 eviction_tree_height: GENESIS_DEFAULT_EVICTION_TREE_HEIGHT,
                 eviction_price_divisor_ask: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
@@ -701,7 +701,7 @@ module econia::core {
     public fun assert_market_parameters(
         market_parameters: MarketParameters,
         pool_fee_rate: u16,
-        taker_fee_rate: u16,
+        protocol_fee_rate: u16,
         max_price_sig_figs: u8,
         eviction_tree_height: u8,
         eviction_price_divisor_ask: u128,
@@ -711,7 +711,7 @@ module econia::core {
         leaf_node_order: u8,
     ) {
         assert!(market_parameters.pool_fee_rate == pool_fee_rate, 0);
-        assert!(market_parameters.taker_fee_rate == taker_fee_rate, 0);
+        assert!(market_parameters.protocol_fee_rate == protocol_fee_rate, 0);
         assert!(market_parameters.max_price_sig_figs == max_price_sig_figs, 0);
         assert!(market_parameters.eviction_tree_height == eviction_tree_height, 0);
         assert!(market_parameters.eviction_price_divisor_ask == eviction_price_divisor_ask, 0);
@@ -1140,7 +1140,7 @@ module econia::core {
         assert_market_parameters(
             registry_ref.default_market_parameters,
             GENESIS_DEFAULT_POOL_FEE_RATE,
-            GENESIS_DEFAULT_TAKER_FEE_RATE,
+            GENESIS_DEFAULT_PROTOCOL_FEE_RATE,
             GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
             GENESIS_DEFAULT_EVICTION_TREE_HEIGHT,
             GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
@@ -1384,7 +1384,7 @@ module econia::core {
         assert_market_parameters(
             borrow_registry().default_market_parameters,
             GENESIS_DEFAULT_POOL_FEE_RATE,
-            GENESIS_DEFAULT_TAKER_FEE_RATE,
+            GENESIS_DEFAULT_PROTOCOL_FEE_RATE,
             GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
             5,
             6,
