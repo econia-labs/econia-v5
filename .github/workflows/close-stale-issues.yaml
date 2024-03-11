@@ -7,6 +7,7 @@ jobs:
       with:
         days-before-close: '15'
         days-before-stale: '45'
+        delete-branch: 'true'
         exempt-issue-labels: 'stale-exempt'
         exempt-pr-labels: 'stale-exempt'
         operations-per-run: '50' # This is to avoid Github API rate limiting.
@@ -23,6 +24,7 @@ name: 'Close stale issues and PRs'
   schedule:
   - cron: '0 0 * * *' # Cron scheduler syntax.
 permissions:
+  contents: 'write'
   issues: 'write'
   pull-requests: 'write'
 ...
