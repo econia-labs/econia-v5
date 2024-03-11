@@ -16,8 +16,10 @@ module econia::core {
     use aptos_framework::aptos_coin;
     #[test_only]
     use econia::test_assets;
+    #[test_only]
+    use std::features;
 
-    const GENESIS_UTILITY_ASSET_METADATA_ADDRESS: address = @aptos_framework;
+    const GENESIS_UTILITY_ASSET_METADATA_ADDRESS: address = @aptos_fungible_asset;
     const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100_000_000;
     const GENESIS_ORACLE_FEE: u64 = 0;
     const GENESIS_INTEGRATOR_WITHDRAWAL_FEE: u64 = 0;
@@ -852,6 +854,8 @@ module econia::core {
 
     #[test_only]
     public fun ensure_module_initialized_for_test() {
+        let feature = features::get_coin_to_fungible_asset_migration_feature();
+        features::change_feature_flags(&get_signer(@std), vector[feature], vector[]);
         aptos_coin::ensure_initialized_with_fa_metadata_for_test();
         if (!exists<Registry>(@econia)) init_module(&get_signer(@econia));
     }
