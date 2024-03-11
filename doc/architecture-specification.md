@@ -14,7 +14,7 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Volume `SHALL` be expressed in terms of indivisible quote subunits.
 1. Order book prices `SHALL` be expressed as a rational number via a `u64` each
    for numerator and denominator, representing the ratio of quote to base, and
-   `MAY` be encoded as `numerator << 64 | denominator`.
+   `MAY` be encoded as `numerator << 64 | denominator` via a single `u128`.
 1. Fee rates `SHALL` be expressed in hundredths of a basis point.
 1. Price `SHALL` be restricted to a certain number of significant figures, based
    on the market, per [`aptos-core` #11950].
@@ -118,7 +118,8 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 1. Order APIs `SHALL` accept `0x0` for open orders address to indicate an
    immediate-or-cancel order that settles to a user's primary fungible store.
 1. Limit orders, market orders, and swaps `SHALL` be moderated via a single API
-   that uses `HI_64` or `0` for limit price to indicate an immediate-or-cancel
+   wherein a user can set an order's limit price to `0 / 1` (denoting price `0`)
+   or `1 / 0` (denoting price infinity) to indicate an immediate-or-cancel
    market order.
 1. Order cancellations `SHALL` accept the price of the order to cancel for the
    given user and the open orders object address.
