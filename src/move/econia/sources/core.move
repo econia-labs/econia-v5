@@ -701,6 +701,17 @@ module econia::core {
         assert_open_orders_owner(borrow_global<OpenOrders>(open_orders_address), @0x0);
     }
 
+    #[test]
+    fun test_open_orders_exists_and_correct_owner()
+    acquires
+        OpenOrders,
+        OpenOrdersByMarket,
+        Registry,
+    {
+        let (_, open_orders_address) = ensure_open_orders_registered_for_test();
+        assert_open_orders_owner(borrow_global<OpenOrders>(open_orders_address), USER_FOR_TEST);
+    }
+
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_BASE)]
     fun test_assert_market_fully_collateralized_market_not_collateralized_base()
     acquires Market, Registry {
