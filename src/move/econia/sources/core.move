@@ -52,6 +52,10 @@ module econia::core {
     const E_DOES_NOT_OWN_OPEN_ORDERS: u64 = 7;
     /// Open orders resource does not exist at given address.
     const E_NO_OPEN_ORDERS: u64 = 8;
+    /// Requested withdrawal amount exceeds expected vault balance for base.
+    const E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_BASE: u64 = 9;
+    /// Requested withdrawal amount exceeds expected vault balance for quote.
+    const E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_QUOTE: u64 = 9;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -466,16 +470,19 @@ module econia::core {
         amount: u64,
         withdraw_base: bool,
     ): u64 {
-        let (balances_ref, asset_metadata) = if (withdraw_base) (
+        let (balances_ref, asset_metadata, error_code) = if (withdraw_base) (
             &market_ref.base_balances,
             market_ref.trading_pair.base_metadata,
+            E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_BASE,
         ) else (
             &market_ref.quote_balances,
             market_ref.trading_pair.quote_metadata,
+            E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_QUOTE,
         );
         let expected_vault_balance = expected_vault_balance(balances_ref);
         let actual_vault_balance =
             primary_fungible_store::balance(market_ref.market_address, asset_metadata);
+        assert!(amount <= expected_vault_balance, error_code);
         if (actual_vault_balance >= expected_vault_balance) return amount;
         let numerator = (amount as u128) * (actual_vault_balance as u128);
         let denominator = (expected_vault_balance as u128);
@@ -725,6 +732,43 @@ module econia::core {
         let market_ref_mut = borrow_global_mut<Market>(market_address);
         market_ref_mut.quote_balances.pool_liquidity = 1;
         assert_market_fully_collateralized(borrow_global<Market>(market_address));
+    }
+
+    #[test]
+    fun test_socialize_withdrawal_amount() acquires Market, Registry {
+        let market_address = ensure_market_registered_for_test();
+        let market_ref_mut = borrow_global_mut<Market>(market_address);
+        assert!(socialize_withdrawal_amount(market_ref_mut, 0, true) == 0, 0);
+        assert!(socialize_withdrawal_amount(market_ref_mut, 0, false) == 0, 0);
+        market_ref_mut = borrow_global_mut<Market>(market_address);
+        let balances_ref_mut = &mut market_ref_mut.base_balances;
+        balances_ref_mut.book_liquidity = 10;
+        balances_ref_mut.pool_liquidity = 20;
+        balances_ref_mut = &mut market_ref_mut.quote_balances;
+        balances_ref_mut.unclaimed_pool_fees = 12;
+        balances_ref_mut.unclaimed_protocol_fees = 24;
+        test_assets::mint(market_address, 30, 36);
+        assert!(socialize_withdrawal_amount(market_ref_mut, 5, true) == 5, 0);
+        assert!(socialize_withdrawal_amount(market_ref_mut, 8, false) == 8, 0);
+        test_assets::burn(market_address, 15, 12);
+        assert!(socialize_withdrawal_amount(market_ref_mut, 10, true) == 5, 0);
+        assert!(socialize_withdrawal_amount(market_ref_mut, 18, false) == 12, 0);
+    }
+
+    #[test, expected_failure(abort_code = E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_BASE)]
+    fun test_socialize_withdrawal_amount_withdrawal_exceeds_expected_vault_balance_base()
+    acquires Market, Registry {
+        let market_address = ensure_market_registered_for_test();
+        let market_ref = borrow_global<Market>(market_address);
+        socialize_withdrawal_amount(market_ref, 10, true);
+    }
+
+    #[test, expected_failure(abort_code = E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_QUOTE)]
+    fun test_socialize_withdrawal_amount_withdrawal_exceeds_expected_vault_balance_quote()
+    acquires Market, Registry {
+        let market_address = ensure_market_registered_for_test();
+        let market_ref = borrow_global<Market>(market_address);
+        socialize_withdrawal_amount(market_ref, 10, false);
     }
 
     #[test]
