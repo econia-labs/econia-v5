@@ -18,6 +18,8 @@ module econia::core {
     use econia::test_assets;
     #[test_only]
     use std::features;
+    #[test_only]
+    use econia::rational;
 
     const GENESIS_UTILITY_ASSET_METADATA_ADDRESS: address = @aptos_fungible_asset;
     const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100_000_000;
@@ -40,6 +42,10 @@ module econia::core {
     const GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR: u64 = 100_000;
     const GENESIS_DEFAULT_INNER_NODE_ORDER: u8 = 10;
     const GENESIS_DEFAULT_LEAF_NODE_ORDER: u8 = 5;
+
+    const COMPARE_LEFT_GREATER: u8 = 0;
+    const COMPARE_RIGHT_GREATER: u8 = 1;
+    const COMPARE_EQUAL: u8 = 2;
 
     /// Registrant's utility asset primary fungible store balance is below market registration fee.
     const E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET: u64 = 0;
@@ -812,6 +818,13 @@ module econia::core {
     {
         let (_, open_orders_address) = ensure_open_orders_registered_for_test();
         assert_open_orders_owner(borrow_global<OpenOrders>(open_orders_address), @0x0);
+    }
+
+    #[test]
+    fun test_common_constants_rational() {
+        assert!(COMPARE_EQUAL == rational::get_COMPARE_EQUAL(), 0);
+        assert!(COMPARE_LEFT_GREATER == rational::get_COMPARE_LEFT_GREATER(), 0);
+        assert!(COMPARE_RIGHT_GREATER == rational::get_COMPARE_RIGHT_GREATER(), 0);
     }
 
     #[test]
