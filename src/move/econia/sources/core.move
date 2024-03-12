@@ -32,9 +32,12 @@ module econia::core {
     const GENESIS_DEFAULT_PROTOCOL_FEE_RATE: u16 = 0;
     const GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS: u8 = 4;
     const GENESIS_DEFAULT_EVICTION_TREE_HEIGHT: u8 = 5;
-    const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK: u128 = 100_000_000_000_000_000_000;
-    const GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID: u128 = 100_000_000_000_000_000_000;
-    const GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR: u128 = 1_000_000_000_000_000_000_000_000;
+    const GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_NUMERATOR: u64 = 1;
+    const GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_DENOMINATOR: u64 = 3;
+    const GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_NUMERATOR: u64 = 1;
+    const GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_DENOMINATOR: u64 = 5;
+    const GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_NUMERATOR: u64 = 1;
+    const GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR: u64 = 100_000;
     const GENESIS_DEFAULT_INNER_NODE_ORDER: u8 = 10;
     const GENESIS_DEFAULT_LEAF_NODE_ORDER: u8 = 5;
 
@@ -93,11 +96,16 @@ module econia::core {
         protocol_fee_rate: u16,
         max_price_sig_figs: u8,
         eviction_tree_height: u8,
-        eviction_price_divisor_ask: u128,
-        eviction_price_divisor_bid: u128,
-        eviction_liquidity_divisor: u128,
+        eviction_price_ratio_ask: Rational,
+        eviction_price_ratio_bid: Rational,
+        eviction_liquidity_ratio: Rational,
         inner_node_order: u8,
         leaf_node_order: u8,
+    }
+
+    struct Rational has copy, drop, store {
+        numerator: u64,
+        denominator: u64,
     }
 
     #[resource_group_member(group = ObjectGroup)]
@@ -264,9 +272,12 @@ module econia::core {
         protocol_fee_rate_option: vector<u16>,
         max_price_sig_figs_option: vector<u8>,
         eviction_tree_height_option: vector<u8>,
-        eviction_price_divisor_ask_option: vector<u128>,
-        eviction_price_divisor_bid_option: vector<u128>,
-        eviction_liquidity_divisor_option: vector<u128>,
+        eviction_price_ratio_ask_numerator_option: vector<u64>,
+        eviction_price_ratio_ask_denominator_option: vector<u64>,
+        eviction_price_ratio_bid_numerator_option: vector<u64>,
+        eviction_price_ratio_bid_denominator_option: vector<u64>,
+        eviction_liquidity_ratio_numerator_option: vector<u64>,
+        eviction_liquidity_ratio_denominator_option: vector<u64>,
         inner_node_order_option: vector<u8>,
         leaf_node_order_option: vector<u8>,
     ) acquires Market, Registry {
@@ -304,16 +315,28 @@ module econia::core {
             &eviction_tree_height_option,
         );
         set_value_via_option_vector(
-            &mut market_parameters_ref_mut.eviction_price_divisor_ask,
-            &eviction_price_divisor_ask_option,
+            &mut market_parameters_ref_mut.eviction_price_ratio_ask.numerator,
+            &eviction_price_ratio_ask_numerator_option,
         );
         set_value_via_option_vector(
-            &mut market_parameters_ref_mut.eviction_price_divisor_bid,
-            &eviction_price_divisor_bid_option,
+            &mut market_parameters_ref_mut.eviction_price_ratio_ask.denominator,
+            &eviction_price_ratio_ask_denominator_option,
         );
         set_value_via_option_vector(
-            &mut market_parameters_ref_mut.eviction_liquidity_divisor,
-            &eviction_liquidity_divisor_option,
+            &mut market_parameters_ref_mut.eviction_price_ratio_bid.numerator,
+            &eviction_price_ratio_bid_numerator_option,
+        );
+        set_value_via_option_vector(
+            &mut market_parameters_ref_mut.eviction_price_ratio_bid.denominator,
+            &eviction_price_ratio_bid_denominator_option,
+        );
+        set_value_via_option_vector(
+            &mut market_parameters_ref_mut.eviction_liquidity_ratio.numerator,
+            &eviction_liquidity_ratio_numerator_option,
+        );
+        set_value_via_option_vector(
+            &mut market_parameters_ref_mut.eviction_liquidity_ratio.denominator,
+            &eviction_liquidity_ratio_denominator_option,
         );
         set_value_via_option_vector(
             &mut market_parameters_ref_mut.inner_node_order,
@@ -489,9 +512,18 @@ module econia::core {
                 protocol_fee_rate: GENESIS_DEFAULT_PROTOCOL_FEE_RATE,
                 max_price_sig_figs: GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
                 eviction_tree_height: GENESIS_DEFAULT_EVICTION_TREE_HEIGHT,
-                eviction_price_divisor_ask: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
-                eviction_price_divisor_bid: GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
-                eviction_liquidity_divisor: GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR,
+                eviction_price_ratio_ask: Rational {
+                    numerator: GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_NUMERATOR,
+                    denominator: GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_DENOMINATOR,
+                },
+                eviction_price_ratio_bid: Rational {
+                    numerator: GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_NUMERATOR,
+                    denominator: GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_DENOMINATOR,
+                },
+                eviction_liquidity_ratio: Rational {
+                    numerator: GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_NUMERATOR,
+                    denominator: GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR,
+                },
                 inner_node_order: GENESIS_DEFAULT_INNER_NODE_ORDER,
                 leaf_node_order: GENESIS_DEFAULT_LEAF_NODE_ORDER,
             },
@@ -573,9 +605,12 @@ module econia::core {
         protocol_fee_rate: u16,
         max_price_sig_figs: u8,
         eviction_tree_height: u8,
-        eviction_price_divisor_ask: u128,
-        eviction_price_divisor_bid: u128,
-        eviction_liquidity_divisor: u128,
+        eviction_price_ratio_ask_numerator: u64,
+        eviction_price_ratio_ask_denominator: u64,
+        eviction_price_ratio_bid_numerator: u64,
+        eviction_price_ratio_bid_denominator: u64,
+        eviction_liquidity_ratio_numerator: u64,
+        eviction_liquidity_ratio_denominator: u64,
         inner_node_order: u8,
         leaf_node_order: u8,
     ) {
@@ -583,9 +618,15 @@ module econia::core {
         assert!(market_parameters.protocol_fee_rate == protocol_fee_rate, 0);
         assert!(market_parameters.max_price_sig_figs == max_price_sig_figs, 0);
         assert!(market_parameters.eviction_tree_height == eviction_tree_height, 0);
-        assert!(market_parameters.eviction_price_divisor_ask == eviction_price_divisor_ask, 0);
-        assert!(market_parameters.eviction_price_divisor_bid == eviction_price_divisor_bid, 0);
-        assert!(market_parameters.eviction_liquidity_divisor == eviction_liquidity_divisor, 0);
+        let ratio = market_parameters.eviction_price_ratio_ask;
+        assert!(ratio.numerator == eviction_price_ratio_ask_numerator, 0);
+        assert!(ratio.denominator == eviction_price_ratio_ask_denominator, 0);
+        ratio = market_parameters.eviction_price_ratio_bid;
+        assert!(ratio.numerator == eviction_price_ratio_bid_numerator, 0);
+        assert!(ratio.denominator == eviction_price_ratio_bid_denominator, 0);
+        ratio = market_parameters.eviction_liquidity_ratio;
+        assert!(ratio.numerator == eviction_liquidity_ratio_numerator, 0);
+        assert!(ratio.denominator == eviction_liquidity_ratio_denominator, 0);
         assert!(market_parameters.inner_node_order == inner_node_order, 0);
         assert!(market_parameters.leaf_node_order == leaf_node_order, 0);
     }
@@ -890,9 +931,12 @@ module econia::core {
             GENESIS_DEFAULT_PROTOCOL_FEE_RATE,
             GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
             GENESIS_DEFAULT_EVICTION_TREE_HEIGHT,
-            GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
-            GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
-            GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_NUMERATOR,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_DENOMINATOR,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_NUMERATOR,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_DENOMINATOR,
+            GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_NUMERATOR,
+            GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR,
             GENESIS_DEFAULT_INNER_NODE_ORDER,
             GENESIS_DEFAULT_LEAF_NODE_ORDER,
         );
@@ -1074,6 +1118,9 @@ module econia::core {
             vector[2],
             vector[3],
             vector[4],
+            vector[5],
+            vector[6],
+            vector[],
             vector[],
             vector[],
             vector[],
@@ -1092,10 +1139,13 @@ module econia::core {
             2,
             3,
             4,
-            GENESIS_DEFAULT_EVICTION_TREE_HEIGHT,
-            GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_ASK,
-            GENESIS_DEFAULT_EVICTION_PRICE_DIVISOR_BID,
-            GENESIS_DEFAULT_EVICTION_LIQUIDITY_DIVISOR,
+            5,
+            6,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_DENOMINATOR,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_NUMERATOR,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_DENOMINATOR,
+            GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_NUMERATOR,
+            GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR,
             GENESIS_DEFAULT_INNER_NODE_ORDER,
             GENESIS_DEFAULT_LEAF_NODE_ORDER,
         );
@@ -1105,24 +1155,30 @@ module econia::core {
             vector[],
             vector[],
             vector[],
-            vector[5],
-            vector[6],
+            vector[],
+            vector[],
             vector[7],
             vector[8],
             vector[9],
             vector[10],
+            vector[11],
+            vector[12],
+            vector[13],
         );
         assert_market_parameters(
             borrow_registry().default_market_parameters,
             GENESIS_DEFAULT_POOL_FEE_RATE,
             GENESIS_DEFAULT_PROTOCOL_FEE_RATE,
             GENESIS_DEFAULT_MAX_PRICE_SIG_FIGS,
-            5,
-            6,
+            GENESIS_DEFAULT_EVICTION_TREE_HEIGHT,
+            GENESIS_DEFAULT_EVICTION_PRICE_RATIO_ASK_NUMERATOR,
             7,
             8,
             9,
             10,
+            11,
+            12,
+            13,
         )
     }
 
@@ -1132,6 +1188,9 @@ module econia::core {
         update_market_parameters(
             &get_signer(@econia),
             vector[2],
+            vector[],
+            vector[],
+            vector[],
             vector[],
             vector[],
             vector[],
