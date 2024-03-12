@@ -23,6 +23,10 @@ module econia::core {
     const GENESIS_MARKET_REGISTRATION_FEE: u64 = 100_000_000;
     const GENESIS_ORACLE_FEE: u64 = 0;
     const GENESIS_INTEGRATOR_WITHDRAWAL_FEE: u64 = 0;
+    const GENESIS_BOOK_MAP_INNER_NODE_ORDER: u16 = 7;
+    const GENESIS_BOOK_MAP_LEAF_NODE_ORDER: u16 = 10;
+    const GENESIS_TICK_MAP_INNER_NODE_ORDER: u16 = 20;
+    const GENESIS_TICK_MAP_LEAF_NODE_ORDER: u16 = 12;
 
     const GENESIS_DEFAULT_POOL_FEE_RATE: u16 = 3_000;
     const GENESIS_DEFAULT_PROTOCOL_FEE_RATE: u16 = 0;
@@ -124,6 +128,13 @@ module econia::core {
         market_registration_fee: u64,
         oracle_fee: u64,
         integrator_withdrawal_fee: u64,
+        book_map_node_orders: NewMarketNodeOrders,
+        tick_map_node_orders: NewMarketNodeOrders,
+    }
+
+    struct NewMarketNodeOrders has copy, drop, store {
+        inner_node_order: u16,
+        leaf_node_order: u16,
     }
 
     struct Registry has key {
@@ -346,6 +357,10 @@ module econia::core {
         market_registration_fee_option: vector<u64>,
         oracle_fee_option: vector<u64>,
         integrator_withdrawal_fee_option: vector<u64>,
+        book_map_inner_node_order_option: vector<u16>,
+        book_map_leaf_node_order_option: vector<u16>,
+        tick_map_inner_node_order_option: vector<u16>,
+        tick_map_leaf_node_order_option: vector<u16>,
     ) acquires Registry {
         assert_signer_is_econia(econia);
         let registry_parameters_ref_mut = &mut borrow_registry_mut().registry_parameters;
@@ -364,6 +379,22 @@ module econia::core {
         set_value_via_option_vector(
             &mut registry_parameters_ref_mut.integrator_withdrawal_fee,
             &integrator_withdrawal_fee_option,
+        );
+        set_value_via_option_vector(
+            &mut registry_parameters_ref_mut.book_map_node_orders.inner_node_order,
+            &book_map_inner_node_order_option,
+        );
+        set_value_via_option_vector(
+            &mut registry_parameters_ref_mut.book_map_node_orders.leaf_node_order,
+            &book_map_leaf_node_order_option,
+        );
+        set_value_via_option_vector(
+            &mut registry_parameters_ref_mut.tick_map_node_orders.inner_node_order,
+            &tick_map_inner_node_order_option,
+        );
+        set_value_via_option_vector(
+            &mut registry_parameters_ref_mut.tick_map_node_orders.leaf_node_order,
+            &tick_map_leaf_node_order_option,
         );
     }
 
@@ -444,6 +475,14 @@ module econia::core {
                 market_registration_fee: GENESIS_MARKET_REGISTRATION_FEE,
                 oracle_fee: GENESIS_ORACLE_FEE,
                 integrator_withdrawal_fee: GENESIS_INTEGRATOR_WITHDRAWAL_FEE,
+                book_map_node_orders: NewMarketNodeOrders {
+                    inner_node_order: GENESIS_BOOK_MAP_INNER_NODE_ORDER,
+                    leaf_node_order: GENESIS_BOOK_MAP_LEAF_NODE_ORDER,
+                },
+                tick_map_node_orders: NewMarketNodeOrders {
+                    inner_node_order: GENESIS_TICK_MAP_INNER_NODE_ORDER,
+                    leaf_node_order: GENESIS_TICK_MAP_LEAF_NODE_ORDER,
+                },
             },
             default_market_parameters: MarketParameters {
                 pool_fee_rate: GENESIS_DEFAULT_POOL_FEE_RATE,
@@ -596,6 +635,10 @@ module econia::core {
         market_registration_fee: u64,
         oracle_fee: u64,
         integrator_withdrawal_fee: u64,
+        book_map_inner_node_order: u16,
+        book_map_leaf_node_order: u16,
+        tick_map_inner_node_order: u16,
+        tick_map_leaf_node_order: u16,
     ) {
         let utility_asset_metadata_address_to_check =
             object::object_address(&registry_parameters.utility_asset_metadata);
@@ -603,6 +646,12 @@ module econia::core {
         assert!(registry_parameters.market_registration_fee == market_registration_fee, 0);
         assert!(registry_parameters.oracle_fee == oracle_fee, 0);
         assert!(registry_parameters.integrator_withdrawal_fee == integrator_withdrawal_fee, 0);
+        let node_orders = registry_parameters.book_map_node_orders;
+        assert!(node_orders.inner_node_order == book_map_inner_node_order, 0);
+        assert!(node_orders.leaf_node_order == book_map_leaf_node_order, 0);
+        node_orders = registry_parameters.tick_map_node_orders;
+        assert!(node_orders.inner_node_order == tick_map_inner_node_order, 0);
+        assert!(node_orders.leaf_node_order == tick_map_leaf_node_order, 0);
     }
 
     #[test_only]
@@ -830,6 +879,10 @@ module econia::core {
             GENESIS_MARKET_REGISTRATION_FEE,
             GENESIS_ORACLE_FEE,
             GENESIS_INTEGRATOR_WITHDRAWAL_FEE,
+            GENESIS_BOOK_MAP_INNER_NODE_ORDER,
+            GENESIS_BOOK_MAP_LEAF_NODE_ORDER,
+            GENESIS_TICK_MAP_INNER_NODE_ORDER,
+            GENESIS_TICK_MAP_LEAF_NODE_ORDER,
         );
         assert_market_parameters(
             registry_ref.default_market_parameters,
@@ -962,13 +1015,27 @@ module econia::core {
     fun test_update_registry_parameters() acquires Registry {
         ensure_module_initialized_for_test();
         let econia = get_signer(@econia);
-        update_registry_parameters(&econia, vector[], vector[], vector[], vector[]);
+        update_registry_parameters(
+            &econia,
+            vector[],
+            vector[],
+            vector[],
+            vector[],
+            vector[],
+            vector[],
+            vector[],
+            vector[],
+        );
         assert_registry_parameters(
             borrow_registry().registry_parameters,
             GENESIS_UTILITY_ASSET_METADATA_ADDRESS,
             GENESIS_MARKET_REGISTRATION_FEE,
             GENESIS_ORACLE_FEE,
             GENESIS_INTEGRATOR_WITHDRAWAL_FEE,
+            GENESIS_BOOK_MAP_INNER_NODE_ORDER,
+            GENESIS_BOOK_MAP_LEAF_NODE_ORDER,
+            GENESIS_TICK_MAP_INNER_NODE_ORDER,
+            GENESIS_TICK_MAP_LEAF_NODE_ORDER,
         );
         test_assets::ensure_assets_initialized();
         let (new_metadata, _) = test_assets::get_metadata();
@@ -978,7 +1045,11 @@ module econia::core {
             vector[new_metadata_address],
             vector[1],
             vector[2],
-            vector[3]
+            vector[3],
+            vector[4],
+            vector[5],
+            vector[6],
+            vector[7],
         );
         assert_registry_parameters(
             borrow_registry().registry_parameters,
@@ -986,6 +1057,10 @@ module econia::core {
             1,
             2,
             3,
+            4,
+            5,
+            6,
+            7
         );
     }
 
