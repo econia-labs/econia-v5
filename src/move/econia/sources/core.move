@@ -118,7 +118,7 @@ module econia::core {
     }
 
     struct OpenOrdersByMarket has key {
-        map: SmartTable<TradingPair, OpenOrdersMetadata>,
+        map: SmartTable<u64, OpenOrdersMetadata>,
     }
 
     struct Null has drop, key, store {}
@@ -229,12 +229,12 @@ module econia::core {
         if (!exists<OpenOrdersByMarket>(user_address)) {
             move_to(user, OpenOrdersByMarket { map: smart_table::new() });
         };
-        let open_orders_map_ref_mut = &mut borrow_global_mut<OpenOrdersByMarket>(user_address).map;
-        let trading_pair = TradingPair { base_metadata, quote_metadata };
-        if (smart_table::contains(open_orders_map_ref_mut, trading_pair)) return;
         ensure_market_registered(user, base_metadata, quote_metadata);
+        let trading_pair = TradingPair { base_metadata, quote_metadata };
         let (market_id, market_address) =
             get_market_id_and_address_for_registered_pair(trading_pair);
+        let open_orders_map_ref_mut = &mut borrow_global_mut<OpenOrdersByMarket>(user_address).map;
+        if (smart_table::contains(open_orders_map_ref_mut, market_id)) return;
         let (constructor_ref, _) = create_nontransferable_sticky_object(user_address);
         let open_orders_address = object::address_from_constructor_ref(&constructor_ref);
         move_to(&object::generate_signer(&constructor_ref), OpenOrders {
@@ -246,7 +246,7 @@ module econia::core {
         });
         smart_table::add(
             open_orders_map_ref_mut,
-            trading_pair,
+            market_id,
             OpenOrdersMetadata {
                 market_id,
                 trading_pair,
@@ -746,7 +746,7 @@ module econia::core {
         ensure_open_orders_registered(&get_signer(USER_FOR_TEST), base_metadata, quote_metadata);
         let open_orders_by_market_map_ref = &borrow_global<OpenOrdersByMarket>(USER_FOR_TEST).map;
         let open_orders_metadata_ref =
-            smart_table::borrow(open_orders_by_market_map_ref, get_test_trading_pair());
+            smart_table::borrow(open_orders_by_market_map_ref, MARKET_ID_FOR_TEST);
         let open_orders_address = open_orders_metadata_ref.open_orders_address;
         (market_address, open_orders_address)
     }
@@ -968,7 +968,7 @@ module econia::core {
         let market_address = market_metadata.market_address;
         let open_orders_by_market_map_ref = &borrow_global<OpenOrdersByMarket>(USER_FOR_TEST).map;
         let open_orders_metadata =
-            *smart_table::borrow(open_orders_by_market_map_ref, trading_pair);
+            *smart_table::borrow(open_orders_by_market_map_ref, MARKET_ID_FOR_TEST);
         assert!(open_orders_metadata.market_id == MARKET_ID_FOR_TEST, 0);
         assert!(open_orders_metadata.trading_pair == trading_pair, 0);
         assert!(open_orders_metadata.market_address == market_address, 0);
