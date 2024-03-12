@@ -598,13 +598,6 @@ module econia::core {
     }
 
     #[test_only]
-    public fun get_test_market_address(): address acquires Registry {
-        ensure_market_registered_for_test();
-        let registry_ref = borrow_global<Registry>(@econia);
-        table_with_length::borrow(&registry_ref.markets, MARKET_ID_FOR_TEST).market_address
-    }
-
-    #[test_only]
     public fun get_test_trading_pair(): TradingPair {
         let (base_metadata, quote_metadata) = test_assets::get_metadata();
         TradingPair { base_metadata, quote_metadata }
@@ -625,18 +618,23 @@ module econia::core {
     }
 
     #[test_only]
-    public fun ensure_market_registered_for_test() acquires Registry {
+    public fun ensure_market_registered_for_test(): address acquires Registry {
         ensure_module_initialized_for_test();
         let trading_pair = get_test_trading_pair();
         let registry_ref = borrow_global<Registry>(@econia);
-        if (table::contains(&registry_ref.trading_pair_market_ids, trading_pair)) return;
-        mint_fa_apt_to_market_registrant();
-        let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
-        ensure_market_registered(
-            &registrant,
-            trading_pair.base_metadata,
-            trading_pair.quote_metadata
-        );
+        if (!table::contains(&registry_ref.trading_pair_market_ids, trading_pair)) {
+            mint_fa_apt_to_market_registrant();
+            let registrant = get_signer(MARKET_REGISTRANT_FOR_TEST);
+            ensure_market_registered(
+                &registrant,
+                trading_pair.base_metadata,
+                trading_pair.quote_metadata
+            );
+        };
+        let registry_ref = borrow_global<Registry>(@econia);
+        let market_address =
+            table_with_length::borrow(&registry_ref.markets, MARKET_ID_FOR_TEST).market_address;
+        market_address
     }
 
     #[test_only]
@@ -661,10 +659,9 @@ module econia::core {
         OpenOrdersByMarket,
         Registry
     {
-        ensure_market_registered_for_test();
+        let market_address = ensure_market_registered_for_test();
         let (base_metadata, quote_metadata) = test_assets::get_metadata();
         ensure_open_orders_registered(&get_signer(USER_FOR_TEST), base_metadata, quote_metadata);
-        let market_address = get_test_market_address();
         let open_orders_by_market_map_ref = &borrow_global<OpenOrdersByMarket>(USER_FOR_TEST).map;
         let open_orders_metadata_ref =
             smart_table::borrow(open_orders_by_market_map_ref, get_test_trading_pair());
@@ -715,8 +712,7 @@ module econia::core {
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_BASE)]
     fun test_assert_market_fully_collateralized_market_not_collateralized_base()
     acquires Market, Registry {
-        ensure_market_registered_for_test();
-        let market_address = get_test_market_address();
+        let market_address = ensure_market_registered_for_test();
         let market_ref_mut = borrow_global_mut<Market>(market_address);
         market_ref_mut.base_balances.pool_liquidity = 1;
         assert_market_fully_collateralized(borrow_global<Market>(market_address));
@@ -725,8 +721,7 @@ module econia::core {
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_QUOTE)]
     fun test_assert_market_fully_collateralized_market_not_collateralized_quote()
     acquires Market, Registry {
-        ensure_market_registered_for_test();
-        let market_address = get_test_market_address();
+        let market_address = ensure_market_registered_for_test();
         let market_ref_mut = borrow_global_mut<Market>(market_address);
         market_ref_mut.quote_balances.pool_liquidity = 1;
         assert_market_fully_collateralized(borrow_global<Market>(market_address));
