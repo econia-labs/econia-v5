@@ -99,8 +99,6 @@ module econia::core {
         eviction_price_ratio_ask: Rational,
         eviction_price_ratio_bid: Rational,
         eviction_liquidity_ratio: Rational,
-        inner_node_order: u8,
-        leaf_node_order: u8,
     }
 
     struct Rational has copy, drop, store {
@@ -278,8 +276,6 @@ module econia::core {
         eviction_price_ratio_bid_denominator_option: vector<u64>,
         eviction_liquidity_ratio_numerator_option: vector<u64>,
         eviction_liquidity_ratio_denominator_option: vector<u64>,
-        inner_node_order_option: vector<u8>,
-        leaf_node_order_option: vector<u8>,
     ) acquires Market, Registry {
         assert_signer_is_econia(econia);
         assert_option_vector_is_valid_length(&market_id_option);
@@ -337,14 +333,6 @@ module econia::core {
         set_value_via_option_vector(
             &mut market_parameters_ref_mut.eviction_liquidity_ratio.denominator,
             &eviction_liquidity_ratio_denominator_option,
-        );
-        set_value_via_option_vector(
-            &mut market_parameters_ref_mut.inner_node_order,
-            &inner_node_order_option,
-        );
-        set_value_via_option_vector(
-            &mut market_parameters_ref_mut.leaf_node_order,
-            &leaf_node_order_option,
         );
         if (!updating_default_parameters) {
             borrow_global_mut<Market>(market_address).market_parameters =
@@ -524,8 +512,6 @@ module econia::core {
                     numerator: GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_NUMERATOR,
                     denominator: GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR,
                 },
-                inner_node_order: GENESIS_DEFAULT_INNER_NODE_ORDER,
-                leaf_node_order: GENESIS_DEFAULT_LEAF_NODE_ORDER,
             },
         });
         move_to(econia, Status { active: true });
@@ -611,8 +597,6 @@ module econia::core {
         eviction_price_ratio_bid_denominator: u64,
         eviction_liquidity_ratio_numerator: u64,
         eviction_liquidity_ratio_denominator: u64,
-        inner_node_order: u8,
-        leaf_node_order: u8,
     ) {
         assert!(market_parameters.pool_fee_rate == pool_fee_rate, 0);
         assert!(market_parameters.protocol_fee_rate == protocol_fee_rate, 0);
@@ -627,8 +611,6 @@ module econia::core {
         ratio = market_parameters.eviction_liquidity_ratio;
         assert!(ratio.numerator == eviction_liquidity_ratio_numerator, 0);
         assert!(ratio.denominator == eviction_liquidity_ratio_denominator, 0);
-        assert!(market_parameters.inner_node_order == inner_node_order, 0);
-        assert!(market_parameters.leaf_node_order == leaf_node_order, 0);
     }
 
     #[test_only]
@@ -937,8 +919,6 @@ module econia::core {
             GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_DENOMINATOR,
             GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_NUMERATOR,
             GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR,
-            GENESIS_DEFAULT_INNER_NODE_ORDER,
-            GENESIS_DEFAULT_LEAF_NODE_ORDER,
         );
     }
 
@@ -1125,8 +1105,6 @@ module econia::core {
             vector[],
             vector[],
             vector[],
-            vector[],
-            vector[],
         );
         let registry = borrow_registry();
         let markets_ref = &registry.markets;
@@ -1146,8 +1124,6 @@ module econia::core {
             GENESIS_DEFAULT_EVICTION_PRICE_RATIO_BID_DENOMINATOR,
             GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_NUMERATOR,
             GENESIS_DEFAULT_EVICTION_LIQUIDITY_RATIO_DENOMINATOR,
-            GENESIS_DEFAULT_INNER_NODE_ORDER,
-            GENESIS_DEFAULT_LEAF_NODE_ORDER,
         );
         update_market_parameters(
             &econia,
@@ -1162,8 +1138,6 @@ module econia::core {
             vector[9],
             vector[10],
             vector[11],
-            vector[12],
-            vector[13],
         );
         assert_market_parameters(
             borrow_registry().default_market_parameters,
@@ -1177,8 +1151,6 @@ module econia::core {
             9,
             10,
             11,
-            12,
-            13,
         )
     }
 
@@ -1188,8 +1160,6 @@ module econia::core {
         update_market_parameters(
             &get_signer(@econia),
             vector[2],
-            vector[],
-            vector[],
             vector[],
             vector[],
             vector[],
