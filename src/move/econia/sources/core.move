@@ -713,6 +713,7 @@ module econia::core {
         Registry,
     {
         let (_, open_orders_address) = ensure_open_orders_registered_for_test();
+        assert_open_orders_exists(open_orders_address);
         assert_open_orders_owner(borrow_global<OpenOrders>(open_orders_address), USER_FOR_TEST);
     }
 
@@ -748,6 +749,7 @@ module econia::core {
         balances_ref_mut.unclaimed_pool_fees = 12;
         balances_ref_mut.unclaimed_protocol_fees = 24;
         test_assets::mint(market_address, 30, 36);
+        assert_market_fully_collateralized(market_ref_mut);
         assert!(socialize_withdrawal_amount(market_ref_mut, 5, true) == 5, 0);
         assert!(socialize_withdrawal_amount(market_ref_mut, 8, false) == 8, 0);
         test_assets::burn(market_address, 15, 12);
