@@ -55,7 +55,9 @@ module econia::core {
     /// Requested withdrawal amount exceeds expected vault balance for base.
     const E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_BASE: u64 = 9;
     /// Requested withdrawal amount exceeds expected vault balance for quote.
-    const E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_QUOTE: u64 = 9;
+    const E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_QUOTE: u64 = 10;
+    /// The protocol is inactive.
+    const E_INACTIVE: u64 = 11;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -132,6 +134,10 @@ module econia::core {
         default_market_parameters: MarketParameters,
     }
 
+    struct Status has key {
+        active: bool,
+    }
+
     struct TradingPair has copy, drop, store {
         base_metadata: Object<Metadata>,
         quote_metadata: Object<Metadata>,
@@ -141,11 +147,15 @@ module econia::core {
         registrant: &signer,
         base_metadata: Object<Metadata>,
         quote_metadata: Object<Metadata>,
-    ) acquires Registry {
+    ) acquires
+        Registry,
+        Status
+    {
         let registry_ref_mut = borrow_registry_mut();
         let trading_pair = TradingPair { base_metadata, quote_metadata };
         let trading_pair_market_ids_ref_mut = &mut registry_ref_mut.trading_pair_market_ids;
         if (table::contains(trading_pair_market_ids_ref_mut, trading_pair)) return;
+        assert_active_status();
         assert!(base_metadata != quote_metadata, E_BASE_QUOTE_METADATA_SAME);
         let utility_asset_metadata = registry_ref_mut.registry_parameters.utility_asset_metadata;
         let market_registration_fee = registry_ref_mut.registry_parameters.market_registration_fee;
@@ -198,7 +208,12 @@ module econia::core {
         user: &signer,
         base_metadata: Object<Metadata>,
         quote_metadata: Object<Metadata>,
-    ) acquires OpenOrdersByMarket, Registry {
+    ) acquires
+        OpenOrdersByMarket,
+        Registry,
+        Status,
+    {
+        assert_active_status();
         let user_address = signer::address_of(user);
         if (!exists<OpenOrdersByMarket>(user_address)) {
             move_to(user, OpenOrdersByMarket { map: smart_table::new() });
@@ -352,6 +367,15 @@ module econia::core {
         );
     }
 
+    public entry fun set_status(econia: &signer, active: bool) acquires Status {
+        assert_signer_is_econia(econia);
+        borrow_global_mut<Status>(@econia).active = active
+    }
+
+    fun assert_active_status() acquires Status {
+        assert!(borrow_global<Status>(@econia).active, E_INACTIVE);
+    }
+
     fun assert_open_orders_exists(
         open_orders_address: address,
     ) {
@@ -433,6 +457,7 @@ module econia::core {
                 leaf_node_order: GENESIS_DEFAULT_LEAF_NODE_ORDER,
             },
         });
+        move_to(econia, Status { active: true });
     }
 
     fun assert_signer_is_econia(account: &signer) {
@@ -625,7 +650,7 @@ module econia::core {
     }
 
     #[test_only]
-    public fun ensure_market_registered_for_test(): address acquires Registry {
+    public fun ensure_market_registered_for_test(): address acquires Registry, Status {
         ensure_module_initialized_for_test();
         let trading_pair = get_test_trading_pair();
         let registry_ref = borrow_global<Registry>(@econia);
@@ -645,7 +670,7 @@ module econia::core {
     }
 
     #[test_only]
-    public fun ensure_markets_registered_for_test() acquires Registry {
+    public fun ensure_markets_registered_for_test() acquires Registry, Status  {
         ensure_market_registered_for_test();
         let trading_pair_flipped = get_test_trading_pair_flipped();
         let registry_ref = borrow_global<Registry>(@econia);
@@ -664,7 +689,8 @@ module econia::core {
         address
     ) acquires
         OpenOrdersByMarket,
-        Registry
+        Registry,
+        Status
     {
         let market_address = ensure_market_registered_for_test();
         let (base_metadata, quote_metadata) = test_assets::get_metadata();
@@ -678,6 +704,16 @@ module econia::core {
 
     #[test_only]
     public fun get_signer(addr: address): signer { account::create_signer_for_test(addr) }
+
+    #[test, expected_failure(abort_code = E_INACTIVE)]
+    fun test_assert_active_status_inactive() acquires Status {
+        ensure_module_initialized_for_test();
+        set_status(&get_signer(@econia), false);
+        assert_active_status();
+    }
+
+    #[test, expected_failure(abort_code = E_NOT_ECONIA)]
+    fun test_set_status_not_econia() acquires Status { set_status(&get_signer(@0x0), false); }
 
     #[test, expected_failure(abort_code = E_NOT_ECONIA)]
     fun test_assert_signer_is_econia_not_econia() {
@@ -700,6 +736,7 @@ module econia::core {
         OpenOrders,
         OpenOrdersByMarket,
         Registry,
+        Status,
     {
         let (_, open_orders_address) = ensure_open_orders_registered_for_test();
         assert_open_orders_owner(borrow_global<OpenOrders>(open_orders_address), @0x0);
@@ -711,6 +748,7 @@ module econia::core {
         OpenOrders,
         OpenOrdersByMarket,
         Registry,
+        Status,
     {
         let (_, open_orders_address) = ensure_open_orders_registered_for_test();
         assert_open_orders_exists(open_orders_address);
@@ -719,7 +757,7 @@ module econia::core {
 
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_BASE)]
     fun test_assert_market_fully_collateralized_market_not_collateralized_base()
-    acquires Market, Registry {
+    acquires Market, Registry, Status {
         let market_address = ensure_market_registered_for_test();
         let market_ref_mut = borrow_global_mut<Market>(market_address);
         market_ref_mut.base_balances.pool_liquidity = 1;
@@ -728,7 +766,7 @@ module econia::core {
 
     #[test, expected_failure(abort_code = E_MARKET_NOT_COLLATERALIZED_QUOTE)]
     fun test_assert_market_fully_collateralized_market_not_collateralized_quote()
-    acquires Market, Registry {
+    acquires Market, Registry, Status {
         let market_address = ensure_market_registered_for_test();
         let market_ref_mut = borrow_global_mut<Market>(market_address);
         market_ref_mut.quote_balances.pool_liquidity = 1;
@@ -736,7 +774,7 @@ module econia::core {
     }
 
     #[test]
-    fun test_socialize_withdrawal_amount() acquires Market, Registry {
+    fun test_socialize_withdrawal_amount() acquires Market, Registry, Status{
         let market_address = ensure_market_registered_for_test();
         let market_ref_mut = borrow_global_mut<Market>(market_address);
         assert!(socialize_withdrawal_amount(market_ref_mut, 0, true) == 0, 0);
@@ -759,7 +797,7 @@ module econia::core {
 
     #[test, expected_failure(abort_code = E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_BASE)]
     fun test_socialize_withdrawal_amount_withdrawal_exceeds_expected_vault_balance_base()
-    acquires Market, Registry {
+    acquires Market, Registry, Status {
         let market_address = ensure_market_registered_for_test();
         let market_ref = borrow_global<Market>(market_address);
         socialize_withdrawal_amount(market_ref, 10, true);
@@ -767,7 +805,7 @@ module econia::core {
 
     #[test, expected_failure(abort_code = E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_QUOTE)]
     fun test_socialize_withdrawal_amount_withdrawal_exceeds_expected_vault_balance_quote()
-    acquires Market, Registry {
+    acquires Market, Registry, Status {
         let market_address = ensure_market_registered_for_test();
         let market_ref = borrow_global<Market>(market_address);
         socialize_withdrawal_amount(market_ref, 10, false);
@@ -808,7 +846,7 @@ module econia::core {
     }
 
     #[test]
-    fun test_ensure_market_registered() acquires Market, Registry {
+    fun test_ensure_market_registered() acquires Market, Registry, Status {
         ensure_markets_registered_for_test();
         let registry_ref = borrow_registry();
         let trading_pair_market_ids_ref = &registry_ref.trading_pair_market_ids;
@@ -840,7 +878,7 @@ module econia::core {
     }
 
     #[test, expected_failure(abort_code = E_NOT_ENOUGH_UTILITY_ASSET_TO_REGISTER_MARKET)]
-    fun test_ensure_market_registered_not_enough_utility_asset() acquires Registry {
+    fun test_ensure_market_registered_not_enough_utility_asset() acquires Registry, Status {
         ensure_market_registered_for_test();
         let (base_metadata, quote_metadata) = test_assets::get_metadata();
         ensure_market_registered(
@@ -851,14 +889,19 @@ module econia::core {
     }
 
     #[test, expected_failure(abort_code = E_BASE_QUOTE_METADATA_SAME)]
-    fun test_ensure_market_registered_base_quote_metadata_same() acquires Registry {
+    fun test_ensure_market_registered_base_quote_metadata_same() acquires Registry, Status {
         ensure_module_initialized_for_test();
         let (metadata, _) = test_assets::get_metadata();
         ensure_market_registered(&get_signer(MARKET_REGISTRANT_FOR_TEST), metadata, metadata);
     }
 
     #[test]
-    fun test_ensure_open_orders_registered() acquires OpenOrders, OpenOrdersByMarket, Registry {
+    fun test_ensure_open_orders_registered() acquires
+        OpenOrders,
+        OpenOrdersByMarket,
+        Registry,
+        Status
+    {
         ensure_market_registered_for_test();
         let (base_metadata, quote_metadata) = test_assets::get_metadata();
         ensure_open_orders_registered(
@@ -892,7 +935,7 @@ module econia::core {
     }
 
     #[test]
-    fun test_update_recognized_markets() acquires Registry {
+    fun test_update_recognized_markets() acquires Registry, Status {
         ensure_markets_registered_for_test();
         let registry_ref = borrow_registry();
         assert!(!smart_table::contains(&registry_ref.recognized_market_ids, 1), 0);
@@ -947,7 +990,7 @@ module econia::core {
     }
 
     #[test]
-    fun test_update_market_parameters() acquires Market, Registry {
+    fun test_update_market_parameters() acquires Market, Registry, Status {
         ensure_market_registered_for_test();
         let econia = get_signer(@econia);
         update_market_parameters(
@@ -1009,7 +1052,7 @@ module econia::core {
     }
 
     #[test, expected_failure(abort_code = E_INVALID_MARKET_ID)]
-    fun test_update_market_parameters_invalid_market_id() acquires Market, Registry {
+    fun test_update_market_parameters_invalid_market_id() acquires Market, Registry, Status {
         ensure_market_registered_for_test();
         update_market_parameters(
             &get_signer(@econia),
