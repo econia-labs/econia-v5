@@ -26,22 +26,27 @@ def check_file_naming(file_path, pattern):
     return re.match(pattern, file_path.name)
 
 def main():
-    config = load_config()
-    if set(config.values()) - set(NAMING_CONVENTIONS.keys()):
-        print('Error: Unrecognized naming convention in file-name-conventions.yaml')
-        print('Unrecognized naming conventions:', ', '.join(set(config.values()) - set(NAMING_CONVENTIONS.keys())))
-        sys.exit(1)
-    default_case = config.get('default', 'snake_case')  # Default case if not specified
-    default_regex = NAMING_CONVENTIONS[default_case]
+    config = load_config()  # Load the configuration
+    default_case = config.get('default', 'snake_case')  # Get the default case
+    filetypes = config.get('filetypes', {})  # Get the file type specific conventions
 
+    # Validate the naming conventions against known conventions
+    all_conventions = set(filetypes.values()).union({default_case})
+    unrecognized_conventions = all_conventions - set(NAMING_CONVENTIONS.keys())
+    if unrecognized_conventions:
+        print('Error: Unrecognized naming convention in file-name-conventions.yaml')
+        print('Unrecognized naming conventions:', ', '.join(unrecognized_conventions))
+        sys.exit(1)
+
+    # Retrieve all tracked files
     cmd = ['git', 'ls-files']
     files = subprocess.check_output(cmd).decode().splitlines()
 
     errors = False
     for file_path in files:
-        extension = '' if '.' not in file_path else file_path.split('.')[-1]
-        case = config.get(extension, default_case)
-        regex = NAMING_CONVENTIONS.get(case, re.compile(f'{default_regex}{extension}$'))
+        extension = file_path.split('.')[-1] if '.' in file_path else ''
+        case = filetypes.get(extension, default_case)
+        regex = NAMING_CONVENTIONS.get(case, default_case)
 
         if not check_file_naming(Path(file_path), regex):
             print(f'Error: {file_path} does not follow {case} naming convention')
