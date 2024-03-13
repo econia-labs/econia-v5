@@ -11,6 +11,14 @@ repos:
   repo: 'local'
 -
   hooks:
+  -
+    entry: './src/python/file-name-conventions.py'
+    id: 'file-name-conventions'
+    language: 'script'
+    name: 'Ensure File Name Conventions'
+  repo: 'local'
+-
+  hooks:
   - id: 'check-added-large-files'
   - id: 'check-case-conflict'
   - id: 'detect-private-key'
