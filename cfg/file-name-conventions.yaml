@@ -2,13 +2,12 @@
 # Options: snake_case, kebab-case, camelCase, PascalCase, UPPER_CASE,
 # and * for any case.
 default: 'kebab-case'
-java: 'camelCase'
+js: 'kebab-case'
 md: '*'
 move: 'snake_case'
 py: 'kebab-case'
 rs: 'snake_case'
 toml: 'PascalCase'
 ts: 'kebab-case'
-tsx: 'PascalCase'
 yaml: 'kebab-case'
 ...

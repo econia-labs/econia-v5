@@ -39,7 +39,7 @@ def main():
 
     errors = False
     for file_path in files:
-        extension = file_path.split('.')[-1]
+        extension = '' if '.' not in file_path else file_path.split('.')[-1]
         case = config.get(extension, default_case)
         regex = NAMING_CONVENTIONS.get(case, re.compile(f'{default_regex}{extension}$'))
 
