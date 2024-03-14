@@ -49,8 +49,6 @@ repos:
     types:
     - 'python'
   -
-    args:
-    - '--ignore-missing-imports'
     entry: 'poetry run mypy'
     id: 'mypy'
     language: 'system'
