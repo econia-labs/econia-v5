@@ -8,7 +8,7 @@ filetypes:
   move: 'snake_case'
   py: 'kebab-case'
   rs: 'snake_case'
-  toml: 'PascalCase'
+  toml: '*'
   ts: 'kebab-case'
   yaml: 'kebab-case'
 ...
