@@ -30,7 +30,8 @@ jobs:
         key: |
           pydeps-${{ hashFiles('**/poetry.lock') }}
         path: '.venv'
-    - if: 'steps.cache-deps.outputs.cache-hit != "true"'
+    - if: |
+        steps.cache-deps.outputs.cache-hit != 'true'
       name: 'Install Dependencies'
       # `--no-root` to install all dependencies but not the project itself.
       run: 'poetry install --no-interaction --no-root'
