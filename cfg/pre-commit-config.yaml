@@ -12,9 +12,9 @@ repos:
     types:
     - 'shell'
   -
-    entry: './src/python/hooks/src/file-name-conventions.py'
+    entry: 'poetry run python ./src/python/hooks/src/file-name-conventions.py'
     id: 'file-name-conventions'
-    language: 'script'
+    language: 'system'
     name: 'ensure file name conventions'
     types:
     - 'python'
