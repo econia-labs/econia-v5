@@ -44,6 +44,8 @@ def main():
         case = filetypes.get(extension, default_case)
         regex = NAMING_CONVENTIONS.get(case, default_case)
 
+        print(f'Checking {file_path} for {case} naming convention')
+
         if not check_file_naming(Path(file_path), regex):
             print(f'Error: {file_path} does not follow {case} naming convention')
             errors = True

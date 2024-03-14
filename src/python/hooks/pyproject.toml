@@ -1,0 +1,20 @@
+# cspell:words autoflake, black, flake8, isort, mypy
+
+[tool.isort]
+profile = "black"
+
+[tool.poetry]
+authors = ["Econia Labs <developers@econialabs.com>"]
+description = "Python pre-commit hooks for Econia Labs projects."
+name = "econia-python-hooks"
+version = "1.0.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.group.dev.dependencies]
+autoflake = "^2.2.0"
+black = "^23.7.0"
+flake8 = "6.0.0"
+isort = "^5.12.1"
+mypy = "^1.9.0"

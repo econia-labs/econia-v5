@@ -12,7 +12,7 @@ repos:
 -
   hooks:
   -
-    entry: './src/python/file-name-conventions.py'
+    entry: './src/python/hooks/src/file-name-conventions.py'
     id: 'file-name-conventions'
     language: 'script'
     name: 'Ensure File Name Conventions'
