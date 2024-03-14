@@ -1,4 +1,4 @@
-# cspell:words autoflake, black, flake8, isort, mypy
+# cspell:words autoflake, black, flake8, isort, mypy, pyyaml
 
 [tool.isort]
 profile = "black"
@@ -18,3 +18,4 @@ black = "^23.7.0"
 flake8 = "6.0.0"
 isort = "^5.12.1"
 mypy = "^1.9.0"
+types-pyyaml = "^6.0.12.20240311"
