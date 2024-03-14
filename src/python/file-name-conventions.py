@@ -4,7 +4,6 @@ import re
 import sys
 from pathlib import Path
 
-# Naming conventions
 NAMING_CONVENTIONS = {
     'camelCase': r'^([a-z]+[a-zA-Z0-9]*)?\.',
     'snake_case': r'^([a-z]+[a-z0-9_]*)?\.',
@@ -25,11 +24,11 @@ def check_file_naming(file_path, pattern):
     return re.match(pattern, file_path.name)
 
 def main():
-    config = load_config()  # Load the configuration
-    default_case = config.get('default', 'snake_case')  # Get the default case
-    filetypes = config.get('filetypes', {})  # Get the file type specific conventions
+    config = load_config()
+    default_case = config.get('default', 'snake_case')
+    filetypes = config.get('filetypes', {})
 
-    # Validate the naming conventions against known conventions
+    # Validate the user supplied naming conventions against known conventions.
     all_conventions = set(filetypes.values()).union({default_case})
     unrecognized_conventions = all_conventions - set(NAMING_CONVENTIONS.keys())
     if unrecognized_conventions:
