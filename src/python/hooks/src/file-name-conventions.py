@@ -27,7 +27,7 @@ def main():
     config = load_config()
     default_case = config.get("default", "snake_case")
     filetypes = config.get("filetypes", {})
-    exceptions = set(config.get("exceptions", {}))
+    ignore_files = set(config.get("ignore_files", {}))
 
     # Validate the user supplied naming conventions against known conventions.
     user_supplied_cases = set(filetypes.values()).union({default_case})
@@ -50,7 +50,7 @@ def main():
         regex = CASE_REGEXES.get(case, default_case)
 
         filename = Path(file_path).name
-        if filename in exceptions:
+        if filename in ignore_files:
             print(f"Skipping {file_path} due to exception.")
             continue
 
