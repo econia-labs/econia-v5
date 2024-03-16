@@ -16,8 +16,6 @@ repos:
     id: 'file-name-conventions'
     language: 'system'
     name: 'ensure file name conventions'
-    types:
-    - 'python'
   -
     entry: |
       poetry run autoflake -i --remove-all-unused-imports
