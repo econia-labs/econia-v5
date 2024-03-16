@@ -23,14 +23,11 @@ def load_config():
     return {}
 
 
-def check_file_naming(file_path, pattern):
-    return re.match(pattern, file_path.name)
-
-
 def main():
     config = load_config()
     default_case = config.get("default", "snake_case")
     filetypes = config.get("filetypes", {})
+    exceptions = set(config.get("exceptions", {}))
 
     # Validate the user supplied naming conventions against known conventions.
     user_supplied_cases = set(filetypes.values()).union({default_case})
@@ -40,21 +37,31 @@ def main():
         print("Unrecognized cases:", ", ".join(unrecognized_cases))
         sys.exit(1)
 
+    # The files are passed as arguments from the pre-commit hook.
     files = sys.argv[1:]
 
-    errors = False
+    # Check the user-supplied file name conventions against each file.
+    invalid_file_names = False
     for file_path in files:
+        # Get the file extension and handle the case where there isn't
+        # one. Then get the case by its extension and the regex by its case.
         extension = file_path.split(".")[-1] if "." in file_path else ""
         case = filetypes.get(extension, default_case)
         regex = CASE_REGEXES.get(case, default_case)
 
+        filename = Path(file_path).name
+        if filename in exceptions:
+            print(f"Skipping {file_path} due to exception.")
+            continue
+
         print(f"Checking {file_path} for {case} naming convention")
 
-        if not check_file_naming(Path(file_path), regex):
+        # Check the file name as a Path object against the regex pattern.
+        if not re.match(regex, filename):
             print(f"Error: {file_path} is not {case}.")
-            errors = True
+            invalid_file_names = True
 
-    if errors:
+    if invalid_file_names:
         sys.exit(1)
     sys.exit(0)
 
