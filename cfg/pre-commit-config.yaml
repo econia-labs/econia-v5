@@ -12,44 +12,68 @@ repos:
     types:
     - 'shell'
   -
-    entry: 'poetry run python ./src/python/hooks/src/file-name-conventions.py'
-    id: 'file-name-conventions'
-    language: 'system'
-    name: 'ensure file name conventions'
+    entry: './src/sh/python-lint/poetry-check.sh'
+    id: 'local-poetry-check'
+    language: 'script'
+    name: 'local poetry check'
   -
     entry: |
-      poetry run autoflake -i --remove-all-unused-imports
-      --remove-unused-variables --ignore-init-module-imports
+      './src/sh/python-lint/run-in-poetry-subdir.sh'
+      'poetry run python -m file-name-conventions'
+      'Please rename the files to match the naming conventions.'
+    id: 'file-name-conventions'
+    language: 'script'
+    name: 'check file name conventions'
+    types:
+    - 'python'
+  -
+    entry: |
+      './src/sh/python-lint/run-in-poetry-subdir.sh'
+      'poetry run autoflake -c --remove-all-unused-imports
+      --remove-unused-variables --ignore-init-module-imports'
+      'Please run src/sh/python-lint/format.sh to fix the errors.'
     id: 'autoflake'
-    language: 'system'
+    language: 'script'
     name: 'autoflake'
     types:
     - 'python'
   -
-    entry: 'poetry run black'
+    entry: |
+      './src/sh/python-lint/run-in-poetry-subdir.sh'
+      'poetry run black --check'
+      'Please run src/sh/python-lint/format.sh to fix the errors.'
     id: 'black'
-    language: 'system'
+    language: 'script'
     name: 'black'
     types:
     - 'python'
   -
-    entry: 'poetry run flake8'
+    entry: |
+      './src/sh/python-lint/run-in-poetry-subdir.sh'
+      'poetry run flake8'
+      'Please fix the errors before committing.'
     id: 'flake8'
-    language: 'system'
+    language: 'script'
     name: 'flake8'
     types:
     - 'python'
   -
-    entry: 'poetry run isort'
+    entry: |
+      './src/sh/python-lint/run-in-poetry-subdir.sh'
+      'poetry run isort --check'
+      'Please run src/sh/python-lint/format.sh to fix the errors.'
     id: 'isort'
-    language: 'system'
+    language: 'script'
     name: 'isort'
     types:
     - 'python'
   -
-    entry: 'poetry run mypy'
+    entry: |
+      './src/sh/python-lint/run-in-poetry-subdir.sh'
+      'poetry run mypy'
+      'Please fix the errors before committing.'
     id: 'mypy'
-    language: 'system'
+    language: 'script'
     name: 'mypy'
     types:
     - 'python'
@@ -104,12 +128,12 @@ repos:
     - '--strict'
     id: 'yamllint'
   repo: 'https://github.com/adrienverge/yamllint'
-  rev: 'v1.34.0'
+  rev: 'v1.35.1'
 -
   hooks:
   - id: 'shfmt'
   repo: 'https://github.com/scop/pre-commit-shfmt'
-  rev: 'v3.7.0-4'
+  rev: 'v3.8.0-1'
 -
   hooks:
   -
@@ -118,5 +142,5 @@ repos:
     - 'cfg/cspell-config.json'
     id: 'cspell'
   repo: 'https://github.com/streetsidesoftware/cspell-cli'
-  rev: 'v8.3.0'
+  rev: 'v8.6.0'
 ...
