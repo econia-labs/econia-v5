@@ -47,6 +47,10 @@ the tag capitalized. For example `[ECO-WXYZ] Update something in the repo`.
 
 Commit titles `SHOULD` use a similar format, but without a leading tag.
 
+Resolution of a review comment `SHALL` be reserved for the reviewer who made the
+comment, except for the case of suggestion acceptance, which automatically
+results in the comment being marked as resolved.
+
 ## Move design phases
 
 ### Preliminary
@@ -71,7 +75,8 @@ Commit titles `SHOULD` use a similar format, but without a leading tag.
 1. Prefer compact code blocks, delimited by section comments rather than
    whitespace.
 1. Titles `SHALL` use `Title Case` while headers `SHALL` use `Sentence case`.
-1. Comments `SHALL` end with a period `.`, even if they are a single line.
+1. Comments `SHALL` start with a capital letter and end with a period `.`, even
+   if they are a single line.
 
 ### Markdown
 
