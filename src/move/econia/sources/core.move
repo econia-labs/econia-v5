@@ -7,6 +7,7 @@ module econia::core {
     use aptos_framework::table_with_length::{Self, TableWithLength};
     use aptos_framework::primary_fungible_store;
     use aptos_framework::smart_table::{Self, SmartTable};
+    use std::option::{Self, Option};
     use std::signer;
     use std::vector;
 
@@ -53,8 +54,8 @@ module econia::core {
     const E_NOT_ECONIA: u64 = 1;
     /// Market ID is not valid.
     const E_INVALID_MARKET_ID: u64 = 2;
-    /// An option represented as a vector has more than 1 element.
-    const E_OPTION_VECTOR_TOO_LONG: u64 = 3;
+    /// The protocol is inactive.
+    const E_INACTIVE: u64 = 3;
     /// Base and quote metadata are identical.
     const E_BASE_QUOTE_METADATA_SAME: u64 = 4;
     /// Market is not fully collateralized with base asset.
@@ -69,8 +70,6 @@ module econia::core {
     const E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_BASE: u64 = 9;
     /// Requested withdrawal amount exceeds expected vault balance for quote.
     const E_WITHDRAWAL_EXCEEDS_EXPECTED_VAULT_BALANCE_QUOTE: u64 = 10;
-    /// The protocol is inactive.
-    const E_INACTIVE: u64 = 11;
 
     #[resource_group_member(group = ObjectGroup)]
     struct Market has key {
@@ -271,26 +270,25 @@ module econia::core {
 
     public entry fun update_market_parameters(
         econia: &signer,
-        market_id_option: vector<u64>,
-        pool_fee_rate_option: vector<u16>,
-        protocol_fee_rate_option: vector<u16>,
-        max_price_sig_figs_option: vector<u8>,
-        eviction_tree_height_option: vector<u8>,
-        eviction_price_ratio_ask_numerator_option: vector<u64>,
-        eviction_price_ratio_ask_denominator_option: vector<u64>,
-        eviction_price_ratio_bid_numerator_option: vector<u64>,
-        eviction_price_ratio_bid_denominator_option: vector<u64>,
-        eviction_liquidity_ratio_numerator_option: vector<u64>,
-        eviction_liquidity_ratio_denominator_option: vector<u64>,
+        market_id_option: Option<u64>,
+        pool_fee_rate_option: Option<u16>,
+        protocol_fee_rate_option: Option<u16>,
+        max_price_sig_figs_option: Option<u8>,
+        eviction_tree_height_option: Option<u8>,
+        eviction_price_ratio_ask_numerator_option: Option<u64>,
+        eviction_price_ratio_ask_denominator_option: Option<u64>,
+        eviction_price_ratio_bid_numerator_option: Option<u64>,
+        eviction_price_ratio_bid_denominator_option: Option<u64>,
+        eviction_liquidity_ratio_numerator_option: Option<u64>,
+        eviction_liquidity_ratio_denominator_option: Option<u64>,
     ) acquires Market, Registry {
         assert_signer_is_econia(econia);
-        assert_option_vector_is_valid_length(&market_id_option);
-        let updating_default_parameters = vector::is_empty(&market_id_option);
+        let updating_default_parameters = option::is_none(&market_id_option);
         let registry_ref_mut = borrow_registry_mut();
         let (market_parameters_ref_mut, market_address) = if (updating_default_parameters) {
             (&mut registry_ref_mut.default_market_parameters, @0x0)
         } else {
-            let market_id = *vector::borrow(&market_id_option, 0);
+            let market_id = option::destroy_some(market_id_option);
             let markets_ref_mut = &mut registry_ref_mut.markets;
             let market_exists = table_with_length::contains(markets_ref_mut, market_id);
             assert!(market_exists, E_INVALID_MARKET_ID);
@@ -300,45 +298,45 @@ module econia::core {
                 market_metadata_ref_mut.market_address,
             )
         };
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.pool_fee_rate,
-            &pool_fee_rate_option,
+            pool_fee_rate_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.protocol_fee_rate,
-            &protocol_fee_rate_option,
+            protocol_fee_rate_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.max_price_sig_figs,
-            &max_price_sig_figs_option,
+            max_price_sig_figs_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.eviction_tree_height,
-            &eviction_tree_height_option,
+            eviction_tree_height_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.eviction_price_ratio_ask.numerator,
-            &eviction_price_ratio_ask_numerator_option,
+            eviction_price_ratio_ask_numerator_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.eviction_price_ratio_ask.denominator,
-            &eviction_price_ratio_ask_denominator_option,
+            eviction_price_ratio_ask_denominator_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.eviction_price_ratio_bid.numerator,
-            &eviction_price_ratio_bid_numerator_option,
+            eviction_price_ratio_bid_numerator_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.eviction_price_ratio_bid.denominator,
-            &eviction_price_ratio_bid_denominator_option,
+            eviction_price_ratio_bid_denominator_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.eviction_liquidity_ratio.numerator,
-            &eviction_liquidity_ratio_numerator_option,
+            eviction_liquidity_ratio_numerator_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut market_parameters_ref_mut.eviction_liquidity_ratio.denominator,
-            &eviction_liquidity_ratio_denominator_option,
+            eviction_liquidity_ratio_denominator_option,
         );
         if (!updating_default_parameters) {
             borrow_global_mut<Market>(market_address).market_parameters =
@@ -370,48 +368,48 @@ module econia::core {
 
     public entry fun update_registry_parameters(
         econia: &signer,
-        utility_asset_metadata_address_option: vector<address>,
-        market_registration_fee_option: vector<u64>,
-        oracle_fee_option: vector<u64>,
-        integrator_withdrawal_fee_option: vector<u64>,
-        book_map_inner_node_order_option: vector<u16>,
-        book_map_leaf_node_order_option: vector<u16>,
-        tick_map_inner_node_order_option: vector<u16>,
-        tick_map_leaf_node_order_option: vector<u16>,
+        utility_asset_metadata_address_option: Option<address>,
+        market_registration_fee_option: Option<u64>,
+        oracle_fee_option: Option<u64>,
+        integrator_withdrawal_fee_option: Option<u64>,
+        book_map_inner_node_order_option: Option<u16>,
+        book_map_leaf_node_order_option: Option<u16>,
+        tick_map_inner_node_order_option: Option<u16>,
+        tick_map_leaf_node_order_option: Option<u16>,
     ) acquires Registry {
         assert_signer_is_econia(econia);
         let registry_parameters_ref_mut = &mut borrow_registry_mut().registry_parameters;
-        set_object_via_address_option_vector(
+        set_object_via_address_option(
             &mut registry_parameters_ref_mut.utility_asset_metadata,
-            &utility_asset_metadata_address_option,
+            utility_asset_metadata_address_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut registry_parameters_ref_mut.market_registration_fee,
-            &market_registration_fee_option,
+            market_registration_fee_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut registry_parameters_ref_mut.oracle_fee,
-            &oracle_fee_option,
+            oracle_fee_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut registry_parameters_ref_mut.integrator_withdrawal_fee,
-            &integrator_withdrawal_fee_option,
+            integrator_withdrawal_fee_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut registry_parameters_ref_mut.book_map_node_orders.inner_node_order,
-            &book_map_inner_node_order_option,
+            book_map_inner_node_order_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut registry_parameters_ref_mut.book_map_node_orders.leaf_node_order,
-            &book_map_leaf_node_order_option,
+            book_map_leaf_node_order_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut registry_parameters_ref_mut.tick_map_node_orders.inner_node_order,
-            &tick_map_inner_node_order_option,
+            tick_map_inner_node_order_option,
         );
-        set_value_via_option_vector(
+        set_value_via_option(
             &mut registry_parameters_ref_mut.tick_map_node_orders.leaf_node_order,
-            &tick_map_leaf_node_order_option,
+            tick_map_leaf_node_order_option,
         );
     }
 
@@ -527,29 +525,21 @@ module econia::core {
         assert!(signer::address_of(account) == @econia, E_NOT_ECONIA);
     }
 
-    fun assert_option_vector_is_valid_length<T>(option_vector_ref: &vector<T>) {
-        assert!(vector::length(option_vector_ref) <= 1, E_OPTION_VECTOR_TOO_LONG);
-    }
-
-    fun set_value_via_option_vector<T: copy + drop>(
+    fun set_value_via_option<T: copy + drop>(
         value_ref_mut: &mut T,
-        option_vector_ref: &vector<T>
+        option: Option<T>
     ) {
-        assert_option_vector_is_valid_length(option_vector_ref);
-        if (!vector::is_empty(option_vector_ref)) {
-            *value_ref_mut = *vector::borrow(option_vector_ref, 0);
+        if (option::is_some(&option)) {
+            *value_ref_mut = option::destroy_some(option);
         }
     }
 
-    fun set_object_via_address_option_vector<T: key>(
+    fun set_object_via_address_option<T: key>(
         object_ref_mut: &mut Object<T>,
-        address_option_vector_ref: &vector<address>
+        address_option: Option<address>
     ) {
-        assert_option_vector_is_valid_length(address_option_vector_ref);
-        if (!vector::is_empty(address_option_vector_ref)) {
-            *object_ref_mut = object::address_to_object<T>(
-                *vector::borrow(address_option_vector_ref, 0)
-            );
+        if (option::is_some(&address_option)) {
+            *object_ref_mut = object::address_to_object<T>(option::destroy_some(address_option));
         }
     }
 
@@ -796,11 +786,6 @@ module econia::core {
     #[test, expected_failure(abort_code = E_NOT_ECONIA)]
     fun test_assert_signer_is_econia_not_econia() {
         assert_signer_is_econia(&get_signer(@0x0));
-    }
-
-    #[test, expected_failure(abort_code = E_OPTION_VECTOR_TOO_LONG)]
-    fun test_assert_option_vector_is_valid_length_option_vector_too_long() {
-        assert_option_vector_is_valid_length(&vector[0, 0]);
     }
 
     #[test, expected_failure(abort_code = E_NO_OPEN_ORDERS)]
@@ -1054,14 +1039,14 @@ module econia::core {
         let econia = get_signer(@econia);
         update_registry_parameters(
             &econia,
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
         );
         assert_registry_parameters(
             borrow_registry().registry_parameters,
@@ -1079,14 +1064,14 @@ module econia::core {
         let new_metadata_address = object::object_address(&new_metadata);
         update_registry_parameters(
             &econia,
-            vector[new_metadata_address],
-            vector[1],
-            vector[2],
-            vector[3],
-            vector[4],
-            vector[5],
-            vector[6],
-            vector[7],
+            option::some(new_metadata_address),
+            option::some(1),
+            option::some(2),
+            option::some(3),
+            option::some(4),
+            option::some(5),
+            option::some(6),
+            option::some(7),
         );
         assert_registry_parameters(
             borrow_registry().registry_parameters,
@@ -1107,17 +1092,17 @@ module econia::core {
         let econia = get_signer(@econia);
         update_market_parameters(
             &econia,
-            vector[1],
-            vector[2],
-            vector[3],
-            vector[4],
-            vector[5],
-            vector[6],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
+            option::some(1),
+            option::some(2),
+            option::some(3),
+            option::some(4),
+            option::some(5),
+            option::some(6),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
         );
         let registry = borrow_registry();
         let markets_ref = &registry.markets;
@@ -1140,17 +1125,17 @@ module econia::core {
         );
         update_market_parameters(
             &econia,
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[7],
-            vector[8],
-            vector[9],
-            vector[10],
-            vector[11],
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::some(7),
+            option::some(8),
+            option::some(9),
+            option::some(10),
+            option::some(11),
         );
         assert_market_parameters(
             borrow_registry().default_market_parameters,
@@ -1172,17 +1157,17 @@ module econia::core {
         ensure_market_registered_for_test();
         update_market_parameters(
             &get_signer(@econia),
-            vector[2],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
-            vector[],
+            option::some(2),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
         );
     }
 
