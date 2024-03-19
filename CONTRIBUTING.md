@@ -10,10 +10,11 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 
 ## Continuous integration and development
 
-### `pre-commit`
+### Local tools
 
-This repository uses [`pre-commit`]. If you add a new filetype, you `SHOULD` add
-a new [hook][pre-commit hook].
+This repository uses [`poetry`] and [`pre-commit`]. You'll need to install both.
+
+If you add a new filetype, you `SHOULD` add a new [hook][pre-commit hook].
 
 From the repository root directory:
 
@@ -115,4 +116,5 @@ results in the comment being marked as resolved.
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [run `pre-commit`]: #pre-commit
 [squash and merge method]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github
+[`poetry`]: https://python-poetry.org/
 [`pre-commit`]: https://github.com/pre-commit/pre-commit
