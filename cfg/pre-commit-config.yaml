@@ -16,6 +16,16 @@ repos:
     id: 'local-poetry-check'
     language: 'script'
     name: 'local poetry check'
+  - entry: |
+      './src/sh/python-lint/run-in-poetry-subdir.sh'
+      'poetry run autoflake -i --remove-all-unused-imports
+      --remove-unused-variables --ignore-init-module-imports'
+      'Please run src/sh/python-lint/format.sh to fix the errors.'
+    id: 'gitignore-formatter'
+    language: 'script'
+    name: '.gitignore Formatter'
+    types:
+    - 'gitignore'
   -
     entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'

@@ -10,12 +10,7 @@ poetry --version >/dev/null 2>&1 || {
 cd $POETRY_SUBDIRECTORY || exit 1
 
 poetry check --quiet || {
-	echo "Poetry check failed. Please run $(poetry install -C src/python/hooks) to continue."
-	exit 1
-}
-
-pre-commit --version >/dev/null 2>&1 || {
-	echo "Pre-commit is not installed. Please install pre-commit to continue."
+	echo "Poetry check failed."
 	exit 1
 }
 
