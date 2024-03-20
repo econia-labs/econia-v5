@@ -46,11 +46,11 @@ $$ {Q_r} = \sqrt{(2^{64})^2 \frac{Q_x}{2^{64}}} $$
 
 $$ {Q_r} = \sqrt{2^{64} Q_x} \tag{6} $$
 
-| Equation | Function |
-|-|-|
+| Equation   | Function     |
+| ---------- | ------------ |
 | $(1), (3)$ | `u64_to_q64` |
 | $(4), (5)$ | `q64_to_u64` |
-| $(6)$ | `sqrt_q64` |
+| $(6)$      | `sqrt_q64`   |
 
 [santa clara university programming lab supplement]: https://www.cse.scu.edu/~dlewis/book3/labs/Lab11E.pdf
 [stack overflow answer]: https://stackoverflow.com/a/994709
