@@ -21,32 +21,42 @@ point square root algorithm is adapted from a
 Let $x$ represent a square root operand, and $Q_x$ its `Q64.64` encoding:
 
 ```math
-Q_x = 2^{64} x \tag{1}
+Q_x = 2^{64} x
 ```
+
+(1)
 
 Let $r$ represent the square root of $x$:
 
 ```math
-r = \sqrt{x} \tag{2}
+r = \sqrt{x}
 ```
+
+(2)
 
 Encode $r$ similarly:
 
 ```math
-Q_r = 2^{64} r \tag{3}
+Q_r = 2^{64} r
 ```
+
+(3)
 
 Define $x$ and $r$ in terms of $Q_x$ and $Q_r$:
 
 ```math
-r = \frac{Q_r}{2^{64}} \tag{4}
+r = \frac{Q_r}{2^{64}}
 ```
+
+(4)
 
 ```math
-x = \frac{Q_x}{2^{64}} \tag{5}
+x = \frac{Q_x}{2^{64}}
 ```
 
-Substituting $(4)$ and $(5)$ into $(2)$ yields:
+(5)
+
+Substituting (4) and (5) into (2) yields:
 
 ```math
 \frac{Q_r}{2^{64}} = \sqrt{\frac{Q_x}{2^{64}}}
@@ -61,14 +71,16 @@ Substituting $(4)$ and $(5)$ into $(2)$ yields:
 ```
 
 ```math
-{Q_r} = \sqrt{2^{64} Q_x} \tag{6}
+{Q_r} = \sqrt{2^{64} Q_x}
 ```
 
-| Equation   | Function     |
-| ---------- | ------------ |
-| $(1), (3)$ | `u64_to_q64` |
-| $(4), (5)$ | `q64_to_u64` |
-| $(6)$      | `sqrt_q64`   |
+(6)
+
+| Equation | Function     |
+| -------- | ------------ |
+| (1), (3) | `u64_to_q64` |
+| (4), (5) | `q64_to_u64` |
+| (6)      | `sqrt_q64`   |
 
 [santa clara university programming lab supplement]: https://www.cse.scu.edu/~dlewis/book3/labs/Lab11E.pdf
 [stack overflow answer]: https://stackoverflow.com/a/994709
