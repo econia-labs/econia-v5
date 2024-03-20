@@ -4,14 +4,15 @@ This content is based on [milestone 1 from the Uniswap v3 book].
 
 ## Numerical algorithms
 
-The square root algorithm (`sqrt`) is adapted from a [Wikipedia] example, which
-notes that the search converges faster when the initial estimate is adjusted for
-the binary logarithm of the operand.
+The square root algorithm (`math::sqrt`) is adapted from a [Wikipedia] example,
+which notes that the search converges faster when the initial estimate is
+adjusted for the binary logarithm of the operand.
 
 Both a [stack overflow answer] and `math128` from the Aptos Standard Library
 specify that the binary logarithm of an integer is equivalent to the position of
-the most significant bit. Hence the binary logarithm function (`log2_unchecked`)
-uses a simple binary search to identify the most significant bit.
+the most significant bit. Hence the binary logarithm function
+(`math::log2_unchecked`) uses a simple binary search to identify the most
+significant bit.
 
 ## Fixed point
 
@@ -80,7 +81,7 @@ p = ab
 Q_p = \frac{Q_a Q_b}{2^{64}} \tag{7}
 ```
 
-Likewise, for the division operation $q = \frac{a}{b}$:
+Likewise, for the division operation $q = a/b$:
 
 ```math
 q = \frac{a}{b}
@@ -123,18 +124,23 @@ d = a - b
 Q_d = Q_a - Q_b \tag{10}
 ```
 
-| Equation   | Function     |
-| ---------- | ------------ |
-| $(1), (3)$ | `u64_to_q64` |
-| $(4), (5)$ | `q64_to_u64` |
-| $(6)$      | `sqrt_q64`   |
-| $(7)$      | `multiply_q64_unchecked` |
-| $(8)$      | `divide_q64_unchecked` |
-| $(9)$      | `add_q64_unchecked` |
-| $(10)$      | `subtract_q64_unchecked` |
+| Equation   | Function                       |
+| ---------- | ------------------------------ |
+| $(1), (3)$ | `math::u64_to_q64`             |
+| $(4), (5)$ | `math::q64_to_u64`             |
+| $(6)$      | `math::sqrt_q64`               |
+| $(7)$      | `math::multiply_q64_unchecked` |
+| $(8)$      | `math::divide_q64_unchecked`   |
+| $(9)$      | `math::add_q64_unchecked`      |
+| $(10)$     | `math::subtract_q64_unchecked` |
 
+## Calculating liquidity
+
+`calculating_liquidity.move` contains a test with prints, corresponding to
+[Uniswap v3 book section 1.7].
 
 [milestone 1 from the uniswap v3 book]: https://uniswapv3book.com/milestone_1/introduction.html
 [santa clara university programming lab supplement]: https://www.cse.scu.edu/~dlewis/book3/labs/Lab11E.pdf
 [stack overflow answer]: https://stackoverflow.com/a/994709
+[uniswap v3 book section 1.7]: https://uniswapv3book.com/milestone_1/calculating-liquidity.html
 [wikipedia]: https://en.wikipedia.org/wiki/Integer_square_root#Example_implementation_in_C

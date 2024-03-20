@@ -1,5 +1,5 @@
 // cspell:words stdlib
-module math::math {
+module code::math {
 
     const SHIFT_Q64: u8 = 64;
 
