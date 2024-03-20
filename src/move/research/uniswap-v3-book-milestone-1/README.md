@@ -1,4 +1,6 @@
-# Implementation
+# Uniswap v3 Book Milestone 1
+
+This content is based on [milestone 1 from the Uniswap v3 book].
 
 ## Numerical algorithms
 
@@ -70,6 +72,7 @@ Substituting $(4)$ and $(5)$ into $(2)$ yields:
 | $(4), (5)$ | `q64_to_u64` |
 | $(6)$      | `sqrt_q64`   |
 
+[milestone 1 from the uniswap v3 book]: https://uniswapv3book.com/milestone_1/introduction.html
 [santa clara university programming lab supplement]: https://www.cse.scu.edu/~dlewis/book3/labs/Lab11E.pdf
 [stack overflow answer]: https://stackoverflow.com/a/994709
 [wikipedia]: https://en.wikipedia.org/wiki/Integer_square_root#Example_implementation_in_C
