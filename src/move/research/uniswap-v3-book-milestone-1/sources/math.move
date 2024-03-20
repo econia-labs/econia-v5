@@ -1,6 +1,8 @@
 // cspell:words stdlib
 module math::math {
 
+    const SHIFT_Q64: u8 = 64;
+
     inline fun sqrt(i: u256): u256 {
         if (i <= 1) {
             i
@@ -31,6 +33,12 @@ module math::math {
         result
     }
 
+    inline fun u64_to_q64(x: u64): u128 { (x as u128) << SHIFT_Q64 }
+
+    inline fun q64_to_u64(x: u128): u64 { ((x >> SHIFT_Q64) as u64) }
+
+    inline fun sqrt_q64(x: u128): u128 { (sqrt((x as u256) << SHIFT_Q64) as u128) }
+
     #[test]
     /// Adapted from `aptos_stdlib::math128`.
     fun test_log2_unchecked() {
@@ -52,4 +60,11 @@ module math::math {
         assert!(sqrt(5500) == 74, 0); // From Uni v3 book example.
         assert!(sqrt(2000000) == 1414, 0); // From Wikipedia example.
     }
+
+    #[test]
+    fun test_q64_math() {
+        assert!(q64_to_u64(u64_to_q64(25)) == 25, 0);
+        assert!(sqrt_q64(u64_to_q64(4)) == u64_to_q64(2), 0);
+    }
+
 }
