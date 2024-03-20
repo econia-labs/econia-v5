@@ -82,6 +82,9 @@ results in the comment being marked as resolved.
 
 1. [Reference links] are `REQUIRED` where possible, for readability and for ease
    of linting.
+1. LaTeX display equations `SHALL` be delimited via a `math` fenced code block
+   (note that you can render these locally in VS Code using the the `gitlab`
+   delimiter for [Markdown+Math extension]).
 
 ### Move
 
@@ -107,6 +110,7 @@ results in the comment being marked as resolved.
 [doc comments]: https://move-language.github.io/move/coding-conventions.html?#comments
 [github actions]: https://docs.github.com/en/actions
 [linear]: https://pre-commit.com/hooks.html
+[markdown+math extension]: https://marketplace.visualstudio.com/items?itemName=goessner.mdmath
 [move format]: https://move-language.github.io/move/coding-conventions.html#formatting
 [move references]: https://move-language.github.io/move/references.html
 [move signer]: https://move-language.github.io/move/signer.html
