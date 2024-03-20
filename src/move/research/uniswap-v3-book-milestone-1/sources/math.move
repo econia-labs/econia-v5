@@ -39,6 +39,22 @@ module math::math {
 
     inline fun sqrt_q64(x: u128): u128 { (sqrt((x as u256) << SHIFT_Q64) as u128) }
 
+    /// Does not check for overflow.
+    inline fun multiply_q64_unchecked(a: u128, b: u128): u128 {
+        ((((a as u256) * (b as u256)) >> SHIFT_Q64) as u128)
+    }
+
+    /// Does not check for overflow or divide by zero.
+    inline fun divide_q64_unchecked(a: u128, b: u128): u128 {
+        (((a as u256) << SHIFT_Q64) / (b as u256) as u128)
+    }
+
+    /// Does not check for overflow.
+    inline fun add_q64_unchecked(a: u128, b: u128): u128 { a + b }
+
+    /// Does not check for underflow.
+    inline fun subtract_q64_unchecked(a: u128, b: u128): u128 { a - b }
+
     #[test]
     /// Adapted from `aptos_stdlib::math128`.
     fun test_log2_unchecked() {
@@ -65,6 +81,12 @@ module math::math {
     fun test_q64_math() {
         assert!(q64_to_u64(u64_to_q64(25)) == 25, 0);
         assert!(sqrt_q64(u64_to_q64(4)) == u64_to_q64(2), 0);
+        let a = u64_to_q64(12);
+        let b = u64_to_q64(6);
+        assert!(multiply_q64_unchecked(a, b) == u64_to_q64(72), 0);
+        assert!(divide_q64_unchecked(a, b) == u64_to_q64(2), 0);
+        assert!(add_q64_unchecked(a, b) == u64_to_q64(18), 0);
+        assert!(subtract_q64_unchecked(a, b) == b, 0);
     }
 
 }

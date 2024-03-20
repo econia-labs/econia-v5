@@ -66,11 +66,73 @@ Substituting $(4)$ and $(5)$ into $(2)$ yields:
 {Q_r} = \sqrt{2^{64} Q_x} \tag{6}
 ```
 
+Similarly, the multiplication operation $p = ab$ is governed by:
+
+```math
+p = ab
+```
+
+```math
+\frac{Q_p}{2^{64}} = \frac{Q_a}{2^{64}} \frac{Q_b}{2^{64}}
+```
+
+```math
+Q_p = \frac{Q_a Q_b}{2^{64}} \tag{7}
+```
+
+Likewise, for the division operation $q = \frac{a}{b}$:
+
+```math
+q = \frac{a}{b}
+```
+
+```math
+\frac{Q_q}{2^{64}} = \frac{\frac{Q_a}{2^{64}}}{\frac{Q_b}{2^{64}}} =
+\frac{Q_a}{Q_b}
+```
+
+```math
+Q_q = \frac{2^{64} Q_a}{Q_b} \tag{8}
+```
+
+For the addition operation $s = a + b$:
+
+```math
+s = a + b
+```
+
+```math
+\frac{Q_s}{2^{64}} = \frac{Q_a}{2^{64}} + \frac{Q_b}{2^{64}}
+```
+
+```math
+Q_s = Q_a + Q_b \tag{9}
+```
+
+And finally, for the subtraction operation $d = a - b$:
+
+```math
+d = a - b
+```
+
+```math
+\frac{Q_d}{2^{64}} = \frac{Q_a}{2^{64}} - \frac{Q_b}{2^{64}}
+```
+
+```math
+Q_d = Q_a - Q_b \tag{10}
+```
+
 | Equation   | Function     |
 | ---------- | ------------ |
 | $(1), (3)$ | `u64_to_q64` |
 | $(4), (5)$ | `q64_to_u64` |
 | $(6)$      | `sqrt_q64`   |
+| $(7)$      | `multiply_q64_unchecked` |
+| $(8)$      | `divide_q64_unchecked` |
+| $(9)$      | `add_q64_unchecked` |
+| $(10)$      | `subtract_q64_unchecked` |
+
 
 [milestone 1 from the uniswap v3 book]: https://uniswapv3book.com/milestone_1/introduction.html
 [santa clara university programming lab supplement]: https://www.cse.scu.edu/~dlewis/book3/labs/Lab11E.pdf
