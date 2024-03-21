@@ -149,11 +149,24 @@ To see the outputs for a single example, run something like following:
 aptos move test --filter calculating_liquidity
 ```
 
-## `calculating_liquidity`
+### `calculating_liquidity`
 
 For simplicity the original section does not properly account for USDC decimals,
 and instead uses $10^{18}$ for both ETH and USDC subunits.  Hence, for target
-deposit amounts the example uses 100 base subunits and 500,000 quote subunits.
+deposit amounts the example uses 1,000,000 base subunits and 5,000,000,000 for
+quote subunits to ensure adequate precision.
+
+### `first_swap`
+
+Similarly, this example uses 42,000,000 quote subunits for precision, compared
+with 42 in the example.
+
+Additionally, the change in base is calculated as the absolute value of the
+given expression, premultiplied by liquidity to save precision:
+
+```math
+\Delta_{base} = \frac{L}{\sqrt{P_{current}}} - \frac{L}{\sqrt{P_{target}}}
+```
 
 [milestone 1 from the uniswap v3 book]: https://uniswapv3book.com/milestone_1/introduction.html
 [santa clara university programming lab supplement]: https://www.cse.scu.edu/~dlewis/book3/labs/Lab11E.pdf

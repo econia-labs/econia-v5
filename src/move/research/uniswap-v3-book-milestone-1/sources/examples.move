@@ -27,7 +27,7 @@ module research::examples {
         print_labeled_value(b"Root P_u as Q64", sqrt_p_u);
         let sqrt_p_b = sqrt_p_u;
         let sqrt_p_a = sqrt_p_l;
-        let delta_base = 100;
+        let delta_base = 1_000_000;
         let delta_quote = delta_base * current_nominal_price;
         let liquidity_base = math::divide_q64_unchecked(
             math::multiply_q64_unchecked(
@@ -65,5 +65,25 @@ module research::examples {
     }
 
     #[test]
-    fun first_swap() { }
+    fun first_swap() {
+        let quote_amount = 42_000_000;
+        let sqrt_p_c = math::sqrt_q64(math::u64_to_q64(5000));
+        let liquidity = 27999987129186539257502108059; // From `calculating_liquidity`.
+        let delta_sqrt_p = math::divide_q64_unchecked(math::u64_to_q64(quote_amount), liquidity);
+        let target_sqrt_p = math::add_q64_unchecked(sqrt_p_c, delta_sqrt_p);
+        print_labeled_value(b"Target root price as Q64", target_sqrt_p);
+        let delta_base = math::q64_to_u64(
+            math::subtract_q64_unchecked(
+                math::divide_q64_unchecked(
+                    liquidity,
+                    sqrt_p_c,
+                ),
+                math::divide_q64_unchecked(
+                    liquidity,
+                    target_sqrt_p,
+                ),
+            )
+        );
+        print_labeled_value(b"Delta base", delta_base);
+    }
 }
