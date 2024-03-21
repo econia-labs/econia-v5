@@ -1,5 +1,7 @@
 // cspell:words stdlib
-module code::math {
+module research::math {
+
+    friend research::examples;
 
     const SHIFT_Q64: u8 = 64;
 
@@ -33,27 +35,27 @@ module code::math {
         result
     }
 
-    inline fun u64_to_q64(x: u64): u128 { (x as u128) << SHIFT_Q64 }
+    public(friend) inline fun u64_to_q64(x: u64): u128 { (x as u128) << SHIFT_Q64 }
 
-    inline fun q64_to_u64(x: u128): u64 { ((x >> SHIFT_Q64) as u64) }
+    public(friend) inline fun q64_to_u64(x: u128): u64 { ((x >> SHIFT_Q64) as u64) }
 
-    inline fun sqrt_q64(x: u128): u128 { (sqrt((x as u256) << SHIFT_Q64) as u128) }
+    public(friend) inline fun sqrt_q64(x: u128): u128 { (sqrt((x as u256) << SHIFT_Q64) as u128) }
 
     /// Does not check for overflow.
-    inline fun multiply_q64_unchecked(a: u128, b: u128): u128 {
+    public(friend) inline fun multiply_q64_unchecked(a: u128, b: u128): u128 {
         ((((a as u256) * (b as u256)) >> SHIFT_Q64) as u128)
     }
 
     /// Does not check for overflow or divide by zero.
-    inline fun divide_q64_unchecked(a: u128, b: u128): u128 {
+    public(friend) inline fun divide_q64_unchecked(a: u128, b: u128): u128 {
         (((a as u256) << SHIFT_Q64) / (b as u256) as u128)
     }
 
     /// Does not check for overflow.
-    inline fun add_q64_unchecked(a: u128, b: u128): u128 { a + b }
+    public(friend) inline fun add_q64_unchecked(a: u128, b: u128): u128 { a + b }
 
     /// Does not check for underflow.
-    inline fun subtract_q64_unchecked(a: u128, b: u128): u128 { a - b }
+    public(friend) inline fun subtract_q64_unchecked(a: u128, b: u128): u128 { a - b }
 
     #[test]
     /// Adapted from `aptos_stdlib::math128`.

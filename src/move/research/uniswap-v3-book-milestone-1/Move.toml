@@ -1,5 +1,5 @@
 [addresses]
-code = "0xace"
+research = "0xace"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"

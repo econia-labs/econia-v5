@@ -134,13 +134,30 @@ Q_d = Q_a - Q_b \tag{10}
 | $(9)$      | `math::add_q64_unchecked`      |
 | $(10)$     | `math::subtract_q64_unchecked` |
 
-## Calculating liquidity
+## Examples
 
-`calculating_liquidity.move` contains a test with prints, corresponding to
-[Uniswap v3 book section 1.7].
+`examples.move` contains two example tests, each with diagnostic prints:
+
+| Test                    | Section                       |
+| ----------------------- | ----------------------------- |
+| `calculating_liquidity` | [Uniswap v3 book section 1.7] |
+| `first_swap`            | [Uniswap v3 book section 1.9] |
+
+To see the outputs for a single example, run something like following:
+
+```sh
+aptos move test --filter calculating_liquidity
+```
+
+## `calculating_liquidity`
+
+For simplicity the original section does not properly account for USDC decimals,
+and instead uses $10^{18}$ for both ETH and USDC subunits.  Hence, for target
+deposit amounts the example uses 100 base subunits and 500,000 quote subunits.
 
 [milestone 1 from the uniswap v3 book]: https://uniswapv3book.com/milestone_1/introduction.html
 [santa clara university programming lab supplement]: https://www.cse.scu.edu/~dlewis/book3/labs/Lab11E.pdf
 [stack overflow answer]: https://stackoverflow.com/a/994709
 [uniswap v3 book section 1.7]: https://uniswapv3book.com/milestone_1/calculating-liquidity.html
+[uniswap v3 book section 1.9]: https://uniswapv3book.com/milestone_1/first-swap.html
 [wikipedia]: https://en.wikipedia.org/wiki/Integer_square_root#Example_implementation_in_C
