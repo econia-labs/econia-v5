@@ -1,0 +1,12 @@
+[addresses]
+research = "0xace"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[package]
+authors = []
+name = "Math"
+version = "1.0.0"

@@ -82,6 +82,9 @@ results in the comment being marked as resolved.
 
 1. [Reference links] are `REQUIRED` where possible, for readability and for ease
    of linting.
+1. LaTeX display equations `SHALL` be delimited via a `math` fenced code block
+   (note that you can render these locally using the `gitlab` delimiter for the
+   [VS Code Markdown+Math extension]).
 
 ### Move
 
@@ -115,4 +118,5 @@ results in the comment being marked as resolved.
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [run `pre-commit`]: #pre-commit
 [squash and merge method]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github
+[vs code markdown+math extension]: https://marketplace.visualstudio.com/items?itemName=goessner.mdmath
 [`pre-commit`]: https://github.com/pre-commit/pre-commit
