@@ -8,5 +8,5 @@ subdir = "aptos-move/framework/aptos-framework"
 
 [package]
 authors = []
-name = "UniswapV3BookMilestone1"
+name = "UniswapV3Whitepaper"
 version = "1.0.0"
