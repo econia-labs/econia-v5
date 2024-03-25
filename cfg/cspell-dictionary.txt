@@ -1,10 +1,12 @@
 aptos
 auid
 bitshift
+clmm
 collateralized
 econia
 octas
 struct
+structs
 subdir
 unrecognize
 xbtmatt
