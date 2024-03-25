@@ -1,0 +1,146 @@
+\documentclass[twocolumn]{article}
+\usepackage{amsmath}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{intersections}
+
+% Tangent lines on graph per https://tex.stackexchange.com/a/198046.
+\makeatletter
+\def\parsenode[#1]#2\pgf@nil{%
+    \tikzset{label node/.style={#1}}
+    \def\nodetext{#2}
+}
+\tikzset{
+    add node at x/.style 2 args={
+        name path global=plot line,
+        /pgfplots/execute at end plot visualization/.append={
+                \begingroup
+                \@ifnextchar[{\parsenode}{\parsenode[]}#2\pgf@nil
+            \path [name path global = position line #1-1]
+                ({axis cs:#1,0}|-{rel axis cs:0,0}) --
+                ({axis cs:#1,0}|-{rel axis cs:0,1});
+            \path [xshift=1pt, name path global = position line #1-2]
+                ({axis cs:#1,0}|-{rel axis cs:0,0}) --
+                ({axis cs:#1,0}|-{rel axis cs:0,1});
+            \path [
+                name intersections={
+                    of={plot line and position line #1-1},
+                    name=left intersection
+                },
+                name intersections={
+                    of={plot line and position line #1-2},
+                    name=right intersection
+                },
+                label node/.append style={pos=1}
+            ] (left intersection-1) -- (right intersection-1)
+            node [label node]{\nodetext};
+            \endgroup
+        }
+    }
+}
+\makeatother
+
+\begin{document}
+
+\title{Concentrated Liquidity Market Maker with Reinvesting and Decimalized Ticks}
+\author{Econia Labs}
+\date{}
+
+\maketitle
+
+\section{Constant product equations}
+
+Let price $p$ represent the ratio of quote $q$ per base $b$:
+
+\begin{equation} \label{eqn:price}
+p = \frac{q}{b}
+\end{equation}
+
+In a constant product automated market maker, the following invariant holds:
+
+\begin{equation} \label{eqn:liquidity}
+bq = L^2
+\end{equation}
+
+Here, $L = \sqrt{bq}$ represents liquidity.
+
+\section{Concentrated liquidity equations}
+
+Concentrated liquidity effectively shifts a virtual constant product curve with base reserves $b_v$
+and quote reserves $q_v$ such that real reserves are exhausted at the price endpoints of a position
+in range $[p_l, p_h]$, where $l$ and $h$ denote the low and high bounds on range price.
+
+At $p_l$ real reserves are held entirely in base ($b_{max}$) while at $p_h$ real reserves are held
+entirely in quote ($q_{max}$), yielding:
+
+\begin{equation}
+(b_r + b_{max})(q_r + q_{max}) = L_v^2 = b_v q_v
+\end{equation}
+
+\begin{tikzpicture}
+    \begin{axis}[
+        axis lines = left,
+        xlabel = Base,
+        ylabel = Quote,
+        xmin = 0,
+        xmax = 3,
+        ymin = 0,
+        ymax = 3,
+        ytick=\empty,
+        xtick=\empty,
+        extra x ticks = {1.5},
+        extra x tick labels = {$b_{max}$},
+        extra y ticks = {1.5},
+        extra y tick labels = {$q_{max}$},
+        extra y tick style = { tick label style = {rotate = 90 }},
+        tick style = {black, thick, major tick length = 7pt},
+        % Tangent lines on graph per https://tex.stackexchange.com/a/198046.
+        tangent/.style={
+            add node at x={2}{[
+                    sloped,
+                    append after command={(\tikzlastnode.west) edge [semithick, magenta] (\tikzlastnode.east)},
+                    minimum width=2cm
+            ]},
+            add node at x={0.5}{[
+                    sloped,
+                    append after command={(\tikzlastnode.west) edge [semithick, magenta] (\tikzlastnode.east)},
+                    minimum width=2cm
+            ]}
+        }
+    ]
+    \addplot [
+        domain = 0:5,
+        samples = 100,
+        color = green,
+        thick,
+        tangent,
+    ] { 1 / x };
+    \addlegendentry{Virtual reserves}
+    \addplot [
+        domain = 0:5,
+        samples = 100,
+        color = blue,
+        thick,
+    ] { 1 / (x + 0.5) - 0.5 };
+    \addlegendentry{Real reserves}
+    \addplot [
+        domain = 1.5:2,
+        samples = 100,
+        color = gray,
+        very thick,
+        dotted,
+    ] { x - 1.5 };
+    \addplot [
+        domain = 0:.5,
+        samples = 100,
+        color = gray,
+        very thick,
+        dotted,
+    ] { x + 1.5 };
+    % with the compat setting used above this adds the node at 3,0 in the axis
+    \node [left]  at (2.125, 0.625) {$p_l$};
+    \node [left]  at (0.75, 2) {$p_h$};
+    \end{axis}
+\end{tikzpicture}
+
+\end{document}
