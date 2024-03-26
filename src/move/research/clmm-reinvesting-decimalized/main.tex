@@ -26,7 +26,24 @@ In a constant product automated market maker, the following invariant holds:
   bq = L^2
 \end{equation}
 
-Here, $L = \sqrt{bq}$ represents liquidity.
+Here, $L = \sqrt{bq}$ represents liquidity, and is held constant during a swap.
+Hence, for a known input amount of base $b_{in}$ or quote $q_{in}$, the corresponding output amount
+of the other asset can be calculated as follows for initial base $b_0$ and quote $q_0$ (not
+accounting for fees):
+
+\begin{align} \label{eqn:q-out-simple}
+  b_0 q_0               & = (b_0 + b_{in})(q_0 - q_{out}) \nonumber                \\
+  b_0 q_0               & = b_0 q_0 + b_{in} q_0 - q_{out}(b_0 + b_{in}) \nonumber \\
+  q_{out}(b_0 + b_{in}) & = b_{in} q_0 \nonumber                                   \\
+  q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
+\end{align}
+
+\begin{align} \label{eqn:b-out-simple}
+  b_0 q_0               & = (b_0 - b_{out})(q_0 + q_{in}) \nonumber                \\
+  b_0 q_0               & = b_0 q_0 + b_0 q_{in} - b_{out}(q_0 + q_{in}) \nonumber \\
+  b_{out}(q_0 + q_{in}) & = b_{0} q_{in} \nonumber                                 \\
+  b_{out}               & = \frac{q_{in} b_0}{q_{in} + q_0}
+\end{align}
 
 \section{Concentrated liquidity equations}
 
@@ -37,14 +54,29 @@ in range $[p_l, p_h]$, where $l$ and $h$ denote the low and high bounds on range
 At $p_l$ real reserves are held entirely in base ($b_{max}$) while at $p_h$ real reserves are held
 entirely in quote ($q_{max}$), yielding:
 
-\begin{equation}
+\begin{equation} \label{eqn:liquidity-translation}
   (b_r + b_{max})(q_r + q_{max}) = L_v^2 = b_v q_v
 \end{equation}
+
+Equation \ref{eqn:liquidity-translation} is plotted in figure \ref{fig:liquidity-translation}.
 
 \begin{figure}[h]
   \centering
   \input{curve-translation.tex}
   \caption{Liquidity translation}
+  \label{fig:liquidity-translation}
 \end{figure}
+
+For a swap that does not move the price outside the specified range, the input and output amounts
+for a feeless swap can thus be calculated using equations \ref{eqn:q-out-simple} and
+\ref{eqn:b-out-simple} applied to virtual reserves $b_v$ and $q_v$:
+
+\begin{equation}
+  q_{out} = \frac{b_{in} q_{v, 0}}{b_{in} + b_{v, 0}}
+\end{equation}
+
+\begin{equation}
+  b_{out} = \frac{q_{in} b_{v, 0}}{q_{in} + q_{v, 0}}
+\end{equation}
 
 \end{document}
