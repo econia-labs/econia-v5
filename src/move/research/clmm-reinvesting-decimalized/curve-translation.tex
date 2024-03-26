@@ -2,31 +2,24 @@
 % Tangent lines on graph per https://tex.stackexchange.com/a/198046.
 \makeatletter
 \def\parsenode[#1]#2\pgf@nil{%
-  \tikzset{label node/.style={#1}}
+  \tikzset{label node/.style = {#1}}
 \def\nodetext{#2}
 }
-\tikzset{
-  add node at x/.style 2 args={
-      name path global=plot line,
-      /pgfplots/execute at end plot visualization/.append={
-          \begingroup
+\tikzset{add node at x/.style 2 args = {name path global = plot line,
+      /pgfplots/execute at end plot visualization/.append = {\begingroup
           \@ifnextchar[{\parsenode}{\parsenode[]}#2\pgf@nil
           \path [name path global = position line #1-1]
           ({axis cs:#1,0}|-{rel axis cs:0,0}) --
           ({axis cs:#1,0}|-{rel axis cs:0,1});
-          \path [xshift=1pt, name path global = position line #1-2]
+          \path [xshift = 1pt, name path global = position line #1-2]
           ({axis cs:#1,0}|-{rel axis cs:0,0}) --
           ({axis cs:#1,0}|-{rel axis cs:0,1});
           \path [
-            name intersections={
-                of={plot line and position line #1-1},
-                name=left intersection
-              },
-            name intersections={
-                of={plot line and position line #1-2},
-                name=right intersection
-              },
-            label node/.append style={pos=1}
+            name intersections =
+              {of = {plot line and position line #1-1}, name = left intersection},
+            name intersections =
+              {of = {plot line and position line #1-2}, name = right intersection},
+            label node/.append style = {pos = 1}
           ] (left intersection-1) -- (right intersection-1)
           node [label node]{\nodetext};
           \endgroup
@@ -53,20 +46,15 @@
       extra y tick style = {tick label style = {rotate = 90}},
       tick style = {black, thick, major tick length = 7pt},
       % Tangent lines on graph per https://tex.stackexchange.com/a/198046.
-      tangent/.style={
-          add node at x={2}{[
-                  sloped,
-                  append after command = {
-                      (\tikzlastnode.west) edge [semithick, magenta] (\tikzlastnode.east)
-                    },
-                  minimum width=2cm
+      tangent/.style={add node at x={2}{[
+                  sloped, minimum width=2cm,
+                  append after command =
+                    {(\tikzlastnode.west) edge [semithick, magenta] (\tikzlastnode.east)}
                 ]},
           add node at x={0.5}{[
-                  sloped,
-                  append after command = {
-                      (\tikzlastnode.west) edge [semithick, magenta] (\tikzlastnode.east)
-                    },
-                  minimum width=2cm
+                  sloped, minimum width=2cm,
+                  append after command =
+                    {(\tikzlastnode.west) edge [semithick, magenta] (\tikzlastnode.east)}
                 ]}
         }
     ]
@@ -76,14 +64,14 @@
       color = green,
       thick,
       tangent,
-    ] { 1 / x };
+    ] {1 / x};
     \addlegendentry{Virtual reserves}
     \addplot [
       domain = 0:5,
       samples = 100,
       color = blue,
       thick,
-    ] { 1 / (x + 0.5) - 0.5 };
+    ] {1 / (x + 0.5) - 0.5};
     \addlegendentry{Real reserves}
     \addplot [
       domain = 1.5:2,
@@ -91,15 +79,15 @@
       color = gray,
       very thick,
       dotted,
-    ] { x - 1.5 };
+    ] {x - 1.5};
     \addplot [
       domain = 0:.5,
       samples = 100,
       color = gray,
       very thick,
       dotted,
-    ] { x + 1.5 };
-    \node [left]  at (2.125, 0.625) {$p_l$};
-    \node [left]  at (0.75, 2) {$p_h$};
+    ] {x + 1.5};
+    \node [left] at (2.125, 0.625) {$p_l$};
+    \node [left] at (0.75, 2) {$p_h$};
   \end{axis}
 \end{tikzpicture}

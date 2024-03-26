@@ -47,6 +47,7 @@ accounting for fees):
 
 \section{Concentrated liquidity equations}
 
+
 Concentrated liquidity effectively shifts a virtual constant product curve with base reserves $b_v$
 and quote reserves $q_v$ such that real reserves are exhausted at the price endpoints of a position
 in range $[p_l, p_h]$, where $l$ and $h$ denote the low and high bounds on range price.
@@ -58,7 +59,7 @@ entirely in quote ($q_{max}$), yielding:
   (b_r + b_{max})(q_r + q_{max}) = L_v^2 = b_v q_v
 \end{equation}
 
-Equation \ref{eqn:liquidity-translation} is plotted in figure \ref{fig:liquidity-translation}.
+Equation~\ref{eqn:liquidity-translation} is plotted in figure~\ref{fig:liquidity-translation}.
 
 \begin{figure}[h]
   \centering
@@ -67,9 +68,14 @@ Equation \ref{eqn:liquidity-translation} is plotted in figure \ref{fig:liquidity
   \label{fig:liquidity-translation}
 \end{figure}
 
+
+
+
+
+
 For a swap that does not move the price outside the specified range, the input and output amounts
-for a feeless swap can thus be calculated using equations \ref{eqn:q-out-simple} and
-\ref{eqn:b-out-simple} applied to virtual reserves $b_v$ and $q_v$:
+for a feeless swap can thus be calculated using equations~\ref{eqn:q-out-simple}
+and~\ref{eqn:b-out-simple} applied to virtual reserves $b_v$ and $q_v$:
 
 \begin{equation}
   q_{out} = \frac{b_{in} q_{v, 0}}{b_{in} + b_{v, 0}}
