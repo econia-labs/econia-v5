@@ -1,4 +1,4 @@
-# cspell:words autofix, markdownlint, mdformat, shfmt
+# cspell:words autofix, latexindent, markdownlint, mdformat, shfmt
 ---
 repos:
 -
@@ -74,4 +74,15 @@ repos:
     id: 'cspell'
   repo: 'https://github.com/streetsidesoftware/cspell-cli'
   rev: 'v8.3.0'
+-
+  hooks:
+  -
+    args:
+    - '--local'
+    - 'cfg/latexindent-config.yaml'
+    - '--overwrite'
+    - '--silent'
+    id: 'latexindent'
+  repo: 'https://github.com/cmhughes/latexindent.pl'
+  rev: 'V3.23.7'
 ...
