@@ -1,7 +1,9 @@
-\documentclass[twocolumn]{article}
+\documentclass[table, twocolumn]{article}
 \usepackage{amsmath}
 \usepackage{pgfplots}
+\usepackage{xcolor}
 \pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta}
 \usetikzlibrary{intersections}
 
 \input{figures/tangent-line-style.tex}
@@ -14,41 +16,138 @@
 
 \maketitle
 
-\section{Constant product equations}
+\section{Base, quote, and price}
 
-Let price $p$ represent the ratio of quote $q$ per base $b$:
+Consider the trading pair \texttt{APT/USDC}, \texttt{APT} denominated in \texttt{USDC}:
+
+\begin{table}[ht]
+  \centering
+  \rowcolors{1}{lightgray}{gray}
+  \begin{tabular}{|c|c|c|}
+    \hline
+    \rowcolor{cyan}
+    Term        & Notation & Example       \\
+    Base asset  & $b$      & \texttt{APT}  \\
+    Quote asset & $q$      & \texttt{USDC} \\
+    \hline
+  \end{tabular}
+  \caption{Base and quote asset definitions}
+  \label{tab:base-quote-definition}
+\end{table}
+
+Price is denoted as the amount of quote per base, for example 18.26 \texttt{USDC} per
+\texttt{APT} at the time of this writing:
 
 \begin{equation} \label{eqn:price}
   p = \frac{q}{b}
 \end{equation}
 
-In a constant product automated market maker, the following invariant holds:
+\section{Constant product automated market makers}
 
-\begin{equation} \label{eqn:liquidity}
-  bq = L^2
+A constant product automated market maker pools together base and quote reserves, with the spot
+price of the pool defined as the ratio of quote to base per equation~\ref{eqn:price}.
+
+During a swap, either base or quote is provided to the pool in exchange for the other asset,
+resulting in a change to the spot price:
+
+\begin{table}[ht]
+  \centering
+  \rowcolors{1}{lightgray}{gray}
+  \begin{tabular}{|c|c|c|}
+    \hline
+    \rowcolor{cyan}
+    Term           & Before swap & After swap \\
+    Base reserves  & $b_0$       & $b_f$      \\
+    Quote reserves & $q_0$       & $q_f$      \\
+    Spot price     & $p_0$       & $p_f$      \\
+    \hline
+  \end{tabular}
+  \caption{Spot price definitions}
+  \label{tab:spot-before-after-swap}
+\end{table}
+
+\begin{equation}
+  p_0 = \frac{q_0}{b_0},
+  p_f = \frac{q_f}{b_f}
 \end{equation}
 
-Here, $L = \sqrt{bq}$ represents liquidity, and is held constant during a swap.
-Hence, for a known input amount of base $b_{in}$ or quote $q_{in}$, the corresponding output amount
-of the other asset can be calculated as follows for initial base $b_0$ and quote $q_0$ (not
-accounting for fees):
+Throughout a swap, the following constant product invariant holds:
 
-\begin{align} \label{eqn:q-out-simple}
-  b_0 q_0               & = (b_0 + b_{in})(q_0 - q_{out}) \nonumber                \\
-  b_0 q_0               & = b_0 q_0 + b_{in} q_0 - q_{out}(b_0 + b_{in}) \nonumber \\
-  q_{out}(b_0 + b_{in}) & = b_{in} q_0 \nonumber                                   \\
-  q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
-\end{align}
+\begin{equation} \label{eqn:liquidity}
+  b q = L^2
+\end{equation}
+
+That is, liquidity $L = \sqrt{bq}$ is held constant during a swap, which means that the product of
+base and quote is identical before and after the swap:
+
+\begin{equation} \label{eqn:liquidity}
+  b_0 q_0 = b_f q_f
+\end{equation}
+
+\begin{figure}[ht]
+  \centering
+  \input{figures/cpmm-swap-sell.tex}
+  \caption{Constant product swap sell}
+  \label{fig:cpmm-swap-sell}
+\end{figure}
+
+Figure~\ref{fig:cpmm-swap-sell} corresponds to a swap sell, with $b_{in}$ of base provided to the
+pool, and $q_{out}$ received in return, for an average execution price $p_{sell}$ of:
+
+\begin{equation} \label{eqn:liquidity}
+  p_{sell} = \frac{q_{out}}{b_{in}}
+\end{equation}
+
+Notably, this average execution price (the slope of the secant line between $p_0$ and $p_f$) lies
+between the pool spot price before the swap $p_0$ and the pool spot price after the swap $p_f$, as
+shown in figure~\ref{fig:cpmm-swap-sell-price}.
+
+\begin{figure}[ht]
+  \centering
+  \input{figures/cpmm-swap-sell-price.tex}
+  \caption{Constant product swap sell execution price}
+  \label{fig:cpmm-swap-sell-price}
+\end{figure}
+
+Per the constant product invariant, the output amount of a swap buy or sell is a direct function of
+input amount and initial reserves:
+
+\begin{table}[ht]
+  \centering
+  \rowcolors{1}{lightgray}{gray}
+  \begin{tabular}{|c|c|c|}
+    \hline
+    \rowcolor{cyan}
+    Term  & Swap input & Swap output \\
+    Base  & $b_{in}$   & $b_{out}$   \\
+    Quote & $q_{in}$   & $q_{out}$   \\
+    \hline
+  \end{tabular}
+  \caption{Swap input and output definitions}
+  \label{tab:spot-before-after-swap}
+\end{table}
+
+That is, for a swap buy:
 
 \begin{align} \label{eqn:b-out-simple}
+  b_0 q_0               & = b_f q_f         \nonumber                              \\
   b_0 q_0               & = (b_0 - b_{out})(q_0 + q_{in}) \nonumber                \\
   b_0 q_0               & = b_0 q_0 + b_0 q_{in} - b_{out}(q_0 + q_{in}) \nonumber \\
   b_{out}(q_0 + q_{in}) & = b_{0} q_{in} \nonumber                                 \\
   b_{out}               & = \frac{q_{in} b_0}{q_{in} + q_0}
 \end{align}
 
-\section{Concentrated liquidity equations}
+And for a swap sell:
 
+\begin{align} \label{eqn:q-out-simple}
+  b_0 q_0               & = b_f q_f         \nonumber                              \\
+  b_0 q_0               & = (b_0 + b_{in})(q_0 - q_{out}) \nonumber                \\
+  b_0 q_0               & = b_0 q_0 + b_{in} q_0 - q_{out}(b_0 + b_{in}) \nonumber \\
+  q_{out}(b_0 + b_{in}) & = b_{in} q_0 \nonumber                                   \\
+  q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
+\end{align}
+
+\section{Concentrated liquidity equations}
 
 Concentrated liquidity effectively shifts a virtual constant product curve with base reserves $b_v$
 and quote reserves $q_v$ such that real reserves are exhausted at the price endpoints of a position
