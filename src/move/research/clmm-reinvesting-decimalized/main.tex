@@ -1,5 +1,6 @@
 \documentclass[table, twocolumn]{article}
 \usepackage{amsmath}
+\usepackage[acronym]{glossaries}
 \usepackage{pgfplots}
 \usepackage{xcolor}
 \pgfplotsset{compat=1.18}
@@ -8,17 +9,20 @@
 
 \input{figures/tangent-line-style.tex}
 
-\begin{document}
+\newacronym{cpamm}{CPAMM}{Constant Product Automated Market Maker}
 
 \title{Concentrated Liquidity Market Maker with Reinvesting and Decimalized Ticks}
 \author{Econia Labs}
 \date{}
 
+\begin{document}
+
 \maketitle
 
 \section{Base, quote, and price}
 
-Consider the trading pair \texttt{APT/USDC}, \texttt{APT} denominated in \texttt{USDC}:
+Consider the trading pair \texttt{APT/USDC}, \texttt{APT} denominated in \texttt{USDC}, denoted per
+table \ref{tab:base-quote-definition} .
 
 \begin{table}[ht]
   \centering
@@ -35,8 +39,8 @@ Consider the trading pair \texttt{APT/USDC}, \texttt{APT} denominated in \texttt
   \label{tab:base-quote-definition}
 \end{table}
 
-Price is denoted as the amount of quote per base, for example 18.26 \texttt{USDC} per
-\texttt{APT} at the time of this writing:
+Price is defined as the amount of quote per base, for example 18.26 \texttt{USDC} per \texttt{APT}
+at the time of this writing, per equation \ref{eqn:price}.
 
 \begin{equation} \label{eqn:price}
   p = \frac{q}{b}
@@ -44,11 +48,14 @@ Price is denoted as the amount of quote per base, for example 18.26 \texttt{USDC
 
 \section{Constant product automated market makers}
 
-A constant product automated market maker pools together base and quote reserves, with the spot
-price of the pool defined as the ratio of quote to base per equation~\ref{eqn:price}.
+\subsection{Swap without fees}
+
+A \gls{cpamm} pools together base and quote reserves, with the spot price of the pool defined as the
+ratio of quote to base per equation \ref{eqn:price}.
 
 During a swap, either base or quote is provided to the pool in exchange for the other asset,
-resulting in a change to the spot price:
+resulting in a change to the spot price. Table \ref{tab:spot-before-after-swap} defines the relevant
+variables, with prices before and after described in equation \ref{eqn:price-before-after}.
 
 \begin{table}[ht]
   \centering
@@ -66,21 +73,23 @@ resulting in a change to the spot price:
   \label{tab:spot-before-after-swap}
 \end{table}
 
-\begin{equation}
+\begin{equation} \label{eqn:price-before-after}
   p_0 = \frac{q_0}{b_0},
   p_f = \frac{q_f}{b_f}
 \end{equation}
 
-Throughout a swap, the following constant product invariant holds:
+During a swap, a \gls{cpamm} maintains the invariant described in equation
+\ref{eqn:cpamm-invariant}.
 
-\begin{equation} \label{eqn:liquidity}
+\begin{equation} \label{eqn:cpamm-invariant}
   b q = L^2
 \end{equation}
 
 That is, liquidity $L = \sqrt{bq}$ is held constant during a swap, which means that the product of
-base and quote is identical before and after the swap:
+base and quote is identical before and after the swap per equation
+\ref{eqn:cpamm-invariant-as-products}.
 
-\begin{equation} \label{eqn:liquidity}
+\begin{equation} \label{eqn:cpamm-invariant-as-products}
   b_0 q_0 = b_f q_f
 \end{equation}
 
@@ -91,26 +100,13 @@ base and quote is identical before and after the swap:
   \label{fig:cpmm-swap-sell}
 \end{figure}
 
-Figure~\ref{fig:cpmm-swap-sell} corresponds to a swap sell, with $b_{in}$ of base provided to the
-pool, and $q_{out}$ received in return, for an average execution price $p_{sell}$ of:
+Figure \ref{fig:cpmm-swap-sell} corresponds to a swap sell with $b_{in}$ of base provided to the
+pool and $q_{out}$ received in return, for an average execution price $p_{sell}$ per equation
+\ref{eqn:cpamm-avg-execution-price}.
 
-\begin{equation} \label{eqn:liquidity}
+\begin{equation} \label{eqn:cpamm-avg-execution-price}
   p_{sell} = \frac{q_{out}}{b_{in}}
 \end{equation}
-
-Notably, this average execution price (the slope of the secant line between $p_0$ and $p_f$) lies
-between the pool spot price before the swap $p_0$ and the pool spot price after the swap $p_f$, as
-shown in figure~\ref{fig:cpmm-swap-sell-price}.
-
-\begin{figure}[ht]
-  \centering
-  \input{figures/cpmm-swap-sell-price.tex}
-  \caption{Constant product swap sell execution price}
-  \label{fig:cpmm-swap-sell-price}
-\end{figure}
-
-Per the constant product invariant, the output amount of a swap buy or sell is a direct function of
-input amount and initial reserves:
 
 \begin{table}[ht]
   \centering
@@ -124,28 +120,30 @@ input amount and initial reserves:
     \hline
   \end{tabular}
   \caption{Swap input and output definitions}
-  \label{tab:spot-before-after-swap}
+  \label{tab:swap-in-out}
 \end{table}
 
-That is, for a swap buy:
+Notably, this average execution price (the slope of the secant line between $p_0$ and $p_f$) lies
+between the pool spot price before the swap $p_0$ and the pool spot price after the swap $p_f$, as
+shown in figure \ref{fig:cpmm-swap-sell-price}.
 
-\begin{align} \label{eqn:b-out-simple}
-  b_0 q_0               & = b_f q_f         \nonumber                              \\
-  b_0 q_0               & = (b_0 - b_{out})(q_0 + q_{in}) \nonumber                \\
-  b_0 q_0               & = b_0 q_0 + b_0 q_{in} - b_{out}(q_0 + q_{in}) \nonumber \\
-  b_{out}(q_0 + q_{in}) & = b_{0} q_{in} \nonumber                                 \\
-  b_{out}               & = \frac{q_{in} b_0}{q_{in} + q_0}
+\begin{figure}[ht]
+  \centering
+  \input{figures/cpmm-swap-sell-price.tex}
+  \caption{Constant product swap sell execution price}
+  \label{fig:cpmm-swap-sell-price}
+\end{figure}
+
+Per the constant product invariant in equation \ref{eqn:cpamm-invariant}, the output amount of a
+swap buy or sell is a direct function of input amount and initial reserves, as denoted in table
+\ref{tab:swap-in-out} and defined in equation \ref{eqn:b-q-out-simple} (full derivations at equation
+\ref{eqn:b-out-simple-derivation} and \ref{eqn:q-out-simple-derivation}).
+
+\begin{align} \label{eqn:b-q-out-simple}
+  b_{out} = \frac{q_{in} b_0}{q_{in} + q_0}, q_{out} = \frac{b_{in} q_0}{b_{in} + b_0}
 \end{align}
 
-And for a swap sell:
-
-\begin{align} \label{eqn:q-out-simple}
-  b_0 q_0               & = b_f q_f         \nonumber                              \\
-  b_0 q_0               & = (b_0 + b_{in})(q_0 - q_{out}) \nonumber                \\
-  b_0 q_0               & = b_0 q_0 + b_{in} q_0 - q_{out}(b_0 + b_{in}) \nonumber \\
-  q_{out}(b_0 + b_{in}) & = b_{in} q_0 \nonumber                                   \\
-  q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
-\end{align}
+\subsection{Swap with fees}
 
 \section{Concentrated liquidity equations}
 
@@ -170,15 +168,32 @@ Equation~\ref{eqn:liquidity-translation} is plotted in figure~\ref{fig:liquidity
 \end{figure}
 
 For a swap that does not move the price outside the specified range, the input and output amounts
-for a feeless swap can thus be calculated using equations~\ref{eqn:q-out-simple}
-and~\ref{eqn:b-out-simple} applied to virtual reserves $b_v$ and $q_v$:
+for a feeless swap can thus be calculated using equation ~\ref{eqn:b-q-out-simple} applied to
+virtual reserves $b_v$ and $q_v$:
 
 \begin{equation}
+  b_{out} = \frac{q_{in} b_{v, 0}}{q_{in} + q_{v, 0}},
   q_{out} = \frac{b_{in} q_{v, 0}}{b_{in} + b_{v, 0}}
 \end{equation}
 
-\begin{equation}
-  b_{out} = \frac{q_{in} b_{v, 0}}{q_{in} + q_{v, 0}}
-\end{equation}
+\appendix
+
+\section{Derivations}
+
+\begin{align} \label{eqn:b-out-simple-derivation}
+  b_0 q_0               & = b_f q_f         \nonumber                              \\
+  b_0 q_0               & = (b_0 - b_{out})(q_0 + q_{in}) \nonumber                \\
+  b_0 q_0               & = b_0 q_0 + b_0 q_{in} - b_{out}(q_0 + q_{in}) \nonumber \\
+  b_{out}(q_0 + q_{in}) & = b_{0} q_{in} \nonumber                                 \\
+  b_{out}               & = \frac{q_{in} b_0}{q_{in} + q_0}
+\end{align}
+
+\begin{align} \label{eqn:q-out-simple-derivation}
+  b_0 q_0               & = b_f q_f         \nonumber                              \\
+  b_0 q_0               & = (b_0 + b_{in})(q_0 - q_{out}) \nonumber                \\
+  b_0 q_0               & = b_0 q_0 + b_{in} q_0 - q_{out}(b_0 + b_{in}) \nonumber \\
+  q_{out}(b_0 + b_{in}) & = b_{in} q_0 \nonumber                                   \\
+  q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
+\end{align}
 
 \end{document}
