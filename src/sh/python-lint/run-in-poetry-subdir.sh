@@ -11,26 +11,26 @@ shift
 ERROR_MESSAGE=$1
 shift
 
-RELATIVE_PATHS=""
+ABSOLUTE_PATHS=""
 
 ROOT_DIR=$(git rev-parse --show-toplevel)
 PYTHON_DIR=$ROOT_DIR/src/python
 POETRY_SUBDIRECTORY=$PYTHON_DIR/hooks
 
-# Convert all paths to relative paths.
+# Convert all paths to absolute paths.
 for path in "$@"; do
-	RELATIVE=$(realpath --relative-to="$POETRY_SUBDIRECTORY" "$path")
-	RELATIVE_PATHS="$RELATIVE_PATHS $RELATIVE"
+	ABSOLUTE=$ROOT_DIR/$path
+	ABSOLUTE_PATHS="$ABSOLUTE_PATHS $ABSOLUTE"
 done
 
 cd $POETRY_SUBDIRECTORY || exit 1
 
-# Then run the script passed into this script, with the relative paths.
+# Then run the script passed into this script, with the absolute paths.
 # This is so we can define individual pre-commit hooks for each linter,
 # each with their own output status codes.
 fail=false
 
-eval $COMMAND $RELATIVE_PATHS || fail=true
+eval $COMMAND $ABSOLUTE_PATHS || fail=true
 
 if [ "$fail" = true ]; then
 	echo ''
