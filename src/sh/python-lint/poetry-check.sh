@@ -22,7 +22,7 @@ poetry install --no-root || {
 
 # Check if `poetry.lock` is consistent with `pyproject.toml`.
 # We run both commands in case their version of poetry doesn't
-# support `poetry check`.
+# support `poetry check --lock`.
 poetry check --lock || poetry lock --check --no-update || {
 	echo 'Poetry lock file is out of date. Running `poetry lock --no-update`...'
 	poetry lock --no-update || {
