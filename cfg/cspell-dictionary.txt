@@ -1,3 +1,9 @@
+LIGHTBLACK
+LIGHTGREEN
+LIGHTMAGENTA
+LIGHTRED
+LIGHTWHITE
+LIGHTYELLOW
 aptos
 auid
 bitshift
@@ -5,6 +11,7 @@ clmm
 collateralized
 econia
 octas
+precommit
 struct
 structs
 subdir

@@ -20,7 +20,7 @@ repos:
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run autoflake -i --remove-all-unused-imports
       --remove-unused-variables --ignore-init-module-imports'
-      'Please run src/sh/python-lint/format.sh to fix the errors.'
+      'Please run src/sh/python-lint/format.sh and fix the errors.'
     id: 'gitignore-formatter'
     language: 'script'
     name: '.gitignore Formatter'
@@ -30,7 +30,7 @@ repos:
     entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run python -m file-name-conventions'
-      'Please rename the files to match the naming conventions.'
+      'Please run src/sh/python-lint/format.sh and fix the errors.'
     id: 'file-name-conventions'
     language: 'script'
     name: 'check file name conventions'
@@ -41,7 +41,7 @@ repos:
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run autoflake -c --remove-all-unused-imports
       --remove-unused-variables --ignore-init-module-imports'
-      'Please run src/sh/python-lint/format.sh to fix the errors.'
+      'Please run src/sh/python-lint/format.sh and fix the errors.'
     id: 'autoflake'
     language: 'script'
     name: 'autoflake'
@@ -51,7 +51,7 @@ repos:
     entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run black --check'
-      'Please run src/sh/python-lint/format.sh to fix the errors.'
+      'Please run src/sh/python-lint/format.sh and fix the errors.'
     id: 'black'
     language: 'script'
     name: 'black'
@@ -61,7 +61,7 @@ repos:
     entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run flake8'
-      'Please fix the errors before committing.'
+      'Please run src/sh/python-lint/format.sh and fix the errors.'
     id: 'flake8'
     language: 'script'
     name: 'flake8'
@@ -71,7 +71,7 @@ repos:
     entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run isort --check'
-      'Please run src/sh/python-lint/format.sh to fix the errors.'
+      'Please run src/sh/python-lint/format.sh and fix the errors.'
     id: 'isort'
     language: 'script'
     name: 'isort'
@@ -81,7 +81,7 @@ repos:
     entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run mypy'
-      'Please fix the errors before committing.'
+      'Please run src/sh/python-lint/format.sh and fix the errors.'
     id: 'mypy'
     language: 'script'
     name: 'mypy'

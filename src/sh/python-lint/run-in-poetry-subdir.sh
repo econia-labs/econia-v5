@@ -1,5 +1,5 @@
 #!/bin/bash
-# cspell:words realpath, autoflake, venv
+# cspell:words realpath, autoflake, venv, toplevel
 
 # Capture the first argument, which is the command we're wrapping for
 # the pre-commit hook.
@@ -11,11 +11,11 @@ shift
 ERROR_MESSAGE=$1
 shift
 
-# This is the path passed in to the script from the pre-commit hook,
-# it tells poetry where to look for the files.
-POETRY_SUBDIRECTORY="./src/python/hooks"
-
 RELATIVE_PATHS=""
+
+ROOT_DIR=$(git rev-parse --show-toplevel)
+PYTHON_DIR=$ROOT_DIR/src/python
+POETRY_SUBDIRECTORY=$PYTHON_DIR/hooks
 
 # Convert all paths to relative paths.
 for path in "$@"; do
