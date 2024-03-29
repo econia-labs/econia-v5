@@ -1,7 +1,16 @@
-#!/bin/sh
-# cspell:words pyproject
+#!/bin/bash
+# cspell:words pyproject, toplevel
 
-if [ "$GITHUB_ACTIONS" = "true" ]; then
+original_cwd=$(pwd)
+
+function cleanup() {
+	cd "$original_cwd" || exit 1
+}
+
+# Ensure cleanup function is called on exit.
+trap cleanup EXIT
+
+if [ "$GITHUB_ACTIONS" == "true" ]; then
 	echo 'GitHub Actions environment detected, skipping `poetry check`...'
 	exit 0
 fi
@@ -11,7 +20,9 @@ poetry --version >/dev/null 2>&1 || {
 	exit 1
 }
 
-POETRY_SUBDIRECTORY=./src/python/hooks
+ROOT_DIR=$(git rev-parse --show-toplevel)
+PYTHON_DIR=$ROOT_DIR/src/python
+POETRY_SUBDIRECTORY=$PYTHON_DIR/hooks
 cd $POETRY_SUBDIRECTORY || exit 1
 
 # Attempt to install the poetry dependencies.
