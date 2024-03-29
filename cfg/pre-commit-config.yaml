@@ -16,6 +16,9 @@ repos:
     id: 'local-poetry-check'
     language: 'script'
     name: 'local poetry check'
+    # Only run this script once since it potentially installs poetry.
+    # It exits successfully early if "$GITHUB_ACTIONS" == "true".
+    pass_filenames: false
   - entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'
       'poetry run autoflake -i --remove-all-unused-imports
