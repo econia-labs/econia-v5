@@ -16,7 +16,7 @@
 \newacronym{cpamm}{CPAMM}{Constant Product Automated Market Maker}
 \newacronym{lp}{LP}{Liquidity Provider}
 
-\title{Concentrated Liquidity Market Maker with Reinvesting and Decimalized Ticks}
+\title{Custom Concentrated Liquidity Automated Market Maker}
 \author{Econia Labs}
 \date{}
 
@@ -165,7 +165,7 @@ Notably, the first \gls{lp} in the pool sets the spot price via the amount of ba
 contributed, and receives a number of tokens equal to the amount of provided liquidity.
 
 For example consider the initial base and quote contributions in table \ref{tab:first-lp-amounts}.
-Per equation \ref{eqn:price}, the initial spot price is then 4 as shown in equation
+Per equation \ref{eqn:price}, the initial spot price is then $p = 4$ as shown in equation
 \ref{eqn:first-lp-spot-price}.
 
 \begin{table}[!htb]
@@ -181,7 +181,7 @@ Per equation \ref{eqn:price}, the initial spot price is then 4 as shown in equat
 \end{table}
 
 \begin{equation} \label{eqn:first-lp-spot-price}
-  p = \frac{20}{5} = 4
+  p = \frac{q}{b} = \frac{20}{5} = 4
 \end{equation}
 
 Per equation \ref{eqn:cpamm-invariant}, the \gls{lp} then receives 10 \gls{lp} tokens as shown in
@@ -191,26 +191,44 @@ equation \ref{eqn:first-lp-tokens}.
   L = \sqrt{5 \cdot 20} = 10
 \end{equation}
 
-Thereafter any new \gls{lp} must provide base and quote proportional to the amount of base and
-quote in the pool, receiving in exchange an amount of \gls{lp} tokens representing their pro rata
-share of the pool's liquidity.
-
-Continuing the example, as described in table \ref{tab:new-lp-tokens} and equation
-\ref{eqn:new-lp-tokens}, if the spot price does not change a new \gls{lp} may contribute another 10
-base and 40 quote, receiving 20 \gls{lp} tokens in return. At this point the pool has 15 base and 60
-quote.
+Thereafter any new \gls{lp} must provide base and quote proportional to the amount of base and quote
+in the pool at the time of deposit. For example if the spot price does not change then a new
+\gls{lp} may contribute another 10 base and 40 quote, as described in table
+\ref{tab:new-lp-base-quote-ratios} and equation \ref{eqn:new-lp-base-quote-ratios}.
 
 \begin{table}[!htb]
   \centering
   \begin{tabular}{|c|c|c|}
     \hline \rowcolor{blue}
-    Term                           & Notation      & Amount \\ \hline
-    Base in pool                   & $b_{pool}$    & 5      \\ \hline
-    New base deposited             & $b_{deposit}$ & 10     \\ \hline
-    Existing \gls{lp} token supply & $T_s$         & 10     \\ \hline
-    New \gls{lp} tokens issued     & $T_n$         & 20     \\ \hline
+    Term            & Notation      & Amount \\ \hline
+    Base in pool    & $b_{pool}$    & 5      \\ \hline
+    Quote in pool   & $q_{pool}$    & 20     \\ \hline
+    Base deposited  & $b_{deposit}$ & 10     \\ \hline
+    Quote deposited & $q_{deposit}$ & 40     \\ \hline
   \end{tabular}
-  \caption{Additional \gls{lp} token issuance definitions}
+  \caption{Base and quote ratios for second \gls{lp}}
+  \label{tab:new-lp-base-quote-ratios}
+\end{table}
+
+\begin{align} \label{eqn:new-lp-base-quote-ratios}
+  \frac{b_{deposit}}{b_{pool}} & \stackrel{?}{=} \frac{q_{deposit}}{q_{pool}} \nonumber \\
+  \frac{10}{5}                 & \stackrel{?}{=} \frac{40}{20}  \nonumber               \\
+  2                            & = 2
+\end{align}
+
+In exchange the new \gls{lp} receives \gls{lp} tokens representing their pro rata share of the
+pool's liquidity. Continuing the example, as described in table \ref{tab:new-lp-tokens} and equation
+\ref{eqn:new-lp-tokens}, the second \gls{lp} thus receives 20 \gls{lp} tokens in return.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Term                           & Notation & Amount \\ \hline
+    Existing \gls{lp} token supply & $T_s$    & 10     \\ \hline
+    New \gls{lp} tokens issued     & $T_n$    & 20     \\ \hline
+  \end{tabular}
+  \caption{\gls{lp} token amounts during second contribution}
   \label{tab:new-lp-tokens}
 \end{table}
 
@@ -218,12 +236,38 @@ quote.
   T_n = \frac{b_{deposit}}{b_{pool}} T_s = \frac{10}{5} 10 = 20
 \end{equation}
 
-As the pool processes trades and accumulates fees, the spot price may change and liquidity grows.
+As the pool processes trades and accumulates fees, the spot price may change as liquidity grows.
 For example consider that over time the amount of liquidity in the pool increases and price drops by
-50\%, yielding a pool with 30 base and 60 quote. Each \gls{lp} is still entitled to a pro rata
-portion of the pool based on their share of total \gls{lp} tokens issued, so the first \gls{lp}
-would receive 10 base and 20 quote if they were to burn their \gls{lp} tokens, while the second
-\gls{lp} would receive 20 base and 40 quote.
+50\%, yielding a pool with 30 base and 60 quote, as described in table
+\ref{tab:pool-reserve-progression}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Stage                              & $b_{pool}$ & $q_{pool}$ \\ \hline
+    After first \gls{lp} contribution  & 5          & 20         \\ \hline
+    After second \gls{lp} contribution & 15         & 60         \\ \hline
+    After market activity              & 30         & 60         \\ \hline
+  \end{tabular}
+  \caption{Pool reserves over time}
+  \label{tab:pool-reserve-progression}
+\end{table}
+
+Each \gls{lp} is still entitled to a pro rata portion of liquidity in the pool based on their share
+of total \gls{lp} tokens issued, as described in table \ref{tab:lp-pro-rata-shares}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|c|}
+    \hline \rowcolor{blue}
+    Provider & Tokens & Base share & Quote share \\ \hline
+    First    & 10     & 10         & 20          \\ \hline
+    Second   & 20     & 20         & 40          \\ \hline
+  \end{tabular}
+  \caption{Pro rata liquidity shares after market activity}
+  \label{tab:lp-pro-rata-shares}
+\end{table}
 
 Notably, Uniswap v2 burns the first 1000 \gls{lp} tokens (equivalent to asset subunits) to prevent
 attacks that would enable the first contributor to a pool to make subsequent liquidity provisioning
