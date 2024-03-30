@@ -18,12 +18,6 @@ def get_git_root():
     return precommit_git.get_root()
 
 
-# Where this poetry project is located.
-def get_poetry_dir():
-    root = precommit_git.get_root()
-    return os.path.join(root, "src/python/hooks")
-
-
 def git_ls_files(abs_paths=False):
     root = precommit_git.get_root()
     all_files = precommit_git.zsplit(
