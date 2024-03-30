@@ -162,20 +162,61 @@ As the amount of liquidity in the pool grows so does the share of each \gls{lp} 
 tokens in the pool, which represent a share of the pool's liquidity.
 
 Notably, the first \gls{lp} in the pool sets the spot price via the amount of base and quote
-contributed, and receives a number of tokens equal to the amount of provided liquidity. For example
-if the first \gls{lp} provides 5 base and 20 quote tokens, then per equation \ref{eqn:price} the initial spot price is $p = \frac{20}{5} = 4$ and per equation \ref{eqn:cpamm-invariant} they receive
-$L = \sqrt{5 \cdot 20} = 10$ \gls{lp} tokens.
+contributed, and receives a number of tokens equal to the amount of provided liquidity.
 
-Thereafter, any new \gls{lp} must provide base and quote proportional to the amount of base and
-quote in the pool, and receives a number of new \gls{lp} tokens $T_n$ proportional to circulating
-supply $T_s$ and base reserves $b_{pool}$ as described in equation \ref{eqn:new-lp-tokens}.
+For example consider the initial base and quote contributions in table \ref{tab:first-lp-amounts}.
+Per equation \ref{eqn:price}, the initial spot price is then 4 as shown in equation
+\ref{eqn:first-lp-spot-price}.
 
-\begin{equation} \label{eqn:new-lp-tokens}
-  T_n = \frac{b_{deposit}}{b_{pool}} T_s
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Asset & Notation & Amount \\ \hline
+    Base  & $b$      & 5      \\ \hline
+    Quote & $q$      & 20     \\ \hline
+  \end{tabular}
+  \caption{Base and quote provided by first \gls{lp}}
+  \label{tab:first-lp-amounts}
+\end{table}
+
+\begin{equation} \label{eqn:first-lp-spot-price}
+  p = \frac{20}{5} = 4
 \end{equation}
 
-For example, if the spot price does not change a new \gls{lp} may contribute another 10 base and 40
-quote, receiving 20 \gls{lp} tokens in return. At this point the pool has 15 base and 60 quote.
+Per equation \ref{eqn:cpamm-invariant}, the \gls{lp} then receives 10 \gls{lp} tokens as shown in
+equation \ref{eqn:first-lp-tokens}.
+
+\begin{equation} \label{eqn:first-lp-tokens}
+  L = \sqrt{5 \cdot 20} = 10
+\end{equation}
+
+Thereafter any new \gls{lp} must provide base and quote proportional to the amount of base and
+quote in the pool, receiving in exchange an amount of \gls{lp} tokens representing their pro rata
+share of the pool's liquidity.
+
+Continuing the example, as described in table \ref{tab:new-lp-tokens} and equation
+\ref{eqn:new-lp-tokens}, if the spot price does not change a new \gls{lp} may contribute another 10
+base and 40 quote, receiving 20 \gls{lp} tokens in return. At this point the pool has 15 base and 60
+quote.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Term                           & Notation      & Amount \\ \hline
+    Base in pool                   & $b_{pool}$    & 5      \\ \hline
+    New base deposited             & $b_{deposit}$ & 10     \\ \hline
+    Existing \gls{lp} token supply & $T_s$         & 10     \\ \hline
+    New \gls{lp} tokens issued     & $T_n$         & 20     \\ \hline
+  \end{tabular}
+  \caption{Additional \gls{lp} token issuance definitions}
+  \label{tab:new-lp-tokens}
+\end{table}
+
+\begin{equation} \label{eqn:new-lp-tokens}
+  T_n = \frac{b_{deposit}}{b_{pool}} T_s = \frac{10}{5} 10 = 20
+\end{equation}
 
 As the pool processes trades and accumulates fees, the spot price may change and liquidity grows.
 For example consider that over time the amount of liquidity in the pool increases and price drops by
