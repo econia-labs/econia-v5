@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# cspell:words colorama, LIGHTRED, LIGHTBLACK
-# cspell:words LIGHTWHITE, LIGHTMAGENTA, LIGHTGREEN
+# cspell:words colorama, LIGHTRED, LIGHTBLACK, LIGHTWHITE, LIGHTGREEN
 import os
 import re
 import sys
@@ -80,7 +79,7 @@ def main():
             file_name = os.path.basename(file_path)
             colored_dir = Fore.LIGHTBLACK_EX + file_dir
             colored_fp = Fore.LIGHTWHITE_EX + file_name
-            colored_case = Fore.LIGHTMAGENTA_EX + case
+            colored_case = Fore.YELLOW + case
             colored_default_msg = Fore.LIGHTBLACK_EX + "(default)"
             print(ERROR_STRING, end="")
             print(
