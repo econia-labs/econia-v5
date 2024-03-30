@@ -7,6 +7,10 @@
 \usetikzlibrary{arrows.meta}
 \usetikzlibrary{intersections}
 
+% Dark mode.
+\pagecolor{black}
+\color{gray}
+
 \input{figures/tangent-line-style.tex}
 
 \newacronym{cpamm}{CPAMM}{Constant Product Automated Market Maker}
@@ -27,14 +31,11 @@ table \ref{tab:base-quote-definition}.
 
 \begin{table}[!htb]
   \centering
-  \rowcolors{1}{lightgray}{gray}
   \begin{tabular}{|c|c|c|}
-    \hline
-    \rowcolor{cyan}
-    Term        & Notation & Example       \\
-    Base asset  & $b$      & \texttt{APT}  \\
-    Quote asset & $q$      & \texttt{USDC} \\
-    \hline
+    \hline \rowcolor{blue}
+    Term        & Notation & Example       \\ \hline
+    Base asset  & $b$      & \texttt{APT}  \\ \hline
+    Quote asset & $q$      & \texttt{USDC} \\ \hline
   \end{tabular}
   \caption{Base and quote asset definitions}
   \label{tab:base-quote-definition}
@@ -61,15 +62,12 @@ reserves.
 
 \begin{table}[!htb]
   \centering
-  \rowcolors{1}{lightgray}{gray}
   \begin{tabular}{|c|c|c|}
-    \hline
-    \rowcolor{cyan}
-    Term           & Before swap & After swap \\
-    Base reserves  & $b_0$       & $b_f$      \\
-    Quote reserves & $q_0$       & $q_f$      \\
-    Spot price     & $p_0$       & $p_f$      \\
-    \hline
+    \hline \rowcolor{blue}
+    Term           & Before swap & After swap \\ \hline
+    Base reserves  & $b_0$       & $b_f$      \\ \hline
+    Quote reserves & $q_0$       & $q_f$      \\ \hline
+    Spot price     & $p_0$       & $p_f$      \\ \hline
   \end{tabular}
   \caption{Spot price definitions}
   \label{tab:spot-before-after-swap}
@@ -108,14 +106,11 @@ $b_{in}$ of base provided to the pool results in $q_{out}$ received in return. P
 
 \begin{table}[!htb]
   \centering
-  \rowcolors{1}{lightgray}{gray}
   \begin{tabular}{|c|c|c|}
-    \hline
-    \rowcolor{cyan}
-    Term  & Swap input & Swap output \\
-    Base  & $b_{in}$   & $b_{out}$   \\
-    Quote & $q_{in}$   & $q_{out}$   \\
-    \hline
+    \hline \rowcolor{blue}
+    Term  & Swap input & Swap output \\ \hline
+    Base  & $b_{in}$   & $b_{out}$   \\ \hline
+    Quote & $q_{in}$   & $q_{out}$   \\ \hline
   \end{tabular}
   \caption{Swap input and output definitions}
   \label{tab:swap-in-out}
