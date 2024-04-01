@@ -15,13 +15,10 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 This repository uses [`pre-commit`]. If you add a new filetype, you `SHOULD` add
 a new [hook][pre-commit hook].
 
-From the repository root directory:
-
-```sh
-source src/sh/pre-commit.sh
-```
-
 See the `cfg/` directory for assorted formatter and linter configurations.
+
+To install our `pre-commit` hooks locally and/or run our python formatter
+scripts, please see the [python hooks readme].
 
 ### GitHub actions
 
@@ -114,6 +111,7 @@ results in the comment being marked as resolved.
 [move references]: https://move-language.github.io/move/references.html
 [move signer]: https://move-language.github.io/move/signer.html
 [pre-commit hook]: https://pre-commit.com/hooks.html
+[python hooks readme]: https://github.com/econia-labs/econia-v5/src/python/hooks/README.md
 [reference links]: https://mdformat.readthedocs.io/en/stable/users/style.html#reference-links
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [run `pre-commit`]: #pre-commit
