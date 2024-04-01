@@ -16,6 +16,7 @@
 \input{figures/tangent-line-style.tex}
 
 \newacronym{cpamm}{CPAMM}{Constant Product Automated Market Maker}
+\newacronym{clamm}{CLAMM}{Concentrated Liquidity Automated Market Maker}
 \newacronym{lp}{LP}{Liquidity Provider}
 
 % Image in title per https://tex.stackexchange.com/a/251410.
@@ -289,29 +290,61 @@ Notably, Uniswap v2 burns the first 1000 \gls{lp} tokens (equivalent to asset su
 to prevent attacks that would enable the first contributor to a pool to make subsequent
 liquidity provisioning prohibitively expensive.
 
-\section{Concentrated liquidity equations}
+\section{Concentrated liquidity automated market makers}
 
-Concentrated liquidity effectively shifts a virtual constant product curve with base
-reserves $b_v$ and quote reserves $q_v$ such that real reserves are exhausted at the
-price endpoints of a position in range $[p_l, p_h]$, where $l$ and $h$ denote the low
-and high bounds on range price.
+\subsection{Curve translation within a price range}
 
-At $p_l$ real reserves are held entirely in base ($b_{max}$) while at $p_h$ real
-reserves are held entirely in quote ($q_{max}$), yielding:
+A \gls{clamm} like Uniswap v3 effectively shifts a virtual \gls{cpamm} curve within a
+given price range such that real reserves are exhausted whenever the price reaches the
+endpoints of the range, as described in tables \ref{tab:clamm-curve-translation} and
+\ref{tab:clamm-curve-endpoint-reserves}, figure \ref{fig:clamm-curve-translation}, and
+equation \ref{eqn:clamm-curve-translation}.
 
-\begin{equation} \label{eqn:liquidity-translation}
-  (b_r + b_{max})(q_r + q_{max}) = L_v^2 = b_v q_v
-\end{equation}
-
-Equation~\ref{eqn:liquidity-translation} is plotted in
-figure~\ref{fig:liquidity-translation}.
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|}
+    \hline \rowcolor{blue}
+    Term                           & Notation  \\ \hline
+    Real base reserves             & $b_r$     \\ \hline
+    Real quote reserves            & $q_r$     \\ \hline
+    Virtual base reserves          & $b_v$     \\ \hline
+    Virtual quote reserves         & $q_v$     \\ \hline
+    Virtual liquidity              & $L_v$     \\ \hline
+    Low price range endpoint       & $p_l$     \\ \hline
+    High price range endpoint      & $p_h$     \\ \hline
+    Real base reserves ceiling     & $b_{r,c}$ \\ \hline
+    Real quote reserves ceiling    & $q_{r,c}$ \\ \hline
+    Virtual base reserves ceiling  & $b_{v,c}$ \\ \hline
+    Virtual quote reserves ceiling & $q_{v,c}$ \\ \hline
+    Virtual base reserves floor    & $b_{v,f}$ \\ \hline
+    Virtual quote reserves floor   & $q_{v,f}$ \\ \hline
+  \end{tabular}
+  \caption{Terms, translation from \gls{cpamm} to \gls{clamm}}
+  \label{tab:clamm-curve-translation}
+\end{table}
 
 \begin{figure}[!htb]
   \centering
-  \input{figures/curve-translation.tex}
-  \caption{Liquidity translation}
-  \label{fig:liquidity-translation}
+  \input{figures/clamm-curve-translation.tex}
+  \caption{Translation from \gls{cpamm} to \gls{clamm}}
+  \label{fig:clamm-curve-translation}
 \end{figure}
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline \rowcolor{blue}
+    Price & $b_r$      & $q_r$        & $b_v$      & $q_v$      \\ \hline
+    $p_l$ & $b_{r, c}$ & 0            & $b_{v, c}$ & $q_{v, f}$ \\ \hline
+    $p_h$ & 0          & ${q_{r, c}}$ & $b_{v, f}$ & $q_{v, c}$ \\ \hline
+  \end{tabular}
+  \caption{Amount of real and virtual reserves at price range endpoints}
+  \label{tab:clamm-curve-endpoint-reserves}
+\end{table}
+
+\begin{equation} \label{eqn:clamm-curve-translation}
+  (b_r + b_{v, f})(q_r + q_{v, f}) = L_v^2 = b_v q_v
+\end{equation}
 
 For a swap that does not move the price outside the specified range, the input and
 output amounts for a feeless swap can thus be calculated using equation
