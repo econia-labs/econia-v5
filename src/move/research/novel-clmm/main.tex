@@ -346,14 +346,63 @@ equation \ref{eqn:clamm-curve-translation}.
   (b_r + b_{v, f})(q_r + q_{v, f}) = L_v^2 = b_v q_v
 \end{equation}
 
-For a swap that does not move the price outside the specified range, the input and
-output amounts for a feeless swap can thus be calculated using equation
-~\ref{eqn:b-q-out-simple} applied to virtual reserves $b_v$ and $q_v$:
+For a feeless swap that does not move the price outside the specified range, the input
+and output amounts can thus be calculated using equation \ref{eqn:b-q-out-simple}
+applied to virtual reserves $b_v$ and $q_v$, yielding equation
+\ref{eqn:b-q-out-clamm-simple}.
 
-\begin{equation}
+\begin{equation} \label{eqn:b-q-out-clamm-simple}
   b_{out} = \frac{q_{in} b_{v, 0}}{q_{in} + q_{v, 0}},
   q_{out} = \frac{b_{in} q_{v, 0}}{b_{in} + b_{v, 0}}
 \end{equation}
+
+\subsection{Simple liquidity provisioning within a single range}
+
+The first \gls{lp} in a \gls{clamm} effectively configures the pool to provide liquidity
+within the single price range $[p_l, p_h]$ corresponding to the endpoints of their
+position. As with a \gls{cpamm} they set the price of the pool based on the amount of
+base and quote they provide.
+
+In the special case that they provide only base, price initializes to $p_l$ and their
+contribution is effectively $b_{r, c}$. If only quote, $p_h$ and $q_{r, c}$.
+
+Define two coefficients $C_b$ and $C_q$ per equations
+\ref{eqn:clamm-endpoint-coefficients-b} and \ref{eqn:clamm-endpoint-coefficients-q}.
+
+\begin{align} \label{eqn:clamm-endpoint-coefficients-b}
+  b_{v, f} &= C_b b_{r, c} \nonumber \\
+  C_b &= \frac{b_{v, f}}{b_{r, c}}
+\end{align}
+
+\begin{align} \label{eqn:clamm-endpoint-coefficients-q}
+  q_{v, f} &= C_q q_{r, c} \nonumber \\
+  C_q &= \frac{q_{v, f}}{q_{r, c}}
+\end{align}
+
+\begin{align}
+  p_l &= \frac{q_v}{b_v}|_{p_l} \nonumber \\
+  p_l &= \frac{q_{v, f}}{b_{r, c} + {b_{v, f}}} \nonumber \\
+  p_l &= \frac{q_{v, f}}{b_{r, c} + {b_{v, f}}} \nonumber \\
+  p_l(b_{r, c} + b_{v, f}) &= q_{v, f} \nonumber \\
+\end{align}
+
+\begin{align}
+  p_h &= \frac{q_v}{b_v}|_{p_h} \nonumber \\
+  p_h &= \frac{q_{r, c} + q_{v, f}}{b_{v, f}} \nonumber \\
+  b_{v, f} &= \frac{q_{r, c} + q_{v, f}}{p_h}
+\end{align}
+
+\begin{align}
+  b_v q_v |_{p_l} &= b_v q_v |_{p_h} \nonumber \\
+  q_{v, f} (b_{r, c} + {b_{v, f}}) &=  b_{v, f} (q_{r, c} + q_{v, f}) \nonumber \\
+  p_l (b_{r, c} + {b_{v, f}})^2 &=  \frac{(q_{r, c} + q_{v, f})^2}{p_h} \nonumber \\
+  p_h p_l &=  \frac{(q_{r, c} + q_{v, f})^2}{(b_{r, c} + {b_{v, f}})^2}
+\end{align}
+
+\begin{align}
+p &= \frac{q_v}{b_v} \nonumber \\
+p &= \frac{q_r + q_{v, f}}{b_r + b_{v, f}}
+\end{align}
 
 \appendix
 
