@@ -81,11 +81,12 @@ own `pre-commit` checks.
 ## Running the python formatters
 
 Since our `pre-commit` hooks generally avoid making changes in place during
-the `pre-commit` hook suite, you may need to make manual changes to your files
+the `pre-commit` hook suite, you may need to make changes to your python files
 to pass the checks.
 
-If your checks fail due to formatting or linting for python files, you can
-easily make necessary changes with our formatting script:
+Some of these changes may require you to make manual changes, but if they
+are issues with formatting and linting, you can easily fix a large portion
+of them by running our formatting script:
 
 ```shell
 ./src/sh/python-lint/format.sh

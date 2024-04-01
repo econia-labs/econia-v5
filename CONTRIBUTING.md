@@ -111,7 +111,7 @@ results in the comment being marked as resolved.
 [move references]: https://move-language.github.io/move/references.html
 [move signer]: https://move-language.github.io/move/signer.html
 [pre-commit hook]: https://pre-commit.com/hooks.html
-[python hooks readme]: src/python/hooks/README.md
+[python hooks readme]: ./src/python/hooks/README.md
 [reference links]: https://mdformat.readthedocs.io/en/stable/users/style.html#reference-links
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
 [run `pre-commit`]: #pre-commit
