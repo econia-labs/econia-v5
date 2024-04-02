@@ -106,7 +106,7 @@ results in the comment being marked as resolved.
    `SomethingEvent`, and `SHALL` be emitted v2-style, consistent with
    the [Aptos Framework v2 event refactors].
 
-[adding new hooks]: ./src/python/hooks/README.md
+[adding new hooks]: ./cfg/README.md#adding-new-hooks
 [aptos framework v2 event refactors]: https://github.com/aptos-foundation/AIPs/issues/367
 [architecture specification]: doc/architecture-specification.md
 [doc comments]: https://move-language.github.io/move/coding-conventions.html?#comments
@@ -115,7 +115,7 @@ results in the comment being marked as resolved.
 [move format]: https://move-language.github.io/move/coding-conventions.html#formatting
 [move references]: https://move-language.github.io/move/references.html
 [move signer]: https://move-language.github.io/move/signer.html
-[pre-commit configuration readme]: ./cfg/README.md
+[pre-commit configuration readme]: ./cfg/README.md#running-pre-commit-hooks-locally
 [pre-commit hook]: https://pre-commit.com/hooks.html
 [reference links]: https://mdformat.readthedocs.io/en/stable/users/style.html#reference-links
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt

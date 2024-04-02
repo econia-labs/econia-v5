@@ -8,6 +8,14 @@ This repository uses [`pre-commit`] hooks to perform various formatter and
 linter verifications upon PR submission. In order to merge a PR, all hooks
 must complete successfully.
 
+## Adding new hooks
+
+If you need to add a new hook to the list of `pre-commit` hooks, you can do so
+by adding it into the `pre-commit-config.yaml` configuration file.
+
+You can add a new hook either by [adding an existing plugin] or [creating a new
+custom hook entirely][creating a new custom hook entirely].
+
 ## Running `pre-commit` hooks locally
 
 To avoid your PR contributions failing the CI pipeline checks, you can install
@@ -81,5 +89,7 @@ own `pre-commit` checks.
 If you'd like to automate the Python formatting and linting as much as possible,
 you can [run our Python format script].
 
+[adding an existing plugin]: https://pre-commit.com/#plugins
+[creating a new custom hook entirely]: https://pre-commit.com/#new-hooks
 [run our python format script]: ../src/python/hooks/README.md#run-our-formatting-script
 [`pre-commit`]: https://pre-commit.com
