@@ -15,6 +15,7 @@ PR.
 - [ ] Did you update relevant documentation?
 - [ ] Did you add tests to cover new code or a fixed issue?
 - [ ] Did you update the changelog?
+- [ ] Did you check off all checkboxes from the linked Linear task?
 
 > If a task does not apply to your PR, strike it through and mark it complete:
 
