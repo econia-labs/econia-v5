@@ -1,0 +1,424 @@
+\documentclass[table, twocolumn]{article}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage[acronym]{glossaries}
+\usepackage{pgfplots}
+\usepackage{xcolor}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{intersections}
+
+% Page options.
+\pagecolor{black}
+\color{gray}
+\geometry{left=50pt, top=50pt, bottom=50pt, right=50pt}
+
+\input{figures/tangent-line-style.tex}
+
+\newacronym{cpamm}{CPAMM}{Constant Product Automated Market Maker}
+\newacronym{clamm}{CLAMM}{Concentrated Liquidity Automated Market Maker}
+\newacronym{lp}{LP}{Liquidity Provider}
+
+% Image in title per https://tex.stackexchange.com/a/251410.
+\title{%
+  \includegraphics[width=4in]{../../../../.assets/white-econia-primary-logo.png}\\[10pt]
+  A Novel Concentrated Liquidity Automated Market Maker
+}
+\author{Econia Labs}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Base, quote, and price}
+
+Consider the trading pair \texttt{APT/USDC}, \texttt{APT} denominated in \texttt{USDC},
+denoted per table \ref{tab:base-quote-definition}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Term        & Notation & Example       \\ \hline
+    Base asset  & $b$      & \texttt{APT}  \\ \hline
+    Quote asset & $q$      & \texttt{USDC} \\ \hline
+  \end{tabular}
+  \caption{Base and quote asset definitions}
+  \label{tab:base-quote-definition}
+\end{table}
+
+Equation \ref{eqn:price} defines price as the amount of quote per base, for example
+17.27 \texttt{USDC} per \texttt{APT} at the time of this writing.
+
+\begin{equation} \label{eqn:price}
+  p = \frac{q}{b}
+\end{equation}
+
+\section{Constant product automated market makers}
+
+\subsection{Swap without fees}
+
+A \gls{cpamm} pools together base and quote reserves, with the spot price of the pool
+defined as the ratio of quote to base per equation \ref{eqn:price}.
+
+During a swap, either base or quote is provided to the pool in exchange for the other
+asset, resulting in a change to the spot price. Per table
+\ref{tab:spot-before-after-swap} and equation \ref{eqn:price-before-after} spot prices
+are defined before and after in terms of current pool reserves.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Term           & Before swap & After swap \\ \hline
+    Base reserves  & $b_0$       & $b_f$      \\ \hline
+    Quote reserves & $q_0$       & $q_f$      \\ \hline
+    Spot price     & $p_0$       & $p_f$      \\ \hline
+  \end{tabular}
+  \caption{Spot price definitions}
+  \label{tab:spot-before-after-swap}
+\end{table}
+
+\begin{equation} \label{eqn:price-before-after}
+  p_0 = \frac{q_0}{b_0},
+  p_f = \frac{q_f}{b_f}
+\end{equation}
+
+During a swap, a \gls{cpamm} maintains the invariant described in equation
+\ref{eqn:cpamm-invariant}.
+
+\begin{equation} \label{eqn:cpamm-invariant}
+  b q = L^2
+\end{equation}
+
+That is, liquidity $L = \sqrt{bq}$ is held constant during a swap, which means that per
+equation \ref{eqn:cpamm-invariant-as-products} the product of base and quote is
+equivalent before and after the swap.
+
+\begin{equation} \label{eqn:cpamm-invariant-as-products}
+  b_0 q_0 = b_f q_f
+\end{equation}
+
+\begin{figure}[!htb]
+  \centering
+  \input{figures/cpamm-swap-sell.tex}
+  \caption{\gls{cpamm} swap sell}
+  \label{fig:cpamm-swap-sell}
+\end{figure}
+
+As described in table \ref{tab:swap-in-out} and figure \ref{fig:cpamm-swap-sell}, a swap
+sell with $b_{in}$ of base provided to the pool results in $q_{out}$ received in return.
+Per equation \ref{eqn:cpamm-avg-execution-price}, this operation has average execution
+price $p_{sell}$.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Term  & Swap input & Swap output \\ \hline
+    Base  & $b_{in}$   & $b_{out}$   \\ \hline
+    Quote & $q_{in}$   & $q_{out}$   \\ \hline
+  \end{tabular}
+  \caption{Swap input and output definitions}
+  \label{tab:swap-in-out}
+\end{table}
+
+\begin{equation} \label{eqn:cpamm-avg-execution-price}
+  p_{sell} = \frac{q_{out}}{b_{in}}
+\end{equation}
+
+Notably, this average execution price (the slope of the secant line between $p_0$ and
+$p_f$ in figure \ref{fig:cpamm-swap-sell-price}) lies between the spot price before and
+after the swap, $p_0$ and $p_f$, respectively.
+
+\begin{figure}[!htb]
+  \centering
+  \input{figures/cpamm-swap-sell-price.tex}
+  \caption{\gls{cpamm} swap sell execution price}
+  \label{fig:cpamm-swap-sell-price}
+\end{figure}
+
+Given the constant product invariant from equations \ref{eqn:cpamm-invariant} and
+\ref{eqn:cpamm-invariant-as-products}, the output amount of a swap buy or sell is a
+direct function of input amount and initial reserves, as described in equation
+\ref{eqn:b-q-out-simple} (full derivation at equation
+\ref{eqn:b-q-out-simple-derivation}).
+
+\begin{align} \label{eqn:b-q-out-simple}
+  b_{out} = \frac{q_{in} b_0}{q_{in} + q_0}, q_{out} = \frac{b_{in} q_0}{b_{in} + b_0}
+\end{align}
+
+\subsection{Swap with fees}
+
+Consider a pool fee rate $f_p$ assessed on the output of swap, for example 30 basis
+points such that $f_p = \frac{30}{10000}$. By assessing a fee on the output amount and
+reinvesting it in the pool, spot price slippage decreases and liquidity increases for
+each swap.
+
+For example figure \ref{fig:cpamm-swap-sell-with-fee} denotes a swap sell, where
+$f_p q_{out}$ is deducted from quote proceeds and reinvested in the pool, thus
+increasing available liquidity.
+
+\begin{figure}[!htb]
+  \centering
+  \input{figures/cpamm-swap-sell-with-fee.tex}
+  \caption{\gls{cpamm} swap sell with fee reinvestment}
+  \label{fig:cpamm-swap-sell-with-fee}
+\end{figure}
+
+\subsection{Liquidity provider tokens}
+
+As the amount of liquidity in the pool grows so does the share of each \gls{lp} who
+holds \gls{lp} tokens in the pool, which represent a share of the pool's liquidity.
+
+Notably, the first \gls{lp} in the pool sets the spot price via the amount of base and
+quote contributed, and receives a number of tokens equal to the amount of provided
+liquidity.
+
+For example consider the initial base and quote contributions in table
+\ref{tab:first-lp-amounts}.  Per equation \ref{eqn:price}, the initial spot price is
+then $p = 4$ as shown in equation \ref{eqn:first-lp-spot-price}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Asset & Notation & Amount \\ \hline
+    Base  & $b$      & 5      \\ \hline
+    Quote & $q$      & 20     \\ \hline
+  \end{tabular}
+  \caption{Base and quote provided by first \gls{lp}}
+  \label{tab:first-lp-amounts}
+\end{table}
+
+\begin{equation} \label{eqn:first-lp-spot-price}
+  p = \frac{q}{b} = \frac{20}{5} = 4
+\end{equation}
+
+Per equation \ref{eqn:cpamm-invariant}, the \gls{lp} then receives 10 \gls{lp} tokens as
+shown in equation \ref{eqn:first-lp-tokens}.
+
+\begin{equation} \label{eqn:first-lp-tokens}
+  L = \sqrt{5 \cdot 20} = 10
+\end{equation}
+
+Thereafter any new \gls{lp} must provide base and quote proportional to the amount of
+base and quote in the pool at the time of deposit. For example if the spot price does
+not change then a new \gls{lp} may contribute another 10 base and 40 quote, as described
+in table \ref{tab:new-lp-base-quote-ratios} and equation
+\ref{eqn:new-lp-base-quote-ratios}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Term            & Notation      & Amount \\ \hline
+    Base in pool    & $b_{pool}$    & 5      \\ \hline
+    Quote in pool   & $q_{pool}$    & 20     \\ \hline
+    Base deposited  & $b_{deposit}$ & 10     \\ \hline
+    Quote deposited & $q_{deposit}$ & 40     \\ \hline
+  \end{tabular}
+  \caption{Base and quote ratios for second \gls{lp}}
+  \label{tab:new-lp-base-quote-ratios}
+\end{table}
+
+\begin{align} \label{eqn:new-lp-base-quote-ratios}
+  \frac{b_{deposit}}{b_{pool}} & \stackrel{?}{=}
+  \frac{q_{deposit}}{q_{pool}} \nonumber         \\
+  \frac{10}{5}                 & \stackrel{?}{=}
+  \frac{40}{20}  \nonumber                       \\
+  2                            & = 2
+\end{align}
+
+In exchange the new \gls{lp} receives \gls{lp} tokens representing their pro rata share
+of the pool's liquidity. Continuing the example, as described in table
+\ref{tab:new-lp-tokens} and equation \ref{eqn:new-lp-tokens}, the second \gls{lp} thus
+receives 20 \gls{lp} tokens in return.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Term                           & Notation & Amount \\ \hline
+    Existing \gls{lp} token supply & $T_s$    & 10     \\ \hline
+    New \gls{lp} tokens issued     & $T_n$    & 20     \\ \hline
+  \end{tabular}
+  \caption{\gls{lp} token amounts during second contribution}
+  \label{tab:new-lp-tokens}
+\end{table}
+
+\begin{equation} \label{eqn:new-lp-tokens}
+  T_n = \frac{b_{deposit}}{b_{pool}} T_s = \frac{10}{5} 10 = 20
+\end{equation}
+
+As the pool processes trades and accumulates fees, the spot price may change as
+liquidity grows.  For example consider that over time the amount of liquidity in the
+pool increases and price drops by 50\%, yielding a pool with 30 base and 60 quote, as
+described in table \ref{tab:pool-reserve-progression}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline \rowcolor{blue}
+    Stage                              & $b_{pool}$ & $q_{pool}$ \\ \hline
+    After first \gls{lp} contribution  & 5          & 20         \\ \hline
+    After second \gls{lp} contribution & 15         & 60         \\ \hline
+    After market activity              & 30         & 60         \\ \hline
+  \end{tabular}
+  \caption{Pool reserves over time}
+  \label{tab:pool-reserve-progression}
+\end{table}
+
+Each \gls{lp} is still entitled to a pro rata portion of liquidity in the pool based on
+their share of total \gls{lp} tokens issued, as described in table
+\ref{tab:lp-pro-rata-shares}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|c|}
+    \hline \rowcolor{blue}
+    Provider & Tokens & Base share & Quote share \\ \hline
+    First    & 10     & 10         & 20          \\ \hline
+    Second   & 20     & 20         & 40          \\ \hline
+  \end{tabular}
+  \caption{Pro rata liquidity shares after market activity}
+  \label{tab:lp-pro-rata-shares}
+\end{table}
+
+Notably, Uniswap v2 burns the first 1000 \gls{lp} tokens (equivalent to asset subunits)
+to prevent attacks that would enable the first contributor to a pool to make subsequent
+liquidity provisioning prohibitively expensive.
+
+\section{Concentrated liquidity automated market makers}
+
+\subsection{Curve translation within a price range}
+
+A \gls{clamm} like Uniswap v3 effectively shifts a virtual \gls{cpamm} curve within a
+given price range such that real reserves are exhausted whenever the price reaches the
+endpoints of the range, as described in tables \ref{tab:clamm-curve-translation} and
+\ref{tab:clamm-curve-endpoint-reserves}, figure \ref{fig:clamm-curve-translation}, and
+equation \ref{eqn:clamm-curve-translation}.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|}
+    \hline \rowcolor{blue}
+    Term                           & Notation  \\ \hline
+    Real base reserves             & $b_r$     \\ \hline
+    Real quote reserves            & $q_r$     \\ \hline
+    Virtual base reserves          & $b_v$     \\ \hline
+    Virtual quote reserves         & $q_v$     \\ \hline
+    Virtual liquidity              & $L_v$     \\ \hline
+    Low price range endpoint       & $p_l$     \\ \hline
+    High price range endpoint      & $p_h$     \\ \hline
+    Real base reserves ceiling     & $b_{r,c}$ \\ \hline
+    Real quote reserves ceiling    & $q_{r,c}$ \\ \hline
+    Virtual base reserves ceiling  & $b_{v,c}$ \\ \hline
+    Virtual quote reserves ceiling & $q_{v,c}$ \\ \hline
+    Virtual base reserves floor    & $b_{v,f}$ \\ \hline
+    Virtual quote reserves floor   & $q_{v,f}$ \\ \hline
+  \end{tabular}
+  \caption{Terms, translation from \gls{cpamm} to \gls{clamm}}
+  \label{tab:clamm-curve-translation}
+\end{table}
+
+\begin{figure}[!htb]
+  \centering
+  \input{figures/clamm-curve-translation.tex}
+  \caption{Translation from \gls{cpamm} to \gls{clamm}}
+  \label{fig:clamm-curve-translation}
+\end{figure}
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline \rowcolor{blue}
+    Price & $b_r$      & $q_r$        & $b_v$      & $q_v$      \\ \hline
+    $p_l$ & $b_{r, c}$ & 0            & $b_{v, c}$ & $q_{v, f}$ \\ \hline
+    $p_h$ & 0          & ${q_{r, c}}$ & $b_{v, f}$ & $q_{v, c}$ \\ \hline
+  \end{tabular}
+  \caption{Amount of real and virtual reserves at price range endpoints}
+  \label{tab:clamm-curve-endpoint-reserves}
+\end{table}
+
+\begin{equation} \label{eqn:clamm-curve-translation}
+  (b_r + b_{v, f})(q_r + q_{v, f}) = L_v^2 = b_v q_v
+\end{equation}
+
+For a feeless swap that does not move the price outside the specified range, the input
+and output amounts can thus be calculated using equation \ref{eqn:b-q-out-simple}
+applied to virtual reserves $b_v$ and $q_v$, yielding equation
+\ref{eqn:b-q-out-clamm-simple}.
+
+\begin{equation} \label{eqn:b-q-out-clamm-simple}
+  b_{out} = \frac{q_{in} b_{v, 0}}{q_{in} + q_{v, 0}},
+  q_{out} = \frac{b_{in} q_{v, 0}}{b_{in} + b_{v, 0}}
+\end{equation}
+
+\subsection{Simple liquidity provisioning within a single range}
+
+The first \gls{lp} in a \gls{clamm} effectively configures the pool to provide liquidity
+within the single price range $[p_l, p_h]$ corresponding to the endpoints of their
+position. As with a \gls{cpamm} they set the price of the pool based on the amount of
+base and quote they provide.
+
+In the special case that they provide only base, price initializes to $p_l$ and their
+contribution is effectively $b_{r, c}$. If only quote, $p_h$ and $q_{r, c}$.
+
+Define two coefficients $C_b$ and $C_q$ per equations
+\ref{eqn:clamm-endpoint-coefficients-b} and \ref{eqn:clamm-endpoint-coefficients-q}.
+
+\begin{align} \label{eqn:clamm-endpoint-coefficients-b}
+  b_{v, f} &= C_b b_{r, c} \nonumber \\
+  C_b &= \frac{b_{v, f}}{b_{r, c}}
+\end{align}
+
+\begin{align} \label{eqn:clamm-endpoint-coefficients-q}
+  q_{v, f} &= C_q q_{r, c} \nonumber \\
+  C_q &= \frac{q_{v, f}}{q_{r, c}}
+\end{align}
+
+\begin{align}
+  p_l &= \frac{q_v}{b_v}|_{p_l} \nonumber \\
+  p_l &= \frac{q_{v, f}}{b_{r, c} + {b_{v, f}}} \nonumber \\
+  p_l &= \frac{q_{v, f}}{b_{r, c} + {b_{v, f}}} \nonumber \\
+  p_l(b_{r, c} + b_{v, f}) &= q_{v, f} \nonumber \\
+\end{align}
+
+\begin{align}
+  p_h &= \frac{q_v}{b_v}|_{p_h} \nonumber \\
+  p_h &= \frac{q_{r, c} + q_{v, f}}{b_{v, f}} \nonumber \\
+  b_{v, f} &= \frac{q_{r, c} + q_{v, f}}{p_h}
+\end{align}
+
+\begin{align}
+  b_v q_v |_{p_l} &= b_v q_v |_{p_h} \nonumber \\
+  q_{v, f} (b_{r, c} + {b_{v, f}}) &=  b_{v, f} (q_{r, c} + q_{v, f}) \nonumber \\
+  p_l (b_{r, c} + {b_{v, f}})^2 &=  \frac{(q_{r, c} + q_{v, f})^2}{p_h} \nonumber \\
+  p_h p_l &=  \frac{(q_{r, c} + q_{v, f})^2}{(b_{r, c} + {b_{v, f}})^2}
+\end{align}
+
+\begin{align}
+p &= \frac{q_v}{b_v} \nonumber \\
+p &= \frac{q_r + q_{v, f}}{b_r + b_{v, f}}
+\end{align}
+
+\appendix
+
+\section{Derivations}
+
+\begin{align} \label{eqn:b-q-out-simple-derivation}
+  b_0 q_0               & = b_f q_f \nonumber                                      \\
+  b_0 q_0               & = (b_0 - b_{out})(q_0 + q_{in}) \nonumber                \\
+  b_0 q_0               & = b_0 q_0 + b_0 q_{in} - b_{out}(q_0 + q_{in}) \nonumber \\
+  b_{out}(q_0 + q_{in}) & = b_{0} q_{in} \nonumber                                 \\
+  b_{out}               & = \frac{q_{in} b_0}{q_{in} + q_0}, \nonumber             \\
+  b_0 q_0               & = b_f q_f \nonumber                                      \\
+  b_0 q_0               & = (b_0 + b_{in})(q_0 - q_{out}) \nonumber                \\
+  b_0 q_0               & = b_0 q_0 + b_{in} q_0 - q_{out}(b_0 + b_{in}) \nonumber \\
+  q_{out}(b_0 + b_{in}) & = b_{in} q_0 \nonumber                                   \\
+  q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
+\end{align}
+
+\end{document}
