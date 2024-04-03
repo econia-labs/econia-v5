@@ -16,7 +16,7 @@ PR.
 - [ ] Did you add tests to cover new code or a fixed issue?
 - [ ] Did you update the changelog?
 - [ ] Did you check off all checkboxes from the linked Linear task? (Ignore if
-      you are not a member of Econia Labs)
+you are not a member of Econia Labs)
 
 > If a task does not apply to your PR, strike it through and mark it complete:
 
