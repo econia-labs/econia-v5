@@ -13,15 +13,16 @@ These keywords `SHALL` be in `monospace` for ease of identification.
 ### `pre-commit`
 
 This repository uses [`pre-commit`]. If you add a new filetype, you `SHOULD` add
-a new [hook][pre-commit hook].
+a new [hook][pre-commit hook]. See [adding new hooks] for additional info.
 
-From the repository root directory:
+In the `cfg/` directory are all of the `pre-commit` configuration files for
+various hooks.
 
-```sh
-source src/sh/pre-commit.sh
-```
+To set up your local workspace to use `pre-commit` or change any of the hook
+configurations, please see the [pre-commit configuration README].
 
-See the `cfg/` directory for assorted formatter and linter configurations.
+If you'd like to run our Python formatter locally to pass `pre-commit` checks,
+you can [run our Python format script].
 
 ### GitHub actions
 
@@ -105,6 +106,7 @@ results in the comment being marked as resolved.
    `SomethingEvent`, and `SHALL` be emitted v2-style, consistent with
    the [Aptos Framework v2 event refactors].
 
+[adding new hooks]: ./cfg/README.md#adding-new-hooks
 [aptos framework v2 event refactors]: https://github.com/aptos-foundation/AIPs/issues/367
 [architecture specification]: doc/architecture-specification.md
 [doc comments]: https://move-language.github.io/move/coding-conventions.html?#comments
@@ -113,9 +115,11 @@ results in the comment being marked as resolved.
 [move format]: https://move-language.github.io/move/coding-conventions.html#formatting
 [move references]: https://move-language.github.io/move/references.html
 [move signer]: https://move-language.github.io/move/signer.html
+[pre-commit configuration readme]: ./cfg/README.md#running-pre-commit-hooks-locally
 [pre-commit hook]: https://pre-commit.com/hooks.html
 [reference links]: https://mdformat.readthedocs.io/en/stable/users/style.html#reference-links
 [rfc 2119]: https://www.ietf.org/rfc/rfc2119.txt
+[run our python format script]: ./src/python/hooks/README.md#run-our-formatting-script
 [run `pre-commit`]: #pre-commit
 [squash and merge method]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github
 [vs code markdown+math extension]: https://marketplace.visualstudio.com/items?itemName=goessner.mdmath
