@@ -20,12 +20,15 @@ are issues with formatting and linting, you can easily fix a large portion
 of them by running our formatting script:
 
 ```shell
+# Running from Econia repo root.
 ./src/sh/python-lint/format.sh
 ```
 
-While you can directly run the Python formatter script, for ease of use, we've
-provided a `.src/sh/python-lint/format.sh` script to verify your Poetry
-dependencies and run anywhere, regardless of your current working directory.
+While you can directly run the associated Python formatter script using the
+Python interpreter, for ease of use we've provided a shell script wrapper at
+[/src/sh/python-lint/format.sh](../../sh/python-lint/format.sh), which
+can verify your Poetry dependencies and can be run from anywhere, regardless of
+your current working directory.
 
 [install the required tools first]: ../../../cfg/README.md
 [run our formatting script]: #running-the-python-formatters
