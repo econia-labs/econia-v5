@@ -459,16 +459,32 @@ Substitute (\ref{eqn:first-lp-ph}) into (\ref{eqn:first-lp-invariant-2}):
 
 Substitute (\ref{eqn:first-lp-bvc}) into (\ref{eqn:first-lp-invariant-1}):
 
-\begin{align}
-  \frac{L}{\sqrt{p_l}} q_{v, f} &= L^2 \nonumber \\
-  q_{v, f} &= L \sqrt{p_l}
+\begin{align} \label{eqn:first-lp-qvf}
+  \frac{L}{\sqrt{p_l}} q_{v, f} & = L^2 \nonumber \\
+  q_{v, f}                      & = L \sqrt{p_l}
 \end{align}
 
 Substitute (\ref{eqn:first-lp-bvf}) into (\ref{eqn:first-lp-invariant-2}):
 
 \begin{align}
-  \frac{L}{\sqrt{p_h}} q_{v, c} &= L^2 \nonumber \\
-  q_{v, c} &= L \sqrt{p_h}
+  \frac{L}{\sqrt{p_h}} q_{v, c} & = L^2 \nonumber \\
+  q_{v, c}                      & = L \sqrt{p_h}
+\end{align}
+
+Substitute (\ref{eqn:first-lp-bvf}) and (\ref{eqn:first-lp-qvf}) into
+\ref{eqn:clamm-curve-translation}:
+
+\begin{align} \label{eqn:first-lp-invariant-3}
+  (b_r + \frac{L}{\sqrt{p_h}})(q_r + L \sqrt{p_l}) = L^2 \nonumber \\
+\end{align}
+
+Solve (\ref{eqn:first-lp-invariant-3}) for $b_r$ in terms of $q_r$ and $L$:
+
+\begin{align}
+  b_r + \frac{L}{\sqrt{p_h}} &= \frac{L^2}{q_r + L \sqrt{p_l}} \nonumber \\
+  b_r &= \frac{L^2}{q_r + L \sqrt{p_l}} - \frac{L}{\sqrt{p_h}} \nonumber \\
+  b_r &= \frac{L^2 \sqrt{p_h}}{\sqrt{p_h}(q_r + L \sqrt{p_l})}
+  - \frac{L(q_r + L \sqrt{p_l})}{\sqrt{p_h}(q_r + L \sqrt{p_l})}\nonumber \\
 \end{align}
 
 \end{document}
