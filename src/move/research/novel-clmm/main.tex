@@ -397,8 +397,6 @@ In the special case that they provide only base, price initializes to $p_l$ and 
 contribution $b_r$ is taken as $b_{r, c}$. If only quote, price initializes to $p_h$ and
 their contribution $q_r$ is taken as $q_{r, c}$.
 
-\appendix
-
 \section{Derivations}
 
 \subsection{Base in and out for feeless swap} \label{eqn:b-q-out-simple-derivation}
@@ -408,7 +406,10 @@ their contribution $q_r$ is taken as $q_{r, c}$.
   b_0 q_0               & = (b_0 - b_{out})(q_0 + q_{in}) \nonumber                \\
   b_0 q_0               & = b_0 q_0 + b_0 q_{in} - b_{out}(q_0 + q_{in}) \nonumber \\
   b_{out}(q_0 + q_{in}) & = b_{0} q_{in} \nonumber                                 \\
-  b_{out}               & = \frac{q_{in} b_0}{q_{in} + q_0}, \nonumber             \\
+  b_{out}               & = \frac{q_{in} b_0}{q_{in} + q_0}
+\end{align}
+
+\begin{align}
   b_0 q_0               & = b_f q_f \nonumber                                      \\
   b_0 q_0               & = (b_0 + b_{in})(q_0 - q_{out}) \nonumber                \\
   b_0 q_0               & = b_0 q_0 + b_{in} q_0 - q_{out}(b_0 + b_{in}) \nonumber \\
@@ -442,7 +443,7 @@ Given fixed price range endpoints:
 
 Substitute (\ref{eqn:first-lp-pl}) into (\ref{eqn:first-lp-invariant-1}):
 
-\begin{align}
+\begin{align} \label{eqn:first-lp-bvc}
   b_{v, c} p_l b_{v, c} & = L^2 \nonumber        \\
   b_{v, c}^2 p_l        & = L^2 \nonumber        \\
   b_{v, c}              & = \frac{L}{\sqrt{p_l}}
@@ -450,10 +451,24 @@ Substitute (\ref{eqn:first-lp-pl}) into (\ref{eqn:first-lp-invariant-1}):
 
 Substitute (\ref{eqn:first-lp-ph}) into (\ref{eqn:first-lp-invariant-2}):
 
-\begin{align} \label{eqn:first-lp-invariant-2}
+\begin{align} \label{eqn:first-lp-bvf}
   b_{v, f} p_h b_{v, f} & = L^2 \nonumber        \\
   b_{v, f}^2 p_h        & = L^2 \nonumber        \\
-  b_{v, f}              & = \frac{L}{\sqrt{p_h}} \\
+  b_{v, f}              & = \frac{L}{\sqrt{p_h}}
+\end{align}
+
+Substitute (\ref{eqn:first-lp-bvc}) into (\ref{eqn:first-lp-invariant-1}):
+
+\begin{align}
+  \frac{L}{\sqrt{p_l}} q_{v, f} &= L^2 \nonumber \\
+  q_{v, f} &= L \sqrt{p_l}
+\end{align}
+
+Substitute (\ref{eqn:first-lp-bvf}) into (\ref{eqn:first-lp-invariant-2}):
+
+\begin{align}
+  \frac{L}{\sqrt{p_h}} q_{v, c} &= L^2 \nonumber \\
+  q_{v, c} &= L \sqrt{p_h}
 \end{align}
 
 \end{document}
