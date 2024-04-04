@@ -308,7 +308,7 @@ equation \ref{eqn:clamm-curve-translation}.
     Real quote reserves            & $q_r$     \\ \hline
     Virtual base reserves          & $b_v$     \\ \hline
     Virtual quote reserves         & $q_v$     \\ \hline
-    Virtual liquidity              & $L_v$     \\ \hline
+    Liquidity                      & $L$       \\ \hline
     Low price range endpoint       & $p_l$     \\ \hline
     High price range endpoint      & $p_h$     \\ \hline
     Real base reserves ceiling     & $b_{r,c}$ \\ \hline
@@ -342,7 +342,7 @@ equation \ref{eqn:clamm-curve-translation}.
 \end{table}
 
 \begin{equation} \label{eqn:clamm-curve-translation}
-  (b_r + b_{v, f})(q_r + q_{v, f}) = L_v^2 = b_v q_v
+  (b_r + b_{v, f})(q_r + q_{v, f}) = L^2 = b_v q_v
 \end{equation}
 
 For a feeless swap that does not move the price outside the specified range, the input
@@ -366,31 +366,31 @@ Combining known price at the two endpoints with the invariant from equation
 \ref{eqn:clamm-curve-translation} yields a system of equations.
 
 \begin{align} \label{eqn:sys-a}
-  (b_r + b_{v, f})(q_r + q_{v, f}) &= b_v q_v |_{p_l} \nonumber \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) &= b_{v, c} q_{v, f} \nonumber \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) &= q_{v, f} (b_{r, c} + b_{v, f})
+  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_v q_v |_{p_l} \nonumber      \\
+  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_{v, c} q_{v, f} \nonumber    \\
+  (b_r + b_{v, f})(q_r + q_{v, f}) & = q_{v, f} (b_{r, c} + b_{v, f})
 \end{align}
 
 \begin{align} \label{eqn:sys-b}
-  (b_r + b_{v, f})(q_r + q_{v, f}) &= b_v q_v |_{p_h} \nonumber \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) &= b_{v, f} q_{v, c} \nonumber \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) &= b_{v, f} (q_{r, c} + q_{v, f})
+  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_v q_v |_{p_h} \nonumber      \\
+  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_{v, f} q_{v, c} \nonumber    \\
+  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_{v, f} (q_{r, c} + q_{v, f})
 \end{align}
 
 \begin{align} \label{eqn:sys-c}
-  p_l &= \frac{q_v}{b_v}|_{p_l} \nonumber \\
-  p_l &= \frac{q_{v, f}}{b_{r, c} + {b_{v, f}}}
+  p_l & = \frac{q_v}{b_v}|_{p_l} \nonumber       \\
+  p_l & = \frac{q_{v, f}}{b_{r, c} + {b_{v, f}}}
 \end{align}
 
 \begin{align} \label{eqn:sys-d}
-  p_h &= \frac{q_v}{b_v}|_{p_h} \nonumber \\
-  p_h &= \frac{q_{r, c} + q_{v, f}}{b_{v, f}}
+  p_h & = \frac{q_v}{b_v}|_{p_h} \nonumber     \\
+  p_h & = \frac{q_{r, c} + q_{v, f}}{b_{v, f}}
 \end{align}
 
 Combining equations \ref{eqn:sys-a} and \ref{eqn:sys-b} yields equation \ref{eqn:sys-e}.
 
 \begin{align} \label{eqn:sys-e}
-  q_{v, f} (b_{r, c} + b_{v, f}) &= b_{v, f} (q_{r, c} + q_{v, f})
+  q_{v, f} (b_{r, c} + b_{v, f}) & = b_{v, f} (q_{r, c} + q_{v, f})
 \end{align}
 
 In the special case that they provide only base, price initializes to $p_l$ and their
@@ -418,42 +418,42 @@ their contribution $q_r$ is taken as $q_{r, c}$.
 
 \subsection{First \gls{lp} for a price range}
 
-Let the first \gls{lp} provision liquidity $L_v$. Per the constant product invariant:
+Let the first \gls{lp} provision liquidity $L$. Per the constant product invariant:
 
 \begin{equation} \label{eqn:first-lp-invariant-1}
-  b_{v, c} q_{v, f} = L_v^2
+  b_{v, c} q_{v, f} = L^2
 \end{equation}
 
 \begin{equation} \label{eqn:first-lp-invariant-2}
-  b_{v, f} q_{v, c} = L_v^2
+  b_{v, f} q_{v, c} = L^2
 \end{equation}
 
 Given fixed price range endpoints:
 
 \begin{align} \label{eqn:first-lp-pl}
-  p_l &= \frac{q_{v, f}}{b_{v, c}} \nonumber \\
-  q_{v, f} &= p_l b_{v, c}
+  p_l      & = \frac{q_{v, f}}{b_{v, c}} \nonumber \\
+  q_{v, f} & = p_l b_{v, c}
 \end{align}
 
 \begin{align} \label{eqn:first-lp-ph}
-  p_h &= \frac{q_{v, c}}{b_{v, f}} \nonumber \\
-  q_{v, c} &= p_h b_{v, f}
+  p_h      & = \frac{q_{v, c}}{b_{v, f}} \nonumber \\
+  q_{v, c} & = p_h b_{v, f}
 \end{align}
 
 Substitute (\ref{eqn:first-lp-pl}) into (\ref{eqn:first-lp-invariant-1}):
 
 \begin{align}
-  b_{v, c} p_l b_{v, c} &= L_v^2 \nonumber \\
-  b_{v, c}^2 p_l &= L_v^2 \nonumber \\
-  b_{v, c} &= \frac{L_v}{\sqrt{p_l}}
+  b_{v, c} p_l b_{v, c} & = L^2 \nonumber        \\
+  b_{v, c}^2 p_l        & = L^2 \nonumber        \\
+  b_{v, c}              & = \frac{L}{\sqrt{p_l}}
 \end{align}
 
 Substitute (\ref{eqn:first-lp-ph}) into (\ref{eqn:first-lp-invariant-2}):
 
 \begin{align} \label{eqn:first-lp-invariant-2}
-  b_{v, f} p_h b_{v, f} &= L_v^2 \nonumber \\
-  b_{v, f}^2 p_h &= L_v^2 \nonumber \\
-  b_{v, f} &= \frac{L_v}{\sqrt{p_h}} \\
+  b_{v, f} p_h b_{v, f} & = L^2 \nonumber        \\
+  b_{v, f}^2 p_h        & = L^2 \nonumber        \\
+  b_{v, f}              & = \frac{L}{\sqrt{p_h}} \\
 \end{align}
 
 \end{document}
