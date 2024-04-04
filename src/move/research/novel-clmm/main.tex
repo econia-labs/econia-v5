@@ -416,4 +416,44 @@ their contribution $q_r$ is taken as $q_{r, c}$.
   q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
 \end{align}
 
+\subsection{First \gls{lp} for a price range}
+
+Let the first \gls{lp} provision liquidity $L_v$. Per the constant product invariant:
+
+\begin{equation} \label{eqn:first-lp-invariant-1}
+  b_{v, c} q_{v, f} = L_v^2
+\end{equation}
+
+\begin{equation} \label{eqn:first-lp-invariant-2}
+  b_{v, f} q_{v, c} = L_v^2
+\end{equation}
+
+Given fixed price range endpoints:
+
+\begin{align} \label{eqn:first-lp-pl}
+  p_l &= \frac{q_{v, f}}{b_{v, c}} \nonumber \\
+  q_{v, f} &= p_l b_{v, c}
+\end{align}
+
+\begin{align} \label{eqn:first-lp-ph}
+  p_h &= \frac{q_{v, c}}{b_{v, f}} \nonumber \\
+  q_{v, c} &= p_h b_{v, f}
+\end{align}
+
+Substitute (\ref{eqn:first-lp-pl}) into (\ref{eqn:first-lp-invariant-1}):
+
+\begin{align}
+  b_{v, c} p_l b_{v, c} &= L_v^2 \nonumber \\
+  b_{v, c}^2 p_l &= L_v^2 \nonumber \\
+  b_{v, c} &= \frac{L_v}{\sqrt{p_l}}
+\end{align}
+
+Substitute (\ref{eqn:first-lp-ph}) into (\ref{eqn:first-lp-invariant-2}):
+
+\begin{align} \label{eqn:first-lp-invariant-2}
+  b_{v, f} p_h b_{v, f} &= L_v^2 \nonumber \\
+  b_{v, f}^2 p_h &= L_v^2 \nonumber \\
+  b_{v, f} &= \frac{L_v}{\sqrt{p_h}} \\
+\end{align}
+
 \end{document}
