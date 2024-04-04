@@ -142,8 +142,7 @@ after the swap, $p_0$ and $p_f$, respectively.
 Given the constant product invariant from equations \ref{eqn:cpamm-invariant} and
 \ref{eqn:cpamm-invariant-as-products}, the output amount of a swap buy or sell is a
 direct function of input amount and initial reserves, as described in equation
-\ref{eqn:b-q-out-simple} (full derivation at equation
-\ref{eqn:b-q-out-simple-derivation}).
+\ref{eqn:b-q-out-simple} and derived in section \ref{eqn:b-q-out-simple-derivation}.
 
 \begin{align} \label{eqn:b-q-out-simple}
   b_{out} = \frac{q_{in} b_0}{q_{in} + q_0}, q_{out} = \frac{b_{in} q_0}{b_{in} + b_0}
@@ -402,7 +401,9 @@ their contribution $q_r$ is taken as $q_{r, c}$.
 
 \section{Derivations}
 
-\begin{align} \label{eqn:b-q-out-simple-derivation}
+\subsection{Base in and out for feeless swap} \label{eqn:b-q-out-simple-derivation}
+
+\begin{align}
   b_0 q_0               & = b_f q_f \nonumber                                      \\
   b_0 q_0               & = (b_0 - b_{out})(q_0 + q_{in}) \nonumber                \\
   b_0 q_0               & = b_0 q_0 + b_0 q_{in} - b_{out}(q_0 + q_{in}) \nonumber \\
