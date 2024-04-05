@@ -1,4 +1,4 @@
-# cspell:words autoflake, black, flake8, isort, mypy, pyyaml, colorama
+# cspell:words autoflake, black, flake8, isort, mypy, pyyaml, colorama, pytest
 
 [tool.isort]
 profile = "black"
@@ -7,7 +7,9 @@ profile = "black"
 authors = ["Econia Labs <developers@econialabs.com>"]
 description = "Python pre-commit hooks for Econia Labs projects."
 name = "econia_precommit"
-packages = []
+packages = [
+  {include = "tests"}
+]
 version = "1.0.0"
 
 [tool.poetry.dependencies]
@@ -24,4 +26,5 @@ black = "^23.7.0"
 flake8 = "6.0.0"
 isort = "^5.12.1"
 mypy = "^1.9.0"
+pytest = "^8.1.1"
 types-pyyaml = "^6.0.12.20240311"

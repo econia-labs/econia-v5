@@ -27,17 +27,17 @@ WARNING_STRING = Fore.LIGHTRED_EX + "WARNING:" + Fore.RESET
 root = utils.get_git_root()
 
 
-def load_config(p: Path):
+def load_config(p: Path) -> dict:
     if p.exists():
         with open(p, "r") as file:
-            return yaml.safe_load(file)
+            return dict(yaml.safe_load(file))
     else:
         print(f"{ERROR_STRING} {p} not found.")
         sys.exit(1)
     return {}
 
 
-def check_files(files: list[Path], cfg_path: Path) -> set[Path]:
+def check_files(files: list[str], cfg_path: Path) -> set[Path]:
     file_names_config = load_config(cfg_path)
     default_case = file_names_config.get("default", None)
     if not default_case:
@@ -61,7 +61,7 @@ def check_files(files: list[Path], cfg_path: Path) -> set[Path]:
 
     # Check the user-supplied file name conventions against each file.
     invalid_files: set[Path] = set()
-    for file_path in files:
+    for file_path in map(Path, files):
         # Get the file extension and handle the case where there isn't
         # one. Then get the case by its extension and the regex by its case.
         extension = file_path.suffix.split(".")[-1]
@@ -93,7 +93,7 @@ def check_files(files: list[Path], cfg_path: Path) -> set[Path]:
     return invalid_files
 
 
-def check_folders(files: list[Path], cfg_path: Path) -> set[Path]:
+def check_folders(files: list[str], cfg_path: Path) -> set[Path]:
     folder_names_config = load_config(cfg_path)
     default_case = folder_names_config.get("default", None)
     if not default_case:
@@ -111,15 +111,27 @@ def check_folders(files: list[Path], cfg_path: Path) -> set[Path]:
                 "in `ignore_folders` does not exist.",
             )
             sys.exit(1)
+        if not os.path.isdir(abs_folder):
+            print(
+                ERROR_STRING,
+                f"{Fore.CYAN}{abs_folder}{Fore.RESET}",
+                "in `ignore_folders` is not a directory.",
+            )
+            sys.exit(1)
         ignore_folders.add(Path(abs_folder))
 
-    absolute_files = set(Path(f) for f in files)
+    file_paths = set(Path(f) for f in files)
 
     directories = set()
     root_path = Path(root)
 
-    for fp in absolute_files:
-        for parent in fp.parents:
+    for fp in file_paths:
+        # Add the filepath to the set of parent directories if it itself
+        # is a directory.
+        abs_fp = Path(os.path.join(root, str(fp)))
+        parents = list(fp.parents) + list([abs_fp] if abs_fp.is_dir() else [])
+
+        for parent in parents:
             in_repo = parent.is_relative_to(root_path)
             ignored = parent in ignore_folders
             if in_repo and not ignored:
@@ -151,7 +163,6 @@ def check_folders(files: list[Path], cfg_path: Path) -> set[Path]:
                 f"{Fore.YELLOW}kebab-case",
             )
             invalid_folders.add(directory)
-
     return invalid_folders
 
 
@@ -170,7 +181,7 @@ def result_message(paths: set[Path], path_type: str) -> str:
 def main():
     init(autoreset=True)
     # The files are passed as arguments from the pre-commit hook.
-    files = [Path(p) for p in sys.argv[1:]]
+    files = sys.argv[1:]
 
     files_cfg_path = os.path.join(root, "cfg/file-name-conventions.yaml")
     folders_cfg_path = os.path.join(root, "cfg/folder-name-conventions.yaml")
