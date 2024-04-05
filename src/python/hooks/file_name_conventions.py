@@ -10,10 +10,12 @@ from colorama import Fore, init
 
 import utils
 
+KEBAB_CASE = r"([a-z]+[a-z0-9\-]*)?"
+
 CASE_REGEXES = {
     "camelCase": r"^([a-z]+[a-zA-Z0-9]*)?(\.\w+)?$",
     "snake_case": r"^(_*[a-z]+[a-z0-9_]*)?(\.\w+)?$",
-    "kebab-case": r"^([a-z]+[a-z0-9\-]*)?(\.\w+)?$",
+    "kebab-case": rf"^{KEBAB_CASE}(\.\w+)?$",
     "PascalCase": r"^([A-Z]+[a-zA-Z0-9]*)?(\.\w+)?$",
     "UPPER_CASE": r"^(_*[A-Z]+[A-Z0-9_]*)?(\.\w+)?$",
     "*": r"^.*$",
@@ -23,29 +25,32 @@ ERROR_STRING = Fore.RED + "ERROR:" + Fore.RESET
 WARNING_STRING = Fore.LIGHTRED_EX + "WARNING:" + Fore.RESET
 
 root = utils.get_git_root()
-config_path = Path(os.path.join(root, "cfg/file-name-conventions.yaml"))
+files_cfg_path = Path(os.path.join(root, "cfg/file-name-conventions.yaml"))
+folders_cfg_path = Path(os.path.join(root, "cfg/folder-name-conventions.yaml"))
 
 
-def load_config():
-    if config_path.exists():
-        with open(config_path, "r") as file:
+def load_config(p: Path):
+    if p.exists():
+        with open(p, "r") as file:
             return yaml.safe_load(file)
     else:
-        print(f"{ERROR_STRING} {config_path} not found.")
+        print(f"{ERROR_STRING} {p} not found.")
         sys.exit(1)
     return {}
 
 
-def main():
-    init(autoreset=True)
-
-    config = load_config()
-    default_case = config.get("default", "snake_case")
-    filetypes = config.get("filetypes", {})
+def check_files(files) -> set[Path]:
+    file_names_config = load_config(files_cfg_path)
+    default_case = file_names_config.get("default", None)
+    if not default_case:
+        print(ERROR_STRING, end=" ")
+        print("No default case defined in file-name-conventions.yaml")
+        sys.exit(1)
+    filetypes = file_names_config.get("filetypes", {})
     if len(filetypes) == 0:
-        warning_msg = f"No filetypes defined in {config_path}"
+        warning_msg = f"No filetypes defined in {files_cfg_path}"
         print(WARNING_STRING, warning_msg)
-    ignore_files = set(config.get("ignore_files", {}))
+    ignore_files = set(file_names_config.get("ignore_files", {}))
 
     # Validate the user supplied naming conventions against known conventions.
     user_supplied_cases = set(filetypes.values()).union({default_case})
@@ -56,11 +61,8 @@ def main():
         print("Unrecognized cases:", ", ".join(unrecognized_cases))
         sys.exit(1)
 
-    # The files are passed as arguments from the pre-commit hook.
-    files = sys.argv[1:]
-
     # Check the user-supplied file name conventions against each file.
-    invalid_file_names = False
+    invalid_files: set[Path] = set()
     for file_path in files:
         # Get the file extension and handle the case where there isn't
         # one. Then get the case by its extension and the regex by its case.
@@ -73,7 +75,8 @@ def main():
         if filename in ignore_files:
             continue
 
-        # Check the file name as a Path object against the regex pattern.
+        # Check the file name as a Path object against the regex pattern,
+        # then pretty print it out if it doesn't match.
         if not re.match(regex, filename):
             file_dir = os.path.dirname(file_path) + "/"
             file_name = os.path.basename(file_path)
@@ -81,19 +84,114 @@ def main():
             colored_fp = Fore.LIGHTWHITE_EX + file_name
             colored_case = Fore.YELLOW + case
             colored_default_msg = Fore.LIGHTBLACK_EX + "(default)"
-            print(ERROR_STRING, end="")
+            print(ERROR_STRING, end=" ")
             print(
-                f" {colored_dir}{colored_fp}{Fore.LIGHTBLACK_EX}",
-                "is not",
+                f"{colored_dir}{colored_fp}",
+                f"{Fore.LIGHTBLACK_EX}is not",
                 colored_case,
                 colored_default_msg,
             )
-            invalid_file_names = True
+            invalid_files.add(file_path)
+    return invalid_files
 
-    if invalid_file_names:
+
+def check_folders(files) -> set[Path]:
+    folder_names_config = load_config(folders_cfg_path)
+    default_case = folder_names_config.get("default", None)
+    if not default_case:
+        print(ERROR_STRING, end=" ")
+        print("No default case defined in folder-name-conventions.yaml")
         sys.exit(1)
+
+    ignore_folders = set()
+    for folder in folder_names_config.get("ignore_folders", {}):
+        abs_folder = os.path.join(root, folder)
+        if not os.path.exists(abs_folder):
+            print(
+                ERROR_STRING,
+                f"{Fore.CYAN}{abs_folder}{Fore.RESET}",
+                "in `ignore_folders` does not exist.",
+            )
+            sys.exit(1)
+        ignore_folders.add(Path(abs_folder))
+
+    absolute_files = set(Path(f) for f in files)
+
+    directories = set()
+    root_path = Path(root)
+
+    for fp in absolute_files:
+        for parent in fp.parents:
+            in_repo = parent.is_relative_to(root_path)
+            ignored = parent in ignore_folders
+            if in_repo and not ignored:
+                directories.add(parent.relative_to(root_path))
+
+    if Path(".") in directories:
+        directories.remove(Path("."))
+
+    # Verify that each directory name remaining adheres to naming conventions.
+    # If not, pretty print out the directory name and the error message.
+    invalid_folders: set[Path] = set()
+    for directory in sorted(directories):
+        folder_name = directory.parts[-1]
+        if not re.match(KEBAB_CASE + "$", folder_name):
+            # The path without the folder name.
+            base_path = ""
+            abs_parent = Path(os.path.join(root_path, directory.parent))
+            if abs_parent != root_path:
+                base_path = str(abs_parent.relative_to(root_path))
+
+            sep = os.sep if base_path else ""
+            colored_base_path = Fore.LIGHTWHITE_EX + base_path + sep
+            colored_folder_name = Fore.LIGHTBLUE_EX + folder_name
+
+            print(ERROR_STRING, end=" ")
+            print(
+                colored_base_path + colored_folder_name,
+                f"{Fore.LIGHTBLACK_EX}is not",
+                f"{Fore.YELLOW}kebab-case",
+            )
+            invalid_folders.add(directory)
+
+    return invalid_folders
+
+
+def result_message(paths: set[Path], path_type: str) -> str:
+    to_be = "is" if len(paths) == 1 else "are"
+    plurality = " that does" if len(paths) == 1 else "s that do"
+    return " ".join(
+        [
+            f"There {to_be}",
+            f"{Fore.LIGHTBLUE_EX}{len(paths)}{Fore.RESET}",
+            f"{path_type} name{plurality} adhere to naming conventions.",
+        ]
+    )
+
+
+def main():
+    init(autoreset=True)
+    # The files are passed as arguments from the pre-commit hook.
+    files = sys.argv[1:]
+
+    invalid_files = check_files(files)
+    invalid_folders = check_folders(files)
+
+    invalid_folders = list(invalid_folders)[-1:]
+
+    if invalid_files:
+        msg = result_message(invalid_files, "file")
+        print(msg)
+    if invalid_folders:
+        msg = result_message(invalid_folders, "folder")
+        print(msg)
+
+    if invalid_files or invalid_folders:
+        sys.exit(1)
+
     print()
-    print(Fore.LIGHTGREEN_EX + "All file names adhere to naming conventions!")
+    print(Fore.LIGHTGREEN_EX, end="")
+    print("All file and folder names adhere to naming conventions!")
     sys.exit(0)
 
 
