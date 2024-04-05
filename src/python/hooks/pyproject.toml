@@ -6,7 +6,7 @@ profile = "black"
 [tool.poetry]
 authors = ["Econia Labs <developers@econialabs.com>"]
 description = "Python pre-commit hooks for Econia Labs projects."
-name = "econia-python-hooks"
+name = "econia_precommit"
 packages = []
 version = "1.0.0"
 
