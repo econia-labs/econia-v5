@@ -33,7 +33,7 @@ def main():
         "poetry run isort": ("", utils.is_python_file),
         "poetry run flake8": ("", utils.is_python_file),
         "poetry run mypy": ("", utils.is_python_file),
-        "poetry run python -m file-name-conventions": ("", lambda x: True),
+        "poetry run python -m file_name_conventions": ("", lambda x: True),
     }
 
     return_statuses = {k: "" for k in cmd_and_args.keys()}
