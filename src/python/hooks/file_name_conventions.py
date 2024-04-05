@@ -25,8 +25,6 @@ ERROR_STRING = Fore.RED + "ERROR:" + Fore.RESET
 WARNING_STRING = Fore.LIGHTRED_EX + "WARNING:" + Fore.RESET
 
 root = utils.get_git_root()
-files_cfg_path = Path(os.path.join(root, "cfg/file-name-conventions.yaml"))
-folders_cfg_path = Path(os.path.join(root, "cfg/folder-name-conventions.yaml"))
 
 
 def load_config(p: Path):
@@ -39,8 +37,8 @@ def load_config(p: Path):
     return {}
 
 
-def check_files(files) -> set[Path]:
-    file_names_config = load_config(files_cfg_path)
+def check_files(files: list[Path], cfg_path: Path) -> set[Path]:
+    file_names_config = load_config(cfg_path)
     default_case = file_names_config.get("default", None)
     if not default_case:
         print(ERROR_STRING, end=" ")
@@ -48,7 +46,7 @@ def check_files(files) -> set[Path]:
         sys.exit(1)
     filetypes = file_names_config.get("filetypes", {})
     if len(filetypes) == 0:
-        warning_msg = f"No filetypes defined in {files_cfg_path}"
+        warning_msg = f"No filetypes defined in {cfg_path}"
         print(WARNING_STRING, warning_msg)
     ignore_files = set(file_names_config.get("ignore_files", {}))
 
@@ -56,8 +54,8 @@ def check_files(files) -> set[Path]:
     user_supplied_cases = set(filetypes.values()).union({default_case})
     unrecognized_cases = user_supplied_cases - set(CASE_REGEXES.keys())
     if unrecognized_cases:
-        print(ERROR_STRING, end="")
-        print(" Unrecognized case in file-name-conventions.yaml")
+        print(ERROR_STRING, end=" ")
+        print("Unrecognized case in file-name-conventions.yaml")
         print("Unrecognized cases:", ", ".join(unrecognized_cases))
         sys.exit(1)
 
@@ -66,8 +64,7 @@ def check_files(files) -> set[Path]:
     for file_path in files:
         # Get the file extension and handle the case where there isn't
         # one. Then get the case by its extension and the regex by its case.
-        extension = file_path.split(".")[-1] if "." in file_path else ""
-        extension in filetypes
+        extension = file_path.suffix.split(".")[-1]
         case = filetypes.get(extension, default_case)
         regex = CASE_REGEXES.get(case, default_case)
 
@@ -78,7 +75,8 @@ def check_files(files) -> set[Path]:
         # Check the file name as a Path object against the regex pattern,
         # then pretty print it out if it doesn't match.
         if not re.match(regex, filename):
-            file_dir = os.path.dirname(file_path) + "/"
+            rel_file_dir = Path(os.path.dirname(file_path)).relative_to(root)
+            file_dir = str(rel_file_dir) + "/"
             file_name = os.path.basename(file_path)
             colored_dir = Fore.LIGHTBLACK_EX + file_dir
             colored_fp = Fore.LIGHTWHITE_EX + file_name
@@ -95,8 +93,8 @@ def check_files(files) -> set[Path]:
     return invalid_files
 
 
-def check_folders(files) -> set[Path]:
-    folder_names_config = load_config(folders_cfg_path)
+def check_folders(files: list[Path], cfg_path: Path) -> set[Path]:
+    folder_names_config = load_config(cfg_path)
     default_case = folder_names_config.get("default", None)
     if not default_case:
         print(ERROR_STRING, end=" ")
@@ -164,7 +162,7 @@ def result_message(paths: set[Path], path_type: str) -> str:
         [
             f"There {to_be}",
             f"{Fore.LIGHTBLUE_EX}{len(paths)}{Fore.RESET}",
-            f"{path_type} name{plurality} adhere to naming conventions.",
+            f"{path_type} name{plurality} not adhere to naming conventions.",
         ]
     )
 
@@ -172,10 +170,12 @@ def result_message(paths: set[Path], path_type: str) -> str:
 def main():
     init(autoreset=True)
     # The files are passed as arguments from the pre-commit hook.
-    files = sys.argv[1:]
+    files = [Path(p) for p in sys.argv[1:]]
 
-    invalid_files = check_files(files)
-    invalid_folders = check_folders(files)
+    files_cfg_path = os.path.join(root, "cfg/file-name-conventions.yaml")
+    folders_cfg_path = os.path.join(root, "cfg/folder-name-conventions.yaml")
+    invalid_files = check_files(files, Path(files_cfg_path))
+    invalid_folders = check_folders(files, Path(folders_cfg_path))
 
     invalid_folders = list(invalid_folders)[-1:]
 
