@@ -1,0 +1,7 @@
+# cspell:disable
+---
+default: 'kebab-case'
+# Paths must be relative to the repository root.
+ignore_folders:
+- 'src/python/hooks/tests/.ignoredfolder'
+...

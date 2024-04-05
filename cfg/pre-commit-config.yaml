@@ -32,9 +32,9 @@ repos:
   -
     entry: |
       './src/sh/python-lint/run-in-poetry-subdir.sh'
-      'poetry run python -m file-name-conventions'
+      'poetry run python -m file_name_conventions'
       'Please run src/sh/python-lint/format.sh and fix the errors.'
-    id: 'file-name-conventions'
+    id: 'file_name_conventions'
     language: 'script'
     name: 'check file name conventions'
     types:
