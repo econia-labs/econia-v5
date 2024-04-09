@@ -363,42 +363,14 @@ position, by supplying real reserves $b_r$ and $q_r$. As with a \gls{cpamm} they
 price of the pool based on the amount of base $b_r$ and quote $q_r$ they provide. As
 derived in section \ref{sec:first-lp-clamm-derivations}, $b_r$ and $q_r$ are related to
 $L$ by equations \ref{eqn:first-lp-br-from-l-qr}, \ref{eqn:first-lp-qr-from-l-br}, and
-\ref{eqn:first-lp-quadratic-4}.
-
-Combining known price at the two endpoints with the invariant from equation
-\ref{eqn:clamm-curve-translation} yields a system of equations.
-
-\begin{align} \label{eqn:sys-a}
-  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_v q_v |_{p_l} \nonumber      \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_{v, c} q_{v, f} \nonumber    \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) & = q_{v, f} (b_{r, c} + b_{v, f})
-\end{align}
-
-\begin{align} \label{eqn:sys-b}
-  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_v q_v |_{p_h} \nonumber      \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_{v, f} q_{v, c} \nonumber    \\
-  (b_r + b_{v, f})(q_r + q_{v, f}) & = b_{v, f} (q_{r, c} + q_{v, f})
-\end{align}
-
-\begin{align} \label{eqn:sys-c}
-  p_l & = \frac{q_v}{b_v}|_{p_l} \nonumber       \\
-  p_l & = \frac{q_{v, f}}{b_{r, c} + {b_{v, f}}}
-\end{align}
-
-\begin{align} \label{eqn:sys-d}
-  p_h & = \frac{q_v}{b_v}|_{p_h} \nonumber     \\
-  p_h & = \frac{q_{r, c} + q_{v, f}}{b_{v, f}}
-\end{align}
-
-Combining equations \ref{eqn:sys-a} and \ref{eqn:sys-b} yields equation \ref{eqn:sys-e}.
-
-\begin{align} \label{eqn:sys-e}
-  q_{v, f} (b_{r, c} + b_{v, f}) & = b_{v, f} (q_{r, c} + q_{v, f})
-\end{align}
+\ref{eqn:first-lp-quadratic-4}, which determine spot price per equation
+\ref{eqn:first-lp-spot-price}.
 
 In the special case that they provide only base, price initializes to $p_l$ and their
 contribution $b_r$ is taken as $b_{r, c}$. If only quote, price initializes to $p_h$ and
 their contribution $q_r$ is taken as $q_{r, c}$.
+
+\subsection{Providing more liquidity in the same range}
 
 \section{Derivations}
 
@@ -557,6 +529,17 @@ is a single solution for $L$ per the quadratic formula:
   L & = \frac{q_r + b_r \sqrt{p_h} \sqrt{p_l} + \sqrt{
       q_r^2 + b_r^2 p_h p_l + 2 b_r q_r \sqrt{p_h} (2 \sqrt{p_h} - \sqrt{p_l})
     }} {2(\sqrt{p_h} - \sqrt{p_l})}
+\end{align}
+
+Combine (\ref{eqn:price}), (\ref{eqn:clamm-curve-translation}),
+(\ref{eqn:first-lp-bvf}), and (\ref{eqn:first-lp-qvf}) to solve for spot price
+$p = f(b_r, q_r, L)$:
+
+\begin{align} \label{eqn:first-lp-spot-price}
+  p &= \frac{q_v}{b_v} \nonumber \\
+  p &= \frac{q_r + q_{v, f}}{b_r + b_{v, f}} \nonumber \\
+  p &= \frac{q_r + L \sqrt{p_l}}{b_r + \frac{L}{\sqrt{p_h}}} \nonumber \\
+  p &= \frac{\sqrt{p_h}(q_r + L \sqrt{p_l})}{b_r \sqrt{p_h} + L}
 \end{align}
 
 \end{document}
