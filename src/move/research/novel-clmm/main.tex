@@ -472,19 +472,88 @@ Substitute (\ref{eqn:first-lp-bvf}) into (\ref{eqn:first-lp-invariant-2}):
 \end{align}
 
 Substitute (\ref{eqn:first-lp-bvf}) and (\ref{eqn:first-lp-qvf}) into
-\ref{eqn:clamm-curve-translation}:
+(\ref{eqn:clamm-curve-translation}):
 
 \begin{align} \label{eqn:first-lp-invariant-3}
-  (b_r + \frac{L}{\sqrt{p_h}})(q_r + L \sqrt{p_l}) = L^2 \nonumber \\
+  (b_r + \frac{L}{\sqrt{p_h}})(q_r + L \sqrt{p_l})
+   & = L^2 \nonumber  \\
+  b_r q_r + L b_r \sqrt{p_l} + \frac{L q_r}{\sqrt{p_h}} +
+  \frac{L^2 \sqrt{p_l}}{\sqrt{p_h}}
+   & = L^2 \nonumber  \\
+  b_r q_r \sqrt{p_h} + L b_r \sqrt{p_h} \sqrt{p_l} + L q_r + L^2 \sqrt{p_l}
+   & = L^2 \sqrt{p_h}
 \end{align}
 
-Solve (\ref{eqn:first-lp-invariant-3}) for $b_r$ in terms of $q_r$ and $L$:
+Solve (\ref{eqn:first-lp-invariant-3}) for $b_r = f(L, q_r, p_h, p_l)$:
 
 \begin{align}
-  b_r + \frac{L}{\sqrt{p_h}} &= \frac{L^2}{q_r + L \sqrt{p_l}} \nonumber \\
-  b_r &= \frac{L^2}{q_r + L \sqrt{p_l}} - \frac{L}{\sqrt{p_h}} \nonumber \\
-  b_r &= \frac{L^2 \sqrt{p_h}}{\sqrt{p_h}(q_r + L \sqrt{p_l})}
-  - \frac{L(q_r + L \sqrt{p_l})}{\sqrt{p_h}(q_r + L \sqrt{p_l})}\nonumber \\
+  b_r q_r \sqrt{p_h} + L b_r \sqrt{p_h} \sqrt{p_l} & =
+  L^2 \sqrt{p_h} - L q_r + L^2 \sqrt{p_l} \nonumber    \\
+  b_r \sqrt{p_h} (q_r + L \sqrt{p_l})              & =
+  L^2 (\sqrt{p_h} - \sqrt{p_l}) - L q_r \nonumber      \\
+  b_r                                              & =
+  \frac{L^2 (\sqrt{p_h} - \sqrt{p_l}) - L q_r}{\sqrt{p_h}(q_r + L \sqrt{p_l})}
+\end{align}
+
+Solve (\ref{eqn:first-lp-invariant-3}) for $q_r = f(L, b_r, p_h, p_l)$:
+
+\begin{align}
+  b_r q_r \sqrt{p_h} + L q_r & =
+  L^2 \sqrt{p_h} - L b_r \sqrt{p_h} \sqrt{p_l} - L^2 \sqrt{p_l} \nonumber \\
+  q_r (b_r \sqrt{p_h} + L)   & =
+  L^2 (\sqrt{p_h} - \sqrt{p_l}) - L b_r \sqrt{p_h} \sqrt{p_l} \nonumber   \\
+  q_r                        & =
+  \frac{L^2 (\sqrt{p_h} - \sqrt{p_l}) - L b_r \sqrt{p_h} \sqrt{p_l}}
+  {b_r \sqrt{p_h} + L}
+\end{align}
+
+Solve (\ref{eqn:first-lp-invariant-3}) for $L = f(b_r, q_r, p_h, p_l)$ as a quadratic
+equation:
+
+\begin{align} \label{eqn:first-lp-quadratic-1}
+  L^2 \sqrt{p_h} - L^2 \sqrt{p_l} - L b_r \sqrt{p_h} \sqrt{p_l} - L q_r
+  - b_r q_r \sqrt{p_h}  & = 0 \nonumber \\
+  (\sqrt{p_h} - \sqrt{p_l}) L^2 + (-q_r -b_r \sqrt{p_h} \sqrt{p_l}) L +
+  (-b_r q_r \sqrt{p_h}) & = 0
+\end{align}
+
+Reduce the quadratic equation discriminant ($d = b^2 - 4ac$) from
+(\ref{eqn:first-lp-quadratic-1}):
+
+\begin{align} \label{eqn:first-lp-quadratic-2}
+  d & = (-q_r - b_r \sqrt{p_h} \sqrt{p_l})^2
+  - 4(\sqrt{p_h} - \sqrt{p_l})(-b_r q_r \sqrt{p_h}) \nonumber    \\
+  d & = q_r^2 + 2 b_r q_r \sqrt{p_h} \sqrt{p_l} + b_r^2 p_h p_l
+  + 4 b_r q_r \sqrt{p_h} (\sqrt{p_h} - \sqrt{p_l}) \nonumber     \\
+  d & = q_r^2 + b_r^2 p_h p_l + 2 b_r q_r \sqrt{p_h} \sqrt{p_l}
+  + 4 b_r q_r \sqrt{p_h} (\sqrt{p_h} - \sqrt{p_l}) \nonumber     \\
+  d & = q_r^2 + b_r^2 p_h p_l + 2 b_r q_r \sqrt{p_h} \sqrt{p_l}
+  + 2 b_r q_r \sqrt{p_h} (2 (\sqrt{p_h} - \sqrt{p_l})) \nonumber \\
+  d & = q_r^2 + b_r^2 p_h p_l + 2 b_r q_r \sqrt{p_h}
+  (\sqrt{p_l} + 2 \sqrt{p_h} - 2 \sqrt{p_l}) \nonumber           \\
+  d & = q_r^2 + b_r^2 p_h p_l + 2 b_r q_r \sqrt{p_h}
+  (2 \sqrt{p_h} - \sqrt{p_l}) \nonumber                          \\
+\end{align}
+
+Consider the initial term from the discriminant corresponding to $4ac$:
+
+\begin{align} \label{eqn:first-lp-quadratic-3}
+  - 4(\sqrt{p_h} - \sqrt{p_l})(-b_r q_r \sqrt{p_h}) \nonumber \\
+  4(b_r q_r \sqrt{p_h})(\sqrt{p_h} - \sqrt{p_l})
+\end{align}
+
+Since $b_r \geq 0$, $q_r \geq 0$, and $p_h > p_l > 0$, the term from
+(\ref{eqn:first-lp-quadratic-3}) is nonnegative. This means that the square root of the
+discriminant $\sqrt{d}$ is strictly larger than or equal to the opposite of the
+coefficient for $L$ in quadratic equation (\ref{eqn:first-lp-quadratic-1}). Hence there
+is a single solution for $L$ per the quadratic formula:
+
+\begin{align}
+  L & = \frac{q_r + b_r \sqrt{p_h} \sqrt{p_l} + \sqrt{d}}
+  {2(\sqrt{p_h} - \sqrt{p_l})} \nonumber                  \\
+  L & = \frac{q_r + b_r \sqrt{p_h} \sqrt{p_l} + \sqrt{
+      q_r^2 + b_r^2 p_h p_l + 2 b_r q_r \sqrt{p_h} (2 \sqrt{p_h} - \sqrt{p_l})
+    }} {2(\sqrt{p_h} - \sqrt{p_l})}
 \end{align}
 
 \end{document}
