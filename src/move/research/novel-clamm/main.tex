@@ -360,11 +360,12 @@ applied to virtual reserves $b_v$ and $q_v$, yielding equation
 The first \gls{lp} in a \gls{clamm} effectively configures the pool to provide liquidity
 within the single price range $[p_l, p_h]$ corresponding to the endpoints of their
 position, by supplying real reserves $b_r$ and $q_r$. As with a \gls{cpamm} they set the
-price of the pool based on the amount of base $b_r$ and quote $q_r$ they provide. As
+price of the pool based on the relative values of $b_r$ and $q_r$ they provide. As
 derived in section \ref{sec:first-lp-clamm-derivations}, $b_r$ and $q_r$ are related to
 $L$ by equations \ref{eqn:first-lp-br-from-l-qr}, \ref{eqn:first-lp-qr-from-l-br}, and
 \ref{eqn:first-lp-quadratic-4}, which determine spot price per equation
-\ref{eqn:first-lp-spot-price}.
+\ref{eqn:first-lp-spot-price}. Similarly, $b_v$ and $q_v$ are initialized via equations
+\ref{eqn:first-lp-bvf} and \ref{eqn:first-lp-qvf}.
 
 In the special case that they provide only base, price initializes to $p_l$ and their
 contribution $b_r$ is taken as $b_{r, c}$. If only quote, price initializes to $p_h$ and
@@ -372,7 +373,11 @@ their contribution $q_r$ is taken as $q_{r, c}$.
 
 \subsection{Providing more liquidity in the same range}
 
-New liquidity must not alter spot price, and must preserve price range endpoints.
+New liquidity (a) must preserve spot price and (b) price range endpoints.
+The first invariant allows for solving new virtual base and quote reserve values.
+The second invariant allows solving for new virtual base and quote floor values, which
+can be used to determine the amount of real base and quote that must be deposited per
+the translation equation.
 
 \subsection{Reinvestment of fees}
 
