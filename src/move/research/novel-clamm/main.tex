@@ -355,12 +355,15 @@ applied to virtual reserves $b_v$ and $q_v$, yielding equation
   q_{out} = \frac{b_{in} q_{v, 0}}{b_{in} + b_{v, 0}}
 \end{equation}
 
-\subsection{Simple liquidity provisioning within a single range}
+\subsection{First \gls{lp} in a \gls{clamm}}
 
 The first \gls{lp} in a \gls{clamm} effectively configures the pool to provide liquidity
 within the single price range $[p_l, p_h]$ corresponding to the endpoints of their
-position. As with a \gls{cpamm} they set the price of the pool based on the amount of
-base $b_r$ and quote $q_r$ they provide.
+position, by supplying real reserves $b_r$ and $q_r$. As with a \gls{cpamm} they set the
+price of the pool based on the amount of base $b_r$ and quote $q_r$ they provide. As
+derived in section \ref{sec:first-lp-clamm-derivations}, $b_r$ and $q_r$ are related to
+$L$ by equations \ref{eqn:first-lp-br-from-l-qr}, \ref{eqn:first-lp-qr-from-l-br}, and
+\ref{eqn:first-lp-quadratic-4}.
 
 Combining known price at the two endpoints with the invariant from equation
 \ref{eqn:clamm-curve-translation} yields a system of equations.
@@ -417,7 +420,7 @@ their contribution $q_r$ is taken as $q_{r, c}$.
   q_{out}               & = \frac{b_{in} q_0}{b_{in} + b_0}
 \end{align}
 
-\subsection{First \gls{lp} for a price range}
+\subsection{First \gls{lp} for a \gls{clamm}} \label{sec:first-lp-clamm-derivations}
 
 Let the first \gls{lp} provision liquidity $L$. Per the constant product invariant:
 
@@ -486,7 +489,7 @@ Substitute (\ref{eqn:first-lp-bvf}) and (\ref{eqn:first-lp-qvf}) into
 
 Solve (\ref{eqn:first-lp-invariant-3}) for $b_r = f(L, q_r, p_h, p_l)$:
 
-\begin{align}
+\begin{align} \label{eqn:first-lp-br-from-l-qr}
   b_r q_r \sqrt{p_h} + L b_r \sqrt{p_h} \sqrt{p_l} & =
   L^2 \sqrt{p_h} - L q_r + L^2 \sqrt{p_l} \nonumber    \\
   b_r \sqrt{p_h} (q_r + L \sqrt{p_l})              & =
@@ -497,7 +500,7 @@ Solve (\ref{eqn:first-lp-invariant-3}) for $b_r = f(L, q_r, p_h, p_l)$:
 
 Solve (\ref{eqn:first-lp-invariant-3}) for $q_r = f(L, b_r, p_h, p_l)$:
 
-\begin{align}
+\begin{align} \label{eqn:first-lp-qr-from-l-br}
   b_r q_r \sqrt{p_h} + L q_r & =
   L^2 \sqrt{p_h} - L b_r \sqrt{p_h} \sqrt{p_l} - L^2 \sqrt{p_l} \nonumber \\
   q_r (b_r \sqrt{p_h} + L)   & =
@@ -548,7 +551,7 @@ discriminant $\sqrt{d}$ is strictly larger than or equal to the opposite of the
 coefficient for $L$ in quadratic equation (\ref{eqn:first-lp-quadratic-1}). Hence there
 is a single solution for $L$ per the quadratic formula:
 
-\begin{align}
+\begin{align} \label{eqn:first-lp-quadratic-4}
   L & = \frac{q_r + b_r \sqrt{p_h} \sqrt{p_l} + \sqrt{d}}
   {2(\sqrt{p_h} - \sqrt{p_l})} \nonumber                  \\
   L & = \frac{q_r + b_r \sqrt{p_h} \sqrt{p_l} + \sqrt{
