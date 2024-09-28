@@ -23,21 +23,28 @@ module econia::rational {
         right_numerator: u64,
         right_denominator: u64
     ): u8 {
-        let (a, b) = (
-            (left_numerator as u128) * (right_denominator as u128),
-            (right_numerator as u128) * (left_denominator as u128),
-        );
-        if (a > b) COMPARE_LEFT_GREATER else if (a < b) COMPARE_RIGHT_GREATER else COMPARE_EQUAL
+        let (a, b) =
+            ((left_numerator as u128) * (right_denominator as u128),
+            (right_numerator as u128) * (left_denominator as u128));
+        if (a > b) COMPARE_LEFT_GREATER
+        else if (a < b) COMPARE_RIGHT_GREATER
+        else COMPARE_EQUAL
     }
 
     #[test_only]
-    public(friend) fun get_COMPARE_LEFT_GREATER(): u8 { COMPARE_LEFT_GREATER }
+    public(friend) fun get_COMPARE_LEFT_GREATER(): u8 {
+        COMPARE_LEFT_GREATER
+    }
 
     #[test_only]
-    public(friend) fun get_COMPARE_RIGHT_GREATER(): u8 { COMPARE_RIGHT_GREATER }
+    public(friend) fun get_COMPARE_RIGHT_GREATER(): u8 {
+        COMPARE_RIGHT_GREATER
+    }
 
     #[test_only]
-    public(friend) fun get_COMPARE_EQUAL(): u8 { COMPARE_EQUAL }
+    public(friend) fun get_COMPARE_EQUAL(): u8 {
+        COMPARE_EQUAL
+    }
 
     #[test]
     fun test_encode_decode() {
