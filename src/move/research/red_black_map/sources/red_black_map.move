@@ -47,12 +47,14 @@ module econia::red_black_map {
         Map { root: Pointer::Null, nodes: vector::empty() }
     }
 
-    public fun contains<V>(self: &Map<V>, key: u256): bool {
-        match (self.search(key)) {
-            Found { .. } => true,
-            NotFound { .. } => false
+    /*
+        public fun contains<V>(self: &Map<V>, key: u256): bool {
+            match (self.search(key)) {
+                Found { node: _, side_as_child: _ } => true,
+                NotFound { prospective_parent: _, prospective_side_as_child: _ } => false
+            }
         }
-    }
+    */
 
     public fun insert<V: drop>(self: &mut Map<V>, key: u256, value: V) {
         match(self.root) {
