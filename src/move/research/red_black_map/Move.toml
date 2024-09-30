@@ -1,4 +1,5 @@
 [addresses]
+econia = '_'
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
@@ -6,6 +7,7 @@ rev = "mainnet"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dev-addresses]
+econia = '0xc0de'
 
 [dev-dependencies]
 
