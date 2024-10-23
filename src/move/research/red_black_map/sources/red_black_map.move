@@ -2,6 +2,9 @@ module econia::red_black_map {
 
     use std::vector;
 
+    /// The key already exists in the map.
+    const E_KEY_EXISTS: u64 = 0;
+
     enum Color has copy, drop {
         Red,
         Black
@@ -52,23 +55,47 @@ module econia::red_black_map {
     }
 
     public fun insert<V: drop>(self: &mut Map<V>, key: u256, value: V) {
-        match(self.root) {
-            Null => {
-                self.nodes.push_back(
-                    Node {
-                        key: key,
-                        value: value,
-                        color: Color::Black,
-                        parent: Pointer::Null,
-                        left: Pointer::Null,
-                        right: Pointer::Null
-                    }
-                );
-                self.root = Pointer::Index(0);
+
+        // Find where new node should exist in the tree.
+        let search_result = self.search(key);
+        assert!(search_result is SearchResult::NotFound, E_KEY_EXISTS);
+        let SearchResult::NotFound { prospective_parent, prospective_side_as_child } =
+            search_result;
+
+        // Insert black node at root if tree is empty, else red node as a leaf.
+        let color =
+            match(prospective_parent) {
+                Null => {
+                    self.root = Pointer::Index(0);
+                    Color::Black
+                },
+                Index(parent_index) => {
+                    let new_node_pointer = Pointer::Index(self.nodes.length());
+                    let parent_ref_mut = &mut self.nodes[parent_index];
+                    if (prospective_side_as_child is Side::Left) {
+                        parent_ref_mut.left = new_node_pointer;
+                    } else {
+                        parent_ref_mut.right = new_node_pointer;
+                    };
+                    Color::Red
+                }
+            };
+        self.nodes.push_back(
+            Node {
+                key,
+                value,
+                color,
+                parent: prospective_parent,
+                left: Pointer::Null,
+                right: Pointer::Null
             }
-            _ => {}
-        }
+        );
+
+        // Rebalance, recolor as needed.
+        if (color is Color::Red) self.fix_after_insert()
     }
+
+    fun fix_after_insert<V: drop>(self: &Map<V>) {}
 
     fun search<V: drop>(self: &Map<V>, key: u256): SearchResult {
         let side_as_child = Side::Null;
