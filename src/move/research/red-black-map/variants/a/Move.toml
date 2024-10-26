@@ -7,7 +7,7 @@ rev = "mainnet"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dev-addresses]
-econia = '0xc0de'
+econia = 'red_black_map'
 
 [dev-dependencies]
 
