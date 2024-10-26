@@ -56,9 +56,9 @@ module red_black_map::red_black_map {
         //   T->root = S;
         if (grandparent_index != NIL) {
             let grandparent_ref_mut = &mut self.nodes[grandparent_index];
-            let side = if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT
-            else LEFT;
-            grandparent_ref_mut.children[side] = subtree_index;
+            grandparent_ref_mut.children[
+                if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT else LEFT
+            ] = subtree_index;
         } else {
             self.root = subtree_index;
         };
