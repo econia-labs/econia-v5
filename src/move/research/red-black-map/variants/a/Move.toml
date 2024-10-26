@@ -1,5 +1,5 @@
 [addresses]
-econia = '_'
+red_black_map = '_'
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
@@ -7,7 +7,7 @@ rev = "mainnet"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dev-addresses]
-econia = 'red_black_map'
+red_black_map = '0xabc'
 
 [dev-dependencies]
 
