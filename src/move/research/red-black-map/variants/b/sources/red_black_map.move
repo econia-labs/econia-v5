@@ -21,11 +21,11 @@ module red_black_map::red_black_map {
         nodes: vector<Node<V>>
     }
 
-    /// Get child direction (side of node as child to parent) of non-root node at `node_index`.
-    inline fun child_direction<V>(self: &Map<V>, node_index: u64): u64 {
-        let parent_index = self.nodes[node_index].parent;
-        if (self.nodes[parent_index].children[LEFT] == node_index) LEFT
-        else RIGHT
+    public fun new<V>(): Map<V> {
+        Map {
+            root: NIL,
+            nodes: vector<Node<V>>[]
+        }
     }
 
     inline fun rotate<V>(
@@ -64,5 +64,12 @@ module red_black_map::red_black_map {
         };
         // return S;
         subtree_index
+    }
+
+    /// Get child direction (side of node as child to parent) of non-root node at `node_index`.
+    inline fun child_direction<V>(self: &Map<V>, node_index: u64): u64 {
+        let parent_index = self.nodes[node_index].parent;
+        if (self.nodes[parent_index].children[LEFT] == node_index) LEFT
+        else RIGHT
     }
 }
