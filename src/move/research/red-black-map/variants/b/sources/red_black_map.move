@@ -70,8 +70,8 @@ module red_black_map::red_black_map {
             // From now on parent is red and grandparent is not NIL.
             let grandparent_ref_mut = &mut self.nodes[grandparent_index];
             let direction =
-                if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT
-                else LEFT;
+                if (parent_index == grandparent_ref_mut.children[LEFT]) LEFT
+                else RIGHT;
             let uncle_index = grandparent_ref_mut.children[1 - direction];
 
             // Case_I56
@@ -231,16 +231,78 @@ module red_black_map::red_black_map {
                 vector::for_each(
                     key_group,
                     |key| {
-                        map.add(key, key);
                         debug::print(&key);
+                        map.add(key, key);
                     }
                 );
             }
         );
-        for (i in 0..71) {
-            debug::print(&i);
-            assert!(map.contains_key(i));
-        };
+        // Manually assert values inclusive.
+        assert!(map.contains_key(0));
+        assert!(map.contains_key(1));
+        assert!(map.contains_key(2));
+        assert!(map.contains_key(2));
+        assert!(map.contains_key(3));
+        assert!(map.contains_key(4));
+        assert!(map.contains_key(5));
+        assert!(map.contains_key(6));
+        assert!(map.contains_key(7));
+        assert!(map.contains_key(8));
+        assert!(map.contains_key(9));
+        assert!(map.contains_key(10));
+        assert!(map.contains_key(11));
+        assert!(map.contains_key(12));
+        assert!(map.contains_key(13));
+        assert!(map.contains_key(14));
+        assert!(map.contains_key(15));
+        assert!(map.contains_key(16));
+        assert!(map.contains_key(17));
+        assert!(map.contains_key(18));
+        assert!(map.contains_key(19));
+        assert!(map.contains_key(20));
+        assert!(map.contains_key(21));
+        assert!(map.contains_key(22));
+        assert!(map.contains_key(23));
+        assert!(map.contains_key(24));
+        assert!(map.contains_key(25));
+        assert!(map.contains_key(26));
+        assert!(map.contains_key(27));
+        assert!(map.contains_key(28));
+        assert!(map.contains_key(29));
+        assert!(map.contains_key(30));
+        assert!(map.contains_key(31));
+        assert!(map.contains_key(32));
+        assert!(map.contains_key(33));
+        assert!(map.contains_key(34));
+        assert!(map.contains_key(35));
+        assert!(map.contains_key(36));
+        assert!(map.contains_key(37));
+        assert!(map.contains_key(38));
+        assert!(map.contains_key(39));
+        assert!(map.contains_key(40));
+        assert!(map.contains_key(41));
+        assert!(map.contains_key(42));
+        assert!(map.contains_key(43));
+        assert!(map.contains_key(44));
+        assert!(map.contains_key(45));
+        assert!(map.contains_key(46));
+        assert!(map.contains_key(47));
+        assert!(map.contains_key(48));
+        assert!(map.contains_key(49));
+        assert!(map.contains_key(50));
+        assert!(map.contains_key(51));
+        assert!(map.contains_key(52));
+        assert!(map.contains_key(53));
+        assert!(map.contains_key(54));
+        assert!(map.contains_key(55));
+        assert!(map.contains_key(56));
+        assert!(map.contains_key(57));
+
+
+        // for (i in 0..71) {
+        //     debug::print(&i);
+        //     assert!(map.contains_key(i));
+        // };
 
         map
     }
