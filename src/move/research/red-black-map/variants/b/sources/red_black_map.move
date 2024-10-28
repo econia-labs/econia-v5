@@ -73,4 +73,31 @@ module red_black_map::red_black_map {
         subtree_index
     }
 
+    /// # Returns
+    ///
+    /// ## If `key` is found
+    /// - `u64`: Index of the node containing `key`.
+    /// - `u64`: Index of the node that is parent to the node with `key`, `NIL` if `key` is at root.
+    /// - `u64`: Direction of the node with `key` as child to its parent, `NIL` if `key` is at root.
+    ///
+    /// ## If `key` is not found
+    /// - `u64`: `NIL`
+    /// - `u64`: Index of the node that is parent to the node where `key` should be inserted, `NIL`
+    ///   if tree is empty.
+    /// - `u64`: Direction of the node where `key` should be inserted as child to its parent, `NIL`
+    ///   if tree is empty.
+    inline fun search<V>(self: &Map<V>, key: u256): (u64, u64, u64) {
+        let parent_index = NIL;
+        let child_direction = NIL;
+        let current_index = self.root;
+        while (current_index != NIL) {
+            let current_ref = &self.nodes[current_index];
+            let current_key = current_ref.key;
+            if (key == current_key) break;
+            parent_index = current_index;
+            let child_direction = if (key < current_key) LEFT else RIGHT;
+            current_index = current_ref.children[child_direction];
+        };
+        (current_index, parent_index, child_direction)
+    }
 }
