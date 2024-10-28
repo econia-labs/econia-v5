@@ -1,5 +1,5 @@
 module red_black_map::red_black_map {
-    enum Color {
+    enum Color has drop {
         Red,
         Black
     }
@@ -8,10 +8,13 @@ module red_black_map::red_black_map {
     const LEFT: u64 = 0;
     const RIGHT: u64 = 1;
 
+    /// Map key already exists.
+    const E_KEY_ALREADY_EXISTS: u64 = 0;
+
     struct Node<V> {
         key: u256,
         value: V,
-        color: u64,
+        color: Color,
         parent: u64,
         children: vector<u64>
     }
@@ -19,6 +22,87 @@ module red_black_map::red_black_map {
     struct Map<V> {
         root: u64,
         nodes: vector<Node<V>>
+    }
+
+    public fun add<V>(self: &mut Map<V>, key: u256, value: V) {
+
+        // Verify key does not already exist, push new node to back of nodes vector.
+        let (node_index, parent_index, child_direction) = self.search(key);
+        assert!(node_index == NIL, E_KEY_ALREADY_EXISTS);
+        node_index = self.nodes.length();
+        self.nodes.push_back(
+            Node {
+                key: key,
+                value: value,
+                color: Color::Red,
+                parent: parent_index,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // If tree is empty, set root to new node.
+        if (parent_index == NIL) {
+            self.root = node_index;
+            return
+        };
+
+        // Set new node as child to parent on specified side.
+        self.nodes[parent_index].children[child_direction] = node_index;
+
+        loop {
+            let parent_ref_mut = &mut self.nodes[parent_index];
+
+            // Case_I1
+            if (parent_ref_mut.color is Color::Black)
+                return;
+
+            // Case_I4
+            let grandparent_index = parent_ref_mut.parent;
+            if (grandparent_index == NIL) {
+                parent_ref_mut.color = Color::Black;
+                return
+            };
+
+            // From now on parent is red and grandparent is not NIL.
+            let grandparent_ref_mut = &mut self.nodes[grandparent_index];
+            let direction =
+                if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT
+                else LEFT;
+            let uncle_index = grandparent_ref_mut.children[1 - direction];
+
+            // Case_I56
+            if (uncle_index == NIL || (self.nodes[uncle_index].color is Color::Black)) {
+                // Case_I5
+                if (node_index == self.nodes[parent_index].children[1 - direction]) {
+                    self.rotate(parent_index, direction);
+                    node_index = parent_index;
+                    parent_index = self.nodes[grandparent_index].children[direction];
+                };
+                // Case_I6
+                self.rotate(grandparent_index, 1 - direction);
+                self.nodes[parent_index].color = Color::Black;
+                self.nodes[grandparent_index].color = Color::Red;
+                return
+            };
+
+            // Case_I2
+            self.nodes[parent_index].color = Color::Black;
+            self.nodes[uncle_index].color = Color::Black;
+            let grandparent_ref_mut = &mut self.nodes[grandparent_index];
+            grandparent_ref_mut.color = Color::Red;
+            node_index = grandparent_index;
+            parent_index = grandparent_ref_mut.parent;
+
+            if (parent_index == NIL) break;
+        };
+
+        return; // Case_I3
+
+    }
+
+    public fun contains_key<V>(self: &Map<V>, key: u256): bool {
+        let (node_index, _, _) = self.search(key);
+        node_index != NIL
     }
 
     public fun new<V>(): Map<V> {
@@ -29,7 +113,7 @@ module red_black_map::red_black_map {
     }
 
     /// Get child direction (side of node as child to parent) of non-root node at `node_index`.
-    inline fun child_direction<V>(self: &Map<V>, node_index: u64): u64 {
+    inline fun child_direction<V>(self: &mut Map<V>, node_index: u64): u64 {
         let parent_index = self.nodes[node_index].parent;
         if (self.nodes[parent_index].children[LEFT] == node_index) LEFT
         else RIGHT
@@ -63,9 +147,10 @@ module red_black_map::red_black_map {
         //   T->root = S;
         if (grandparent_index != NIL) {
             let grandparent_ref_mut = &mut self.nodes[grandparent_index];
-            grandparent_ref_mut.children[
-                if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT else LEFT
-            ] = subtree_index;
+            let direction =
+                if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT
+                else LEFT;
+            grandparent_ref_mut.children[direction] = subtree_index;
         } else {
             self.root = subtree_index;
         };
@@ -99,5 +184,18 @@ module red_black_map::red_black_map {
             current_index = current_ref.children[child_direction];
         };
         (current_index, parent_index, child_direction)
+    }
+
+    #[test]
+    fun test_assorted(): Map<u256> {
+        let map = new();
+        map.add(0, 0);
+        let (node_index, parent_index, child_direction) = map.search(0);
+        assert!(node_index == 0);
+        assert!(parent_index == NIL);
+        assert!(child_direction == NIL);
+        map.add(1, 1);
+
+        map
     }
 }
