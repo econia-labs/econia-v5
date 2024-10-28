@@ -1,4 +1,8 @@
 module red_black_map::red_black_map {
+
+    use std::debug;
+    use std::vector;
+
     enum Color has drop {
         Red,
         Black
@@ -32,8 +36,8 @@ module red_black_map::red_black_map {
         node_index = self.nodes.length();
         self.nodes.push_back(
             Node {
-                key: key,
-                value: value,
+                key,
+                value,
                 color: Color::Red,
                 parent: parent_index,
                 children: vector[NIL, NIL]
@@ -175,12 +179,14 @@ module red_black_map::red_black_map {
         let parent_index = NIL;
         let child_direction = NIL;
         let current_index = self.root;
+        let current_ref;
+        let current_key;
         while (current_index != NIL) {
-            let current_ref = &self.nodes[current_index];
-            let current_key = current_ref.key;
+            current_ref = &self.nodes[current_index];
+            current_key = current_ref.key;
             if (key == current_key) break;
             parent_index = current_index;
-            let child_direction = if (key < current_key) LEFT else RIGHT;
+            child_direction = if (key < current_key) LEFT else RIGHT;
             current_index = current_ref.children[child_direction];
         };
         (current_index, parent_index, child_direction)
@@ -189,12 +195,52 @@ module red_black_map::red_black_map {
     #[test]
     fun test_assorted(): Map<u256> {
         let map = new();
+
+        // Search, insert <0, 0>.
         map.add(0, 0);
         let (node_index, parent_index, child_direction) = map.search(0);
         assert!(node_index == 0);
         assert!(parent_index == NIL);
         assert!(child_direction == NIL);
+
+        // Search, insert <1, 1>.
+        let (node_index, parent_index, child_direction) = map.search(1);
+        assert!(node_index == NIL);
+        assert!(parent_index == 0);
+        assert!(child_direction == RIGHT);
         map.add(1, 1);
+
+        // Insert various keys.
+        for (i in 2..10) {
+            map.add(i, i);
+            assert!(map.contains_key(i));
+        };
+
+        // Assert even more keys to exercise tree balancing.
+        let keys = vector[
+            vector[20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
+            vector[70, 69, 68, 67, 66, 65, 64, 63, 62, 61],
+            vector[21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+            vector[51, 52, 53, 54, 55, 56, 57, 58, 59, 60],
+            vector[50, 49, 48, 47, 46, 45, 44, 43, 42, 41],
+            vector[31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
+        ];
+        vector::for_each(
+            keys,
+            |key_group| {
+                vector::for_each(
+                    key_group,
+                    |key| {
+                        map.add(key, key);
+                        debug::print(&key);
+                    }
+                );
+            }
+        );
+        for (i in 0..71) {
+            debug::print(&i);
+            assert!(map.contains_key(i));
+        };
 
         map
     }
