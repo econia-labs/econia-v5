@@ -104,7 +104,7 @@ module red_black_map::red_black_map {
     }
 
     inline fun child_on_side_mut<V: drop>(self: &mut Node<V>, side: Side): &mut Pointer {
-        if (side is Side::Left)&mut self.left else &mut self.right
+        if (side is Side::Left) &mut self.left else &mut self.right
     }
 
     inline fun child_on_opposite_side<V: drop>(self: &Node<V>, side: Side): Pointer {
@@ -114,7 +114,7 @@ module red_black_map::red_black_map {
     inline fun child_on_opposite_side_mut<V: drop>(
         self: &mut Node<V>, side: Side
     ): &mut Pointer {
-        if (side is Side::Left)&mut self.right else &mut self.left
+        if (side is Side::Left) &mut self.right else &mut self.left
     }
 
     public fun new<V>(): Map<V> {
