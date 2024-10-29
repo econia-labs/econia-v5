@@ -98,10 +98,7 @@ module red_black_map::red_black_map {
             parent_index = grandparent_ref_mut.parent;
 
             if (parent_index == NIL) break;
-        };
-
-        return; // Case_I3
-
+        }; // Case_I3
     }
 
     public fun contains_key<V>(self: &Map<V>, key: u256): bool {
@@ -231,12 +228,12 @@ module red_black_map::red_black_map {
                 vector::for_each(
                     key_group,
                     |key| {
-                        debug::print(&key);
                         map.add(key, key);
                     }
                 );
             }
         );
+
         // Manually assert values inclusive.
         assert!(map.contains_key(0));
         assert!(map.contains_key(1));
@@ -297,6 +294,20 @@ module red_black_map::red_black_map {
         assert!(map.contains_key(55));
         assert!(map.contains_key(56));
         assert!(map.contains_key(57));
+        assert!(map.contains_key(58));
+        assert!(map.contains_key(59));
+        assert!(map.contains_key(60));
+        assert!(map.contains_key(61));
+        assert!(map.contains_key(62));
+        assert!(map.contains_key(62));
+        assert!(map.contains_key(63));
+        assert!(map.contains_key(64));
+        assert!(map.contains_key(65));
+        assert!(map.contains_key(66));
+        assert!(map.contains_key(67));
+        assert!(map.contains_key(68));
+        assert!(map.contains_key(69));
+        assert!(map.contains_key(70));
 
 
         // for (i in 0..71) {
