@@ -3,7 +3,7 @@ module red_black_map::red_black_map {
     use std::debug;
     use std::vector;
 
-    enum Color has drop {
+    enum Color has copy, drop {
         Red,
         Black
     }
@@ -60,8 +60,10 @@ module red_black_map::red_black_map {
             if (parent_ref_mut.color is Color::Black)
                 return;
 
-            // Case_I4
+            // From now on parent is red.
             let grandparent_index = parent_ref_mut.parent;
+
+            // Case_I4
             if (grandparent_index == NIL) {
                 parent_ref_mut.color = Color::Black;
                 return
@@ -69,24 +71,24 @@ module red_black_map::red_black_map {
 
             // From now on parent is red and grandparent is not NIL.
             let grandparent_ref_mut = &mut self.nodes[grandparent_index];
-            let direction =
+            let child_direction_of_parent =
                 if (parent_index == grandparent_ref_mut.children[LEFT]) LEFT
                 else RIGHT;
-            let uncle_index = grandparent_ref_mut.children[1 - direction];
+            let uncle_index = grandparent_ref_mut.children[1
+                - child_direction_of_parent];
 
             // Case_I56
             if (uncle_index == NIL || (self.nodes[uncle_index].color is Color::Black)) {
                 // Case_I5
-                if (node_index == self.nodes[parent_index].children[1 - direction]) {
-                    self.rotate(parent_index, direction);
-                    node_index = parent_index;
-                    parent_index = self.nodes[grandparent_index].children[direction];
+                if (node_index
+                    == self.nodes[parent_index].children[1 - child_direction_of_parent]) {
+                    parent_index = self.rotate(parent_index, child_direction_of_parent);
                 };
                 // Case_I6
-                self.rotate(grandparent_index, 1 - direction);
+                self.rotate(grandparent_index, 1 - child_direction_of_parent);
                 self.nodes[parent_index].color = Color::Black;
                 self.nodes[grandparent_index].color = Color::Red;
-                return
+                return;
             };
 
             // Case_I2
@@ -94,10 +96,12 @@ module red_black_map::red_black_map {
             self.nodes[uncle_index].color = Color::Black;
             let grandparent_ref_mut = &mut self.nodes[grandparent_index];
             grandparent_ref_mut.color = Color::Red;
+
+            // Iterate 1 black level higher.
             node_index = grandparent_index;
             parent_index = grandparent_ref_mut.parent;
 
-            if (parent_index == NIL) break;
+            if (parent_index == NIL) return;
         }; // Case_I3
     }
 
@@ -107,10 +111,7 @@ module red_black_map::red_black_map {
     }
 
     public fun new<V>(): Map<V> {
-        Map {
-            root: NIL,
-            nodes: vector<Node<V>>[]
-        }
+        Map { root: NIL, nodes: vector[] }
     }
 
     /// Get child direction (side of node as child to parent) of non-root node at `node_index`.
@@ -148,10 +149,10 @@ module red_black_map::red_black_map {
         //   T->root = S;
         if (grandparent_index != NIL) {
             let grandparent_ref_mut = &mut self.nodes[grandparent_index];
-            let direction =
+            let child_direction_of_new_subtree =
                 if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT
                 else LEFT;
-            grandparent_ref_mut.children[direction] = subtree_index;
+            grandparent_ref_mut.children[child_direction_of_new_subtree] = subtree_index;
         } else {
             self.root = subtree_index;
         };
@@ -173,147 +174,334 @@ module red_black_map::red_black_map {
     /// - `u64`: Direction of the node where `key` should be inserted as child to its parent, `NIL`
     ///   if tree is empty.
     inline fun search<V>(self: &Map<V>, key: u256): (u64, u64, u64) {
+        let current_index = self.root;
         let parent_index = NIL;
         let child_direction = NIL;
-        let current_index = self.root;
-        let current_ref;
+        let current_node_ref;
         let current_key;
         while (current_index != NIL) {
-            current_ref = &self.nodes[current_index];
-            current_key = current_ref.key;
+            current_node_ref = &self.nodes[current_index];
+            current_key = current_node_ref.key;
             if (key == current_key) break;
             parent_index = current_index;
             child_direction = if (key < current_key) LEFT else RIGHT;
-            current_index = current_ref.children[child_direction];
+            current_index = current_node_ref.children[child_direction];
         };
         (current_index, parent_index, child_direction)
+    }
+
+    #[test_only]
+    struct MockNode<V: drop> has copy, drop {
+        key: u256,
+        value: V,
+        color: Color,
+        parent: u64,
+        children: vector<u64>
+    }
+
+    #[test_only]
+    struct MockSearchResult has drop {
+        node_index: u64,
+        parent_index: u64,
+        child_direction: u64
+    }
+
+    #[test_only]
+    fun assert_root_index<V>(self: &Map<V>, expected: u64) {
+        assert!(self.root == expected);
+    }
+
+    #[test_only]
+    fun assert_node<V: copy + drop>(
+        self: &Map<V>, index: u64, expected: MockNode<V>
+    ) {
+        let node = &self.nodes[index];
+        assert!(node.key == expected.key);
+        assert!(node.value == expected.value);
+        assert!(node.color == expected.color);
+        assert!(node.parent == expected.parent);
+        assert!(node.children == expected.children);
+    }
+
+    #[test_only]
+    fun assert_search_result<V>(
+        self: &Map<V>, key: u256, expected: MockSearchResult
+    ) {
+        let (node_index, parent_index, child_direction) = self.search(key);
+        assert!(node_index == expected.node_index);
+        assert!(parent_index == expected.parent_index);
+        assert!(child_direction == expected.child_direction);
+    }
+
+    #[test]
+    fun test_search_insert_cases(): Map<u256> {
+        let map = new();
+        map.assert_root_index(NIL);
+        map.assert_search_result(
+            0,
+            MockSearchResult { node_index: NIL, parent_index: NIL, child_direction: NIL }
+        );
+
+        // Initialize root: insert 5.
+        //
+        // |
+        // 5 (red, i = 0)
+        map.add(5, 5);
+        map.assert_root_index(0);
+        map.assert_search_result(
+            5, MockSearchResult { node_index: 0, parent_index: NIL, child_direction: NIL }
+        );
+        map.assert_node(
+            0,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Case_I4: insert 10.
+        //
+        // |
+        // 5 (black, i = 0)
+        //  \
+        //   10 (red, i = 1)
+        map.add(10, 10);
+        map.assert_root_index(0);
+        map.assert_search_result(
+            10, MockSearchResult { node_index: 1, parent_index: 0, child_direction: RIGHT }
+        );
+        map.assert_search_result(
+            11,
+            MockSearchResult { node_index: NIL, parent_index: 1, child_direction: RIGHT }
+        );
+        map.assert_search_result(
+            9, MockSearchResult { node_index: NIL, parent_index: 1, child_direction: LEFT }
+        );
+        map.assert_node(
+            0,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[NIL, 1]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Red,
+                parent: 0,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Case_I56 (Case_I5 fall through to Case_I6): insert 8.
+        // |                  |                                  |
+        // 5 (black, i = 0)   5 (black, i = 0)                   8 (black, i = 2)
+        //  \                  \                                / \
+        //   10 (red, i = 1) -> 8 (red, i = 2) -> (red, i = 0) 5   10 (red, i = 1)
+        //  /                    \
+        // 8 (red, i = 2)         10 (red, i = 1)
+        map.add(8, 8);
+        map.assert_root_index(2);
+        map.assert_search_result(
+            8, MockSearchResult { node_index: 2, parent_index: NIL, child_direction: NIL }
+        );
+        map.assert_search_result(
+            5, MockSearchResult { node_index: 0, parent_index: 2, child_direction: LEFT }
+        );
+        map.assert_search_result(
+            10, MockSearchResult { node_index: 1, parent_index: 2, child_direction: RIGHT }
+        );
+        map.assert_search_result(
+            11,
+            MockSearchResult { node_index: NIL, parent_index: 1, child_direction: RIGHT }
+        );
+        map.assert_search_result(
+            9, MockSearchResult { node_index: NIL, parent_index: 1, child_direction: LEFT }
+        );
+        map.assert_search_result(
+            4, MockSearchResult { node_index: NIL, parent_index: 0, child_direction: LEFT }
+        );
+        map.assert_search_result(
+            6,
+            MockSearchResult { node_index: NIL, parent_index: 0, child_direction: RIGHT }
+        );
+        map.assert_node(
+            0,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 8,
+                value: 8,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[0, 1]
+            }
+        );
+
+        // Case_I2 fall through to Case_I3: insert 11.
+        //                |                                     |
+        //                8 (black, i = 2)                      8 (red, i = 2)
+        //               / \                                   / \
+        // (red, i = 0) 5   10 (red, i = 1) -> (black, i = 0) 5   10 (black, i = 1)
+        //                    \                                     \
+        //                     11 (red, i = 3)                       11 (red, i = 3)
+        map.add(11, 11);
+        map.assert_root_index(2);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Black,
+                parent: 2,
+                children: vector[NIL, 3]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 8,
+                value: 8,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[0, 1]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Case_I1: insert 9.
+        //                  |
+        //                  8 (red, i = 2)
+        //                 / \
+        // (black, i = 0) 5   10 (black, i = 1)
+        //                   /  \
+        //     (red, i = 4) 9    11 (red, i = 3)
+        map.add(9, 9);
+        map.assert_root_index(2);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Black,
+                parent: 2,
+                children: vector[4, 3]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 8,
+                value: 8,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[0, 1]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 9,
+                value: 9,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        map
     }
 
     #[test]
     fun test_assorted(): Map<u256> {
         let map = new();
 
-        // Search, insert <0, 0>.
-        map.add(0, 0);
-        let (node_index, parent_index, child_direction) = map.search(0);
-        assert!(node_index == 0);
-        assert!(parent_index == NIL);
-        assert!(child_direction == NIL);
-
-        // Search, insert <1, 1>.
-        let (node_index, parent_index, child_direction) = map.search(1);
-        assert!(node_index == NIL);
-        assert!(parent_index == 0);
-        assert!(child_direction == RIGHT);
-        map.add(1, 1);
-
-        // Insert various keys.
-        for (i in 2..10) {
-            map.add(i, i);
-            assert!(map.contains_key(i));
-        };
-
-        // Assert even more keys to exercise tree balancing.
+        // Assert groups out of order to exercise rotations.
         let keys = vector[
-            vector[20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
-            vector[70, 69, 68, 67, 66, 65, 64, 63, 62, 61],
-            vector[21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-            vector[51, 52, 53, 54, 55, 56, 57, 58, 59, 60],
-            vector[50, 49, 48, 47, 46, 45, 44, 43, 42, 41],
-            vector[31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
+            vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
+            vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
+            vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+            vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
+            vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
+            vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
         ];
         vector::for_each(
             keys,
             |key_group| {
-                vector::for_each(
-                    key_group,
-                    |key| {
-                        map.add(key, key);
-                    }
-                );
+                vector::for_each(key_group, |key| {
+                    map.add(key, key);
+                });
             }
         );
-
-        // Manually assert values inclusive.
-        assert!(map.contains_key(0));
-        assert!(map.contains_key(1));
-        assert!(map.contains_key(2));
-        assert!(map.contains_key(2));
-        assert!(map.contains_key(3));
-        assert!(map.contains_key(4));
-        assert!(map.contains_key(5));
-        assert!(map.contains_key(6));
-        assert!(map.contains_key(7));
-        assert!(map.contains_key(8));
-        assert!(map.contains_key(9));
-        assert!(map.contains_key(10));
-        assert!(map.contains_key(11));
-        assert!(map.contains_key(12));
-        assert!(map.contains_key(13));
-        assert!(map.contains_key(14));
-        assert!(map.contains_key(15));
-        assert!(map.contains_key(16));
-        assert!(map.contains_key(17));
-        assert!(map.contains_key(18));
-        assert!(map.contains_key(19));
-        assert!(map.contains_key(20));
-        assert!(map.contains_key(21));
-        assert!(map.contains_key(22));
-        assert!(map.contains_key(23));
-        assert!(map.contains_key(24));
-        assert!(map.contains_key(25));
-        assert!(map.contains_key(26));
-        assert!(map.contains_key(27));
-        assert!(map.contains_key(28));
-        assert!(map.contains_key(29));
-        assert!(map.contains_key(30));
-        assert!(map.contains_key(31));
-        assert!(map.contains_key(32));
-        assert!(map.contains_key(33));
-        assert!(map.contains_key(34));
-        assert!(map.contains_key(35));
-        assert!(map.contains_key(36));
-        assert!(map.contains_key(37));
-        assert!(map.contains_key(38));
-        assert!(map.contains_key(39));
-        assert!(map.contains_key(40));
-        assert!(map.contains_key(41));
-        assert!(map.contains_key(42));
-        assert!(map.contains_key(43));
-        assert!(map.contains_key(44));
-        assert!(map.contains_key(45));
-        assert!(map.contains_key(46));
-        assert!(map.contains_key(47));
-        assert!(map.contains_key(48));
-        assert!(map.contains_key(49));
-        assert!(map.contains_key(50));
-        assert!(map.contains_key(51));
-        assert!(map.contains_key(52));
-        assert!(map.contains_key(53));
-        assert!(map.contains_key(54));
-        assert!(map.contains_key(55));
-        assert!(map.contains_key(56));
-        assert!(map.contains_key(57));
-        assert!(map.contains_key(58));
-        assert!(map.contains_key(59));
-        assert!(map.contains_key(60));
-        assert!(map.contains_key(61));
-        assert!(map.contains_key(62));
-        assert!(map.contains_key(62));
-        assert!(map.contains_key(63));
-        assert!(map.contains_key(64));
-        assert!(map.contains_key(65));
-        assert!(map.contains_key(66));
-        assert!(map.contains_key(67));
-        assert!(map.contains_key(68));
-        assert!(map.contains_key(69));
-        assert!(map.contains_key(70));
-
-
-        // for (i in 0..71) {
-        //     debug::print(&i);
-        //     assert!(map.contains_key(i));
-        // };
+        for (i in 0..70) {
+            assert!(map.contains_key(i), (i as u64));
+        };
 
         map
     }
