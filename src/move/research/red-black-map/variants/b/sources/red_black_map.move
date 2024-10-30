@@ -208,11 +208,6 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
-    fun assert_root_index<V>(self: &Map<V>, expected: u64) {
-        assert!(self.root == expected);
-    }
-
-    #[test_only]
     fun assert_node<V: copy + drop>(
         self: &Map<V>, index: u64, expected: MockNode<V>
     ) {
@@ -222,6 +217,11 @@ module red_black_map::red_black_map {
         assert!(node.color == expected.color);
         assert!(node.parent == expected.parent);
         assert!(node.children == expected.children);
+    }
+
+    #[test_only]
+    fun assert_root_index<V>(self: &Map<V>, expected: u64) {
+        assert!(self.root == expected);
     }
 
     #[test_only]
@@ -303,6 +303,7 @@ module red_black_map::red_black_map {
         );
 
         // Case_I56 (Case_I5 fall through to Case_I6): insert 8.
+        //
         // |                  |                                  |
         // 5 (black, i = 0)   5 (black, i = 0)                   8 (black, i = 2)
         //  \                  \                                / \
@@ -366,6 +367,7 @@ module red_black_map::red_black_map {
         );
 
         // Case_I2 fall through to Case_I3: insert 11.
+        //
         //                |                                     |
         //                8 (black, i = 2)                      8 (red, i = 2)
         //               / \                                   / \
@@ -416,6 +418,7 @@ module red_black_map::red_black_map {
         );
 
         // Case_I1: insert 9.
+        //
         //                  |
         //                  8 (red, i = 2)
         //                 / \
@@ -479,10 +482,10 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    fun test_assorted(): Map<u256> {
+    fun test_bulk_insertions(): Map<u256> {
         let map = new();
 
-        // Assert groups out of order to exercise rotations.
+        // Insert groups out of order to exercise rotations.
         let keys = vector[
             vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
             vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
