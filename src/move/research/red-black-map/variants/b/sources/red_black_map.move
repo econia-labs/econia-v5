@@ -712,7 +712,7 @@ module red_black_map::red_black_map {
 
     #[test]
     #[expected_failure(abort_code = E_KEY_ALREADY_EXISTS)]
-    fun test_insert_already_exists(): Map<u256> {
+    fun test_add_already_exists(): Map<u256> {
         let map = new();
         map.add(0, 0);
         map.add(0, 1);
@@ -720,7 +720,7 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    fun test_bulk_add(): Map<u256> {
+    fun test_add_bulk(): Map<u256> {
         let map = new();
 
         vector::for_each(
