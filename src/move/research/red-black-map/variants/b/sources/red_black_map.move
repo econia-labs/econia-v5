@@ -1,9 +1,5 @@
 /// Based on Wikipedia reference implementation of red-black tree.
 module red_black_map::red_black_map {
-
-    use std::debug;
-    use std::vector;
-
     enum Color has copy, drop {
         Red,
         Black
@@ -83,10 +79,14 @@ module red_black_map::red_black_map {
                 // Case_I5
                 if (node_index
                     == self.nodes[parent_index].children[1 - child_direction_of_parent]) {
-                    parent_index = self.rotate(parent_index, child_direction_of_parent);
+                    parent_index = self.rotate_parent_is_not_root(
+                        parent_index, child_direction_of_parent
+                    );
                 };
                 // Case_I6
-                self.rotate(grandparent_index, 1 - child_direction_of_parent);
+                self.rotate_parent_may_be_root(
+                    grandparent_index, 1 - child_direction_of_parent
+                );
                 self.nodes[parent_index].color = Color::Black;
                 self.nodes[grandparent_index].color = Color::Red;
                 return;
@@ -115,16 +115,9 @@ module red_black_map::red_black_map {
         Map { root: NIL, nodes: vector[] }
     }
 
-    /// Get child direction (side of node as child to parent) of non-root node at `node_index`.
-    inline fun child_direction<V>(self: &mut Map<V>, node_index: u64): u64 {
-        let parent_index = self.nodes[node_index].parent;
-        if (self.nodes[parent_index].children[LEFT] == node_index) LEFT
-        else RIGHT
-    }
-
-    inline fun rotate<V>(
+    inline fun rotate_inner<V>(
         self: &mut Map<V>, parent_index: u64, direction: u64
-    ): u64 {
+    ): (u64, u64) {
         let parent_ref = &self.nodes[parent_index];
         // RBnode* G = P->parent;
         let grandparent_index = parent_ref.parent;
@@ -144,6 +137,29 @@ module red_black_map::red_black_map {
         self.nodes[parent_index].parent = subtree_index;
         // S->parent = G;
         self.nodes[subtree_index].parent = grandparent_index;
+        // return S;
+        (subtree_index, grandparent_index)
+    }
+
+    inline fun rotate_parent_is_not_root<V>(
+        self: &mut Map<V>, parent_index: u64, direction: u64
+    ): u64 {
+        let (subtree_index, grandparent_index) =
+            self.rotate_inner(parent_index, direction);
+        // G->child[ P == G->right ? RIGHT : LEFT ] = S;
+        let grandparent_ref_mut = &mut self.nodes[grandparent_index];
+        let child_direction_of_new_subtree =
+            if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT
+            else LEFT;
+        grandparent_ref_mut.children[child_direction_of_new_subtree] = subtree_index;
+        subtree_index
+    }
+
+    inline fun rotate_parent_may_be_root<V>(
+        self: &mut Map<V>, parent_index: u64, direction: u64
+    ) {
+        let (subtree_index, grandparent_index) =
+            self.rotate_inner(parent_index, direction);
         // if (G != NULL)
         //   G->child[ P == G->right ? RIGHT : LEFT ] = S;
         // else
@@ -156,9 +172,7 @@ module red_black_map::red_black_map {
             grandparent_ref_mut.children[child_direction_of_new_subtree] = subtree_index;
         } else {
             self.root = subtree_index;
-        };
-        // return S;
-        subtree_index
+        }
     }
 
     /// # Returns
@@ -190,6 +204,9 @@ module red_black_map::red_black_map {
         };
         (current_index, parent_index, child_direction)
     }
+
+    #[test_only]
+    use std::vector;
 
     #[test_only]
     struct MockNode<V: drop> has copy, drop {
@@ -235,13 +252,14 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    fun test_search_insert_cases(): Map<u256> {
+    fun test_add_1(): Map<u256> {
         let map = new();
         map.assert_root_index(NIL);
         map.assert_search_result(
             0,
             MockSearchResult { node_index: NIL, parent_index: NIL, child_direction: NIL }
         );
+        assert!(!map.contains_key(5));
 
         // Initialize root: insert 5.
         //
@@ -249,6 +267,7 @@ module red_black_map::red_black_map {
         // 5 (red, i = 0)
         map.add(5, 5);
         map.assert_root_index(0);
+        assert!(map.contains_key(5));
         map.assert_search_result(
             5, MockSearchResult { node_index: 0, parent_index: NIL, child_direction: NIL }
         );
@@ -271,6 +290,7 @@ module red_black_map::red_black_map {
         //   10 (red, i = 1)
         map.add(10, 10);
         map.assert_root_index(0);
+        assert!(map.contains_key(10));
         map.assert_search_result(
             10, MockSearchResult { node_index: 1, parent_index: 0, child_direction: RIGHT }
         );
@@ -312,6 +332,9 @@ module red_black_map::red_black_map {
         // 8 (red, i = 2)         10 (red, i = 1)
         map.add(8, 8);
         map.assert_root_index(2);
+        assert!(map.contains_key(5));
+        assert!(map.contains_key(8));
+        assert!(map.contains_key(10));
         map.assert_search_result(
             8, MockSearchResult { node_index: 2, parent_index: NIL, child_direction: NIL }
         );
@@ -482,27 +505,241 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    fun test_bulk_insertions(): Map<u256> {
+    fun test_add_2(): Map<u256> {
         let map = new();
 
-        // Insert groups out of order to exercise rotations.
-        let keys = vector[
-            vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-            vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
-            vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
-            vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
-            vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
-            vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
-            vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
-        ];
+        // Initialize root: insert 50.
+        //
+        // |
+        // 50 (red, i = 0)
+        map.add(50, 50);
+        map.assert_root_index(0);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 50,
+                value: 50,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Case_I1: insert 30.
+        //
+        //                 |
+        //                 50 (black, i = 0)
+        //                /
+        // (red, i = 1) 30
+        map.add(30, 30);
+        map.assert_root_index(0);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 50,
+                value: 50,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[1, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 30,
+                value: 30,
+                color: Color::Red,
+                parent: 0,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Case_I6: insert 20.
+        //
+        //                 |                  |
+        //  (black, i = 0) 50  (black, i = 1) 30
+        //                /                  /  \
+        // (red, i = 1) 30 -> (red, i = 2) 20    50 (red, i = 0)
+        //             /
+        //           20 (red, i = 2)
+        map.add(20, 20);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 50,
+                value: 50,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 30,
+                value: 30,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[2, 0]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 20,
+                value: 20,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Case_I2 fall through to Case_I3: insert 25.
+        //
+        //                 |                                       |
+        //  (black, i = 1) 30                         (red, i = 1) 30
+        //                /  \                                    /  \
+        // (red, i = 2) 20    50 (red, i = 0) -> (black, i = 2) 20    50 (black, i = 0)
+        //                \                                       \
+        //                 25 (red, i = 3)                         25 (red, i = 3)
+        map.add(25, 25);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 50,
+                value: 50,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 30,
+                value: 30,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[2, 0]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 20,
+                value: 20,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, 3]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 25,
+                value: 25,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Case_I1: insert 10
+        //
+        //                        |
+        //           (red, i = 1) 30
+        //                       /  \
+        //      (black, i = 2) 20    50 (black, i = 0)
+        //                    /  \
+        //     (red, i = 4) 10    25 (red, i = 3)
+        map.add(10, 10);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 50,
+                value: 50,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 30,
+                value: 30,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[2, 0]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 20,
+                value: 20,
+                color: Color::Black,
+                parent: 1,
+                children: vector[4, 3]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 25,
+                value: 25,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_ALREADY_EXISTS)]
+    fun test_insert_already_exists(): Map<u256> {
+        let map = new();
+        map.add(0, 0);
+        map.add(0, 1);
+        map
+    }
+
+    #[test]
+    fun test_bulk_add(): Map<u256> {
+        let map = new();
+
         vector::for_each(
-            keys,
+            vector[
+                vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
+                vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
+                vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+                vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
+                vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
+                vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+            ],
             |key_group| {
                 vector::for_each(key_group, |key| {
                     map.add(key, key);
                 });
             }
         );
+
         for (i in 0..70) {
             assert!(map.contains_key(i), (i as u64));
         };
