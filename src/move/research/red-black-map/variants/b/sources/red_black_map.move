@@ -142,12 +142,12 @@ module red_black_map::red_black_map {
         // RBnode* S = P->child[1-dir];
         let subtree_index = parent_ref.children[1 - direction];
         // C = S->child[dir];
-        let child_index = self.nodes[subtree_index].children[direction];
+        let close_nephew_index = self.nodes[subtree_index].children[direction];
         // P->child[1-dir] = C;
-        self.nodes[parent_index].children[1 - direction] = child_index;
+        self.nodes[parent_index].children[1 - direction] = close_nephew_index;
         // if (C != NIL) C->parent = P;
-        if (child_index != NIL) {
-            self.nodes[child_index].parent = parent_index;
+        if (close_nephew_index != NIL) {
+            self.nodes[close_nephew_index].parent = parent_index;
         };
         // S->child[  dir] = P;
         self.nodes[subtree_index].children[direction] = parent_index;
