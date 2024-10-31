@@ -234,6 +234,47 @@ module red_black_map::red_black_map {
         (current_index, parent_index, child_direction)
     }
 
+    inline fun swap_remove_deleted_node<V>(
+        self: &mut Map<V>, node_index: u64
+    ) {
+
+        // If deleted node is tail, remove and return.
+        let tail_index = self.nodes.length() - 1;
+        if (node_index == tail_index) {
+            self.nodes.pop_back();
+            return
+        };
+
+        // Get indices of nodes referencing the swapped node.
+        let tail_node_ref = self.nodes.borrow(tail_index);
+        let parent_index = tail_node_ref.parent;
+        let left_child_index = tail_node_ref.children[LEFT];
+        let right_child_index = tail_node_ref.children[RIGHT];
+
+        // Swap and remove.
+        self.nodes.swap(node_index, tail_index);
+        self.nodes.pop_back();
+
+        // Update parent reference to swapped node.
+        if (parent_index == NIL) {
+            self.root = node_index;
+        } else {
+            let parent_ref_mut = &mut self.nodes[parent_index];
+            let child_direction =
+                if (tail_index == parent_ref_mut.children[LEFT]) LEFT
+                else RIGHT;
+            parent_ref_mut.children[child_direction] = node_index;
+        };
+
+        // Update children references to swapped node.
+        if (left_child_index != NIL) {
+            self.nodes[left_child_index].parent = node_index;
+        };
+        if (right_child_index != NIL) {
+            self.nodes[right_child_index].parent = node_index;
+        }
+    }
+
     #[test_only]
     struct MockNode<V: drop> has copy, drop {
         key: u256,
