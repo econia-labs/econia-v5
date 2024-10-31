@@ -11,6 +11,8 @@ module red_black_map::red_black_map {
 
     /// Map key already exists.
     const E_KEY_ALREADY_EXISTS: u64 = 0;
+    /// Map key not found.
+    const E_KEY_NOT_FOUND: u64 = 1;
 
     struct Node<V> {
         key: u256,
@@ -106,9 +108,25 @@ module red_black_map::red_black_map {
         }; // Case_I3
     }
 
+    public fun borrow<V>(self: &Map<V>, key: u256): &V {
+        let (node_index, _, _) = self.search(key);
+        assert!(node_index != NIL, E_KEY_NOT_FOUND);
+        &self.nodes[node_index].value
+    }
+
+    public fun borrow_mut<V>(self: &mut Map<V>, key: u256): &mut V {
+        let (node_index, _, _) = self.search(key);
+        assert!(node_index != NIL, E_KEY_NOT_FOUND);
+        &mut self.nodes[node_index].value
+    }
+
     public fun contains_key<V>(self: &Map<V>, key: u256): bool {
         let (node_index, _, _) = self.search(key);
         node_index != NIL
+    }
+
+    public fun length<V>(self: &Map<V>): u64 {
+        self.nodes.length()
     }
 
     public fun new<V>(): Map<V> {
@@ -252,8 +270,62 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    fun test_add_1(): Map<u256> {
+    #[expected_failure(abort_code = E_KEY_ALREADY_EXISTS)]
+    fun test_add_already_exists(): Map<u256> {
         let map = new();
+        map.add(0, 0);
+        map.add(0, 1);
+        map
+    }
+
+    #[test]
+    fun test_add_bulk(): Map<u256> {
+        let map = new();
+
+        vector::for_each(
+            vector[
+                vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
+                vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
+                vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+                vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
+                vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
+                vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+            ],
+            |key_group| {
+                vector::for_each(key_group, |key| {
+                    map.add(key, key);
+                });
+            }
+        );
+
+        for (i in 0..70) {
+            assert!(map.contains_key(i), (i as u64));
+        };
+
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_borrow_mut_not_found(): Map<u256> {
+        let map = new();
+        map.borrow_mut(0);
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_borrow_not_found(): Map<u256> {
+        let map = new();
+        map.borrow(0);
+        map
+    }
+
+    #[test]
+    fun test_sequence_1(): Map<u256> {
+        let map = new();
+        assert!(map.length() == 0);
         map.assert_root_index(NIL);
         map.assert_search_result(
             0,
@@ -266,6 +338,7 @@ module red_black_map::red_black_map {
         // |
         // 5 (red, i = 0)
         map.add(5, 5);
+        assert!(map.length() == 1);
         map.assert_root_index(0);
         assert!(map.contains_key(5));
         map.assert_search_result(
@@ -290,6 +363,7 @@ module red_black_map::red_black_map {
         //   10 (red, i = 1)
         map.add(10, 10);
         map.assert_root_index(0);
+        assert!(map.length() == 2);
         assert!(map.contains_key(10));
         map.assert_search_result(
             10, MockSearchResult { node_index: 1, parent_index: 0, child_direction: RIGHT }
@@ -501,11 +575,18 @@ module red_black_map::red_black_map {
             }
         );
 
+        // Verify borrows.
+        assert!(*map.borrow(9) == 9);
+        *map.borrow_mut(9) = 1000;
+        assert!(*map.borrow(9) == 1000);
+        *map.borrow_mut(9) = 9;
+        assert!(*map.borrow(9) == 9);
+
         map
     }
 
     #[test]
-    fun test_add_2(): Map<u256> {
+    fun test_sequence_2(): Map<u256> {
         let map = new();
 
         // Initialize root: insert 50.
@@ -706,43 +787,6 @@ module red_black_map::red_black_map {
                 children: vector[NIL, NIL]
             }
         );
-
-        map
-    }
-
-    #[test]
-    #[expected_failure(abort_code = E_KEY_ALREADY_EXISTS)]
-    fun test_add_already_exists(): Map<u256> {
-        let map = new();
-        map.add(0, 0);
-        map.add(0, 1);
-        map
-    }
-
-    #[test]
-    fun test_add_bulk(): Map<u256> {
-        let map = new();
-
-        vector::for_each(
-            vector[
-                vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
-                vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
-                vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
-                vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
-                vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
-                vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
-            ],
-            |key_group| {
-                vector::for_each(key_group, |key| {
-                    map.add(key, key);
-                });
-            }
-        );
-
-        for (i in 0..70) {
-            assert!(map.contains_key(i), (i as u64));
-        };
 
         map
     }
