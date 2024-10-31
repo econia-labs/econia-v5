@@ -1,5 +1,8 @@
 /// Based on Wikipedia reference implementation of red-black tree.
 module red_black_map::red_black_map {
+
+    use std::vector;
+
     enum Color has copy, drop {
         Red,
         Black
@@ -125,12 +128,20 @@ module red_black_map::red_black_map {
         node_index != NIL
     }
 
+    public fun keys<V>(self: &Map<V>): vector<u256> {
+        vector::map_ref(&self.nodes, |node| node.key)
+    }
+
     public fun length<V>(self: &Map<V>): u64 {
         self.nodes.length()
     }
 
     public fun new<V>(): Map<V> {
         Map { root: NIL, nodes: vector[] }
+    }
+
+    public fun values_ref<V: copy>(self: &Map<V>): vector<V> {
+        vector::map_ref(&self.nodes, |node| node.value)
     }
 
     inline fun rotate_inner<V>(
@@ -222,9 +233,6 @@ module red_black_map::red_black_map {
         };
         (current_index, parent_index, child_direction)
     }
-
-    #[test_only]
-    use std::vector;
 
     #[test_only]
     struct MockNode<V: drop> has copy, drop {
@@ -326,6 +334,8 @@ module red_black_map::red_black_map {
     fun test_sequence_1(): Map<u256> {
         let map = new();
         assert!(map.length() == 0);
+        assert!(map.keys() == vector[]);
+        assert!(map.values_ref() == vector[]);
         map.assert_root_index(NIL);
         map.assert_search_result(
             0,
@@ -338,6 +348,7 @@ module red_black_map::red_black_map {
         // |
         // 5 (red, i = 0)
         map.add(5, 5);
+        assert!(map.keys() == vector[5]);
         assert!(map.length() == 1);
         map.assert_root_index(0);
         assert!(map.contains_key(5));
@@ -362,6 +373,7 @@ module red_black_map::red_black_map {
         //  \
         //   10 (red, i = 1)
         map.add(10, 10);
+        assert!(map.keys() == vector[5, 10]);
         map.assert_root_index(0);
         assert!(map.length() == 2);
         assert!(map.contains_key(10));
@@ -581,6 +593,21 @@ module red_black_map::red_black_map {
         assert!(*map.borrow(9) == 1000);
         *map.borrow_mut(9) = 9;
         assert!(*map.borrow(9) == 9);
+
+        // Verify value extraction.
+        *map.borrow_mut(5) = 105;
+        *map.borrow_mut(10) = 110;
+        *map.borrow_mut(8) = 108;
+        *map.borrow_mut(11) = 111;
+        *map.borrow_mut(9) = 109;
+        assert!(
+            map.values_ref() == vector[105, 110, 108, 111, 109]
+        );
+        *map.borrow_mut(5) = 5;
+        *map.borrow_mut(10) = 10;
+        *map.borrow_mut(8) = 8;
+        *map.borrow_mut(11) = 11;
+        *map.borrow_mut(9) = 9;
 
         map
     }
