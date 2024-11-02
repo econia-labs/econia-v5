@@ -9,8 +9,14 @@ module red_black_map::red_black_map {
     }
 
     const NIL: u64 = 0xffffffffffffffff;
+
     const LEFT: u64 = 0;
+    const MINIMUM: u64 = 0;
+    const PREDECESSOR: u64 = 0;
+
     const RIGHT: u64 = 1;
+    const MAXIMUM: u64 = 1;
+    const SUCCESSOR: u64 = 1;
 
     /// Map key already exists.
     const E_KEY_ALREADY_EXISTS: u64 = 0;
@@ -18,6 +24,8 @@ module red_black_map::red_black_map {
     const E_KEY_NOT_FOUND: u64 = 1;
     /// Map is empty.
     const E_EMPTY: u64 = 2;
+    /// No predecessor or successor.
+    const E_UNABLE_TO_TRAVERSE: u64 = 3;
 
     struct Node<V> {
         key: u256,
@@ -140,32 +148,28 @@ module red_black_map::red_black_map {
 
     public fun maximum_key<V>(self: &Map<V>): u256 {
         assert!(self.root != NIL, E_EMPTY);
-        let nodes_ref = &self.nodes;
-        let current_node_ref = &nodes_ref[self.root];
-        let right_child_index;
-        loop {
-            right_child_index = current_node_ref.children[RIGHT];
-            if (right_child_index == NIL) break;
-            current_node_ref = &nodes_ref[right_child_index];
-        };
-        current_node_ref.key
+        self.subtree_min_or_max_node_ref(self.root, MAXIMUM).key
     }
 
     public fun minimum_key<V>(self: &Map<V>): u256 {
         assert!(self.root != NIL, E_EMPTY);
-        let nodes_ref = &self.nodes;
-        let current_node_ref = &nodes_ref[self.root];
-        let left_child_index;
-        loop {
-            left_child_index = current_node_ref.children[LEFT];
-            if (left_child_index == NIL) break;
-            current_node_ref = &nodes_ref[left_child_index];
-        };
-        current_node_ref.key
+        self.subtree_min_or_max_node_ref(self.root, MINIMUM).key
     }
 
     public fun new<V>(): Map<V> {
         Map { root: NIL, nodes: vector[] }
+    }
+
+    public fun predecessor_key<V>(self: &Map<V>, key: u256): u256 {
+        let (node_index, _, _) = self.search(key);
+        assert!(node_index != NIL, E_KEY_NOT_FOUND);
+        self.traverse_ref(node_index, PREDECESSOR).key
+    }
+
+    public fun successor_key<V>(self: &Map<V>, key: u256): u256 {
+        let (node_index, _, _) = self.search(key);
+        assert!(node_index != NIL, E_KEY_NOT_FOUND);
+        self.traverse_ref(node_index, SUCCESSOR).key
     }
 
     public fun values_ref<V: copy>(self: &Map<V>): vector<V> {
@@ -262,6 +266,23 @@ module red_black_map::red_black_map {
         (current_index, parent_index, child_direction)
     }
 
+    /// Return reference to node with either minimum or maximum key in subtree rooted at
+    /// `node_index`, where `direction` is either `MINIMUM` or `MAXIMUM`, corresponding respectively
+    /// to traversing left or right children.
+    inline fun subtree_min_or_max_node_ref<V>(
+        self: &Map<V>, node_index: u64, direction: u64
+    ): &Node<V> {
+        let nodes_ref = &self.nodes;
+        let node_ref = &nodes_ref[node_index];
+        let child_index;
+        loop {
+            child_index = node_ref.children[direction];
+            if (child_index == NIL) break;
+            node_ref = &nodes_ref[child_index];
+        };
+        node_ref
+    }
+
     inline fun swap_remove_deleted_node<V>(
         self: &mut Map<V>, node_index: u64
     ) {
@@ -303,6 +324,34 @@ module red_black_map::red_black_map {
         }
     }
 
+    /// Return reference to either predecessor or successor of node with `node_index` key, where
+    /// `direction` is either `PREDECESSOR` or `SUCCESSOR`.
+    inline fun traverse_ref<V>(
+        self: &Map<V>, node_index: u64, direction: u64
+    ): &Node<V> {
+        let child_index = self.nodes[node_index].children[direction];
+        if (child_index != NIL) {
+            self.subtree_min_or_max_node_ref(child_index, 1 - direction)
+        } else {
+            let nodes_ref = &self.nodes;
+            let parent_index;
+            let parent_ref;
+            loop {
+                parent_index = nodes_ref[node_index].parent;
+                if (parent_index == NIL) {
+                    break;
+                };
+                parent_ref = &nodes_ref[parent_index];
+                if (node_index != parent_ref.children[direction]) {
+                    break;
+                };
+                node_index = parent_index;
+            };
+            assert!(parent_index != NIL, E_UNABLE_TO_TRAVERSE);
+            &nodes_ref[parent_index]
+        }
+    }
+
     #[test_only]
     struct MockNode<V: drop> has copy, drop {
         key: u256,
@@ -332,7 +381,7 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
-    fun assert_root_index<V>(self: &Map<V>, expected: u64) {
+    public fun assert_root_index<V>(self: &Map<V>, expected: u64) {
         assert!(self.root == expected);
     }
 
@@ -344,6 +393,142 @@ module red_black_map::red_black_map {
         assert!(node_index == expected.node_index);
         assert!(parent_index == expected.parent_index);
         assert!(child_direction == expected.child_direction);
+    }
+
+    #[test_only]
+    //                  |
+    //                  8 (red, i = 2)
+    //                 / \
+    // (black, i = 0) 5   10 (black, i = 1)
+    //                   /  \
+    //     (red, i = 4) 9    11 (red, i = 3)
+    public fun set_up_tree_1(): Map<u256> {
+        let map = new();
+        map.add(5, 5);
+        map.add(10, 10);
+        map.add(8, 8);
+        map.add(11, 11);
+        map.add(9, 9);
+        map.assert_root_index(2);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Black,
+                parent: 2,
+                children: vector[4, 3]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 8,
+                value: 8,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[0, 1]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 9,
+                value: 9,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map
+    }
+
+    #[test_only]
+    //                    |
+    //       (red, i = 1) 30
+    //                   /  \
+    //  (black, i = 2) 20    50 (black, i = 0)
+    //                /  \
+    // (red, i = 4) 10    25 (red, i = 3)
+    public fun set_up_tree_2(): Map<u256> {
+        let map = new();
+        map.add(50, 50);
+        map.add(30, 30);
+        map.add(20, 20);
+        map.add(25, 25);
+        map.add(10, 10);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 50,
+                value: 50,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 30,
+                value: 30,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[2, 0]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 20,
+                value: 20,
+                color: Color::Black,
+                parent: 1,
+                children: vector[4, 3]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 25,
+                value: 25,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map
     }
 
     #[test]
@@ -702,6 +887,16 @@ module red_black_map::red_black_map {
         *map.borrow_mut(11) = 11;
         *map.borrow_mut(9) = 9;
 
+        // Verify traversal.
+        assert!(successor_key(&map, 5) == 8);
+        assert!(successor_key(&map, 8) == 9);
+        assert!(successor_key(&map, 9) == 10);
+        assert!(successor_key(&map, 10) == 11);
+        assert!(predecessor_key(&map, 11) == 10);
+        assert!(predecessor_key(&map, 10) == 9);
+        assert!(predecessor_key(&map, 9) == 8);
+        assert!(predecessor_key(&map, 8) == 5);
+
         map
     }
 
@@ -849,12 +1044,12 @@ module red_black_map::red_black_map {
 
         // Case_I1: insert 10
         //
-        //                        |
-        //           (red, i = 1) 30
-        //                       /  \
-        //      (black, i = 2) 20    50 (black, i = 0)
-        //                    /  \
-        //     (red, i = 4) 10    25 (red, i = 3)
+        //                    |
+        //       (red, i = 1) 30
+        //                   /  \
+        //  (black, i = 2) 20    50 (black, i = 0)
+        //                /  \
+        // (red, i = 4) 10    25 (red, i = 3)
         map.add(10, 10);
         map.assert_root_index(1);
         map.assert_node(
@@ -908,6 +1103,48 @@ module red_black_map::red_black_map {
             }
         );
 
+        // Verify traversal.
+        assert!(successor_key(&map, 10) == 20);
+        assert!(successor_key(&map, 20) == 25);
+        assert!(successor_key(&map, 25) == 30);
+        assert!(successor_key(&map, 30) == 50);
+        assert!(predecessor_key(&map, 50) == 30);
+        assert!(predecessor_key(&map, 30) == 25);
+        assert!(predecessor_key(&map, 25) == 20);
+        assert!(predecessor_key(&map, 20) == 10);
+
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_traverse_predecessor_key_not_found(): Map<u256> {
+        let map = set_up_tree_2();
+        map.predecessor_key(12);
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_UNABLE_TO_TRAVERSE)]
+    fun test_traverse_predecessor_unable_to_traverse(): Map<u256> {
+        let map = set_up_tree_2();
+        map.predecessor_key(10);
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_traverse_successor_key_not_found(): Map<u256> {
+        let map = set_up_tree_1();
+        map.successor_key(12);
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_UNABLE_TO_TRAVERSE)]
+    fun test_traverse_successor_unable_to_traverse(): Map<u256> {
+        let map = set_up_tree_1();
+        map.successor_key(11);
         map
     }
 }
