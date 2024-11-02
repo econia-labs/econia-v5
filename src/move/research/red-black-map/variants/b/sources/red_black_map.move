@@ -16,6 +16,8 @@ module red_black_map::red_black_map {
     const E_KEY_ALREADY_EXISTS: u64 = 0;
     /// Map key not found.
     const E_KEY_NOT_FOUND: u64 = 1;
+    /// Map is empty.
+    const E_EMPTY: u64 = 2;
 
     struct Node<V> {
         key: u256,
@@ -134,6 +136,32 @@ module red_black_map::red_black_map {
 
     public fun length<V>(self: &Map<V>): u64 {
         self.nodes.length()
+    }
+
+    public fun maximum_key<V>(self: &Map<V>): u256 {
+        assert!(self.root != NIL, E_EMPTY);
+        let nodes_ref = &self.nodes;
+        let current_node_ref = &nodes_ref[self.root];
+        let right_child_index;
+        loop {
+            right_child_index = current_node_ref.children[RIGHT];
+            if (right_child_index == NIL) break;
+            current_node_ref = &nodes_ref[right_child_index];
+        };
+        current_node_ref.key
+    }
+
+    public fun minimum_key<V>(self: &Map<V>): u256 {
+        assert!(self.root != NIL, E_EMPTY);
+        let nodes_ref = &self.nodes;
+        let current_node_ref = &nodes_ref[self.root];
+        let left_child_index;
+        loop {
+            left_child_index = current_node_ref.children[LEFT];
+            if (left_child_index == NIL) break;
+            current_node_ref = &nodes_ref[left_child_index];
+        };
+        current_node_ref.key
     }
 
     public fun new<V>(): Map<V> {
@@ -372,6 +400,22 @@ module red_black_map::red_black_map {
     }
 
     #[test]
+    #[expected_failure(abort_code = E_EMPTY)]
+    fun test_maximum_key_empty(): Map<u256> {
+        let map = new();
+        map.maximum_key();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_EMPTY)]
+    fun test_minimum_key_empty(): Map<u256> {
+        let map = new();
+        map.minimum_key();
+        map
+    }
+
+    #[test]
     fun test_sequence_1(): Map<u256> {
         let map = new();
         assert!(map.length() == 0);
@@ -406,6 +450,8 @@ module red_black_map::red_black_map {
                 children: vector[NIL, NIL]
             }
         );
+        assert!(minimum_key(&map) == 5);
+        assert!(maximum_key(&map) == 5);
 
         // Case_I4: insert 10.
         //
@@ -448,6 +494,8 @@ module red_black_map::red_black_map {
                 children: vector[NIL, NIL]
             }
         );
+        assert!(minimum_key(&map) == 5);
+        assert!(maximum_key(&map) == 10);
 
         // Case_I56 (Case_I5 fall through to Case_I6): insert 8.
         //
@@ -515,6 +563,8 @@ module red_black_map::red_black_map {
                 children: vector[0, 1]
             }
         );
+        assert!(minimum_key(&map) == 5);
+        assert!(maximum_key(&map) == 10);
 
         // Case_I2 fall through to Case_I3: insert 11.
         //
@@ -566,6 +616,8 @@ module red_black_map::red_black_map {
                 children: vector[NIL, NIL]
             }
         );
+        assert!(minimum_key(&map) == 5);
+        assert!(maximum_key(&map) == 11);
 
         // Case_I1: insert 9.
         //
