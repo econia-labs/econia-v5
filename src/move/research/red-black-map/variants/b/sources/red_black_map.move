@@ -166,6 +166,71 @@ module red_black_map::red_black_map {
         self.traverse_ref(node_index, PREDECESSOR).key
     }
 
+    public fun remove<V>(self: &mut Map<V>, key: u256): V {
+        let (node_index, parent_index, _) = self.search(key);
+        assert!(node_index != NIL, E_KEY_NOT_FOUND);
+
+        // Borrow node and inspect fields.
+        let nodes_ref_mut = &mut self.nodes;
+        let node_ref_mut = &mut nodes_ref_mut[node_index];
+        let left_child_index = node_ref_mut.children[LEFT];
+        let right_child_index = node_ref_mut.children[RIGHT];
+
+        // Simple case 1: node has 2 children.
+        if (left_child_index != NIL && right_child_index != NIL) {
+
+            // Get node's color and parent index for upcoming position swap.
+            let node_color = node_ref_mut.color;
+            let node_parent = node_ref_mut.parent;
+
+            // Identify successor (leftmost child of right subtree).
+            let successor_index = right_child_index;
+            let successor_ref_mut;
+            let child_index;
+            loop {
+                successor_ref_mut = &mut nodes_ref_mut[successor_index];
+                child_index = successor_ref_mut.children[LEFT];
+                if (child_index == NIL) break;
+                successor_index = child_index;
+            };
+
+            // Swap positions in the tree. Note that since the successor is leftmost, it can have at
+            // most a right child.
+            let successor_color = successor_ref_mut.color;
+            let successor_parent = successor_ref_mut.parent;
+            let successor_right_child_index = successor_ref_mut.children[RIGHT];
+            successor_ref_mut.color = node_color;
+            successor_ref_mut.parent = node_parent;
+            successor_ref_mut.children = vector[left_child_index, right_child_index];
+            node_ref_mut = &mut nodes_ref_mut[node_index];
+            node_ref_mut.color = successor_color;
+            node_ref_mut.parent = successor_parent;
+            node_ref_mut.children = vector[NIL, successor_right_child_index];
+            nodes_ref_mut.swap(node_index, successor_index);
+
+            // Delete relocated node from the tree. Note it has at most a right child that will take
+            // its place.
+            node_index = successor_index;
+            parent_index = successor_parent;
+            let right_child_index = successor_right_child_index;
+            if (parent_index == NIL) {
+                self.root = node_index;
+            } else {
+                let parent_ref_mut = &mut nodes_ref_mut[parent_index];
+                let child_direction =
+                    if (node_index == parent_ref_mut.children[LEFT]) LEFT
+                    else RIGHT;
+                parent_ref_mut.children[child_direction] = right_child_index;
+            };
+            if (right_child_index != NIL) {
+                nodes_ref_mut[right_child_index].parent = parent_index;
+            };
+        };
+
+        swap_remove_deleted_node(self, node_index)
+
+    }
+
     public fun successor_key<V>(self: &Map<V>, key: u256): u256 {
         let (node_index, _, _) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
@@ -285,43 +350,42 @@ module red_black_map::red_black_map {
 
     inline fun swap_remove_deleted_node<V>(
         self: &mut Map<V>, node_index: u64
-    ) {
+    ): V {
 
-        // If deleted node is tail, remove and return.
+        // If deleted node is not tail, swap index references.
         let tail_index = self.nodes.length() - 1;
-        if (node_index == tail_index) {
-            self.nodes.pop_back();
-            return
+        if (node_index != tail_index) {
+            // Get indices of nodes referencing the swapped node from the tail.
+            let tail_node_ref = self.nodes.borrow(tail_index);
+            let parent_index = tail_node_ref.parent;
+            let left_child_index = tail_node_ref.children[LEFT];
+            let right_child_index = tail_node_ref.children[RIGHT];
+
+            // Update parent reference to swapped node.
+            if (parent_index == NIL) {
+                self.root = node_index;
+            } else {
+                let parent_ref_mut = &mut self.nodes[parent_index];
+                let child_direction =
+                    if (tail_index == parent_ref_mut.children[LEFT]) LEFT
+                    else RIGHT;
+                parent_ref_mut.children[child_direction] = node_index;
+            };
+
+            // Update children references to swapped node.
+            if (left_child_index != NIL) {
+                self.nodes[left_child_index].parent = node_index;
+            };
+            if (right_child_index != NIL) {
+                self.nodes[right_child_index].parent = node_index;
+            };
+
+            // Swap node with tail.
+            self.nodes.swap(node_index, tail_index);
         };
 
-        // Get indices of nodes referencing the swapped node.
-        let tail_node_ref = self.nodes.borrow(tail_index);
-        let parent_index = tail_node_ref.parent;
-        let left_child_index = tail_node_ref.children[LEFT];
-        let right_child_index = tail_node_ref.children[RIGHT];
-
-        // Swap and remove.
-        self.nodes.swap(node_index, tail_index);
-        self.nodes.pop_back();
-
-        // Update parent reference to swapped node.
-        if (parent_index == NIL) {
-            self.root = node_index;
-        } else {
-            let parent_ref_mut = &mut self.nodes[parent_index];
-            let child_direction =
-                if (tail_index == parent_ref_mut.children[LEFT]) LEFT
-                else RIGHT;
-            parent_ref_mut.children[child_direction] = node_index;
-        };
-
-        // Update children references to swapped node.
-        if (left_child_index != NIL) {
-            self.nodes[left_child_index].parent = node_index;
-        };
-        if (right_child_index != NIL) {
-            self.nodes[right_child_index].parent = node_index;
-        }
+        let Node { value,.. } = self.nodes.pop_back();
+        value
     }
 
     /// Return reference to either predecessor or successor of node with `node_index` key, where
@@ -597,6 +661,14 @@ module red_black_map::red_black_map {
     fun test_minimum_key_empty(): Map<u256> {
         let map = new();
         map.minimum_key();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_remove_key_not_found(): Map<u256> {
+        let map = set_up_tree_1();
+        map.remove(0);
         map
     }
 
