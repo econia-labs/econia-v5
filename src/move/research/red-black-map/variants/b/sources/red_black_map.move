@@ -136,6 +136,10 @@ module red_black_map::red_black_map {
         node_index != NIL
     }
 
+    public fun is_empty<V>(self: &Map<V>): bool {
+        self.root == NIL
+    }
+
     public fun keys<V>(self: &Map<V>): vector<u256> {
         vector::map_ref(&self.nodes, |node| node.key)
     }
@@ -745,7 +749,6 @@ module red_black_map::red_black_map {
     #[test]
     fun test_add_remove_bulk(): Map<u256> {
         let map = new();
-
         let keys = vector[
             vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
             vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
@@ -755,7 +758,10 @@ module red_black_map::red_black_map {
             vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
             vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
         ];
+        let n_keys = keys.length();
 
+        // Add keys.
+        assert!(map.is_empty());
         vector::for_each(
             keys,
             |key_group| {
@@ -764,11 +770,12 @@ module red_black_map::red_black_map {
                 });
             }
         );
-
-        for (i in 0..70) {
-            assert!(map.contains_key(i), (i as u64));
+        assert!(!map.is_empty());
+        for (i in 0..n_keys) {
+            assert!(map.contains_key((i as u256)));
         };
 
+        // Remove keys.
         vector::for_each(
             keys,
             |key_group| {
@@ -781,6 +788,8 @@ module red_black_map::red_black_map {
                 );
             }
         );
+        assert!(map.is_empty());
+        assert!(map.length() == 0);
 
         map
     }
