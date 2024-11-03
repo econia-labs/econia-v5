@@ -198,7 +198,7 @@ module red_black_map::red_black_map {
             // most a right child. The deleted node's fields do not need to be updated since it will
             // be removed from the tree.
             let successor_parent_index = successor_ref_mut.parent;
-            let successor_right_child_index = successor_ref_mut.children[RIGHT];
+            let successor_child_index = successor_ref_mut.children[RIGHT];
             successor_ref_mut.color = node_color;
             successor_ref_mut.parent = node_parent;
             successor_ref_mut.children = vector[left_child_index, right_child_index];
@@ -210,9 +210,9 @@ module red_black_map::red_black_map {
             let successor_child_direction =
                 if (successor_index == successor_parent_ref_mut.children[LEFT]) LEFT
                 else RIGHT;
-            successor_parent_ref_mut.children[successor_child_direction] = successor_right_child_index;
-            if (successor_right_child_index != NIL) {
-                nodes_ref_mut[successor_right_child_index].parent = successor_parent_index;
+            successor_parent_ref_mut.children[successor_child_direction] = successor_child_index;
+            if (successor_child_index != NIL) {
+                nodes_ref_mut[successor_child_index].parent = successor_parent_index;
             };
 
             node_index = successor_index; // Flag updated index for deallocation.
@@ -230,6 +230,22 @@ module red_black_map::red_black_map {
             nodes_ref_mut.swap(node_index, child_index);
 
             node_index = child_index; // Flag updated index for deallocation.
+        } else { // From now on node has no children.
+
+            // Simple case 3: node has no children and is root.
+            if (parent_index == NIL) {
+                self.root = NIL;
+                let Node { value,.. } = nodes_ref_mut.pop_back();
+                return value
+            };
+
+            // Simple case 4: red non-root leaf.
+            if (node_ref_mut.color is Color::Red) {
+                nodes_ref_mut[parent_index].children[child_direction] = NIL;
+            } else {
+                // Complex case: black non-root leaf.
+
+            }
         };
 
         swap_remove_deleted_node(self, node_index)
