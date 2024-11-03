@@ -181,9 +181,8 @@ module red_black_map::red_black_map {
         // Simple case 1: node has 2 children.
         if (left_child_index != NIL && right_child_index != NIL) {
 
-            // Get node's color and parent index for upcoming position swap.
+            // Get node's color for upcoming position swap.
             let node_color = node_ref_mut.color;
-            let node_parent = node_ref_mut.parent;
 
             // Identify successor, the leftmost child of node's right subtree.
             let successor_index = right_child_index;
@@ -202,7 +201,7 @@ module red_black_map::red_black_map {
             let successor_parent_index = successor_ref_mut.parent;
             let successor_child_index = successor_ref_mut.children[RIGHT];
             successor_ref_mut.color = node_color;
-            successor_ref_mut.parent = node_parent;
+            successor_ref_mut.parent = parent_index;
             successor_ref_mut.children = vector[left_child_index, right_child_index];
             nodes_ref_mut.swap(node_index, successor_index);
 
@@ -257,8 +256,8 @@ module red_black_map::red_black_map {
                         sibling_ref_mut.children[1 - child_direction];
                     let close_nephew_index = sibling_ref_mut.children[child_direction];
 
+                    // Case_D3.
                     if (sibling_ref_mut.color is Color::Red) {
-                        // Case_D3.
                         self.rotate_parent_may_be_root(parent_index, child_direction);
                         nodes_ref_mut = &mut self.nodes;
                         nodes_ref_mut[parent_index].color = Color::Red;
@@ -290,6 +289,7 @@ module red_black_map::red_black_map {
                             self.remove_case_d4(sibling_index, parent_index);
                         };
                         break;
+                        // Case_D6.
                     } else if (distant_nephew_index != NIL
                         && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
                         self.remove_case_d6(
@@ -299,6 +299,7 @@ module red_black_map::red_black_map {
                             distant_nephew_index
                         );
                         break;
+                        // Case_D5.
                     } else if (close_nephew_index != NIL
                         && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
                         self.remove_case_d5(
@@ -328,7 +329,7 @@ module red_black_map::red_black_map {
             }
         };
 
-        swap_remove_deleted_node(self, node_index)
+        swap_remove_deleted_node(self, node_index) // Deallocate node.
 
     }
 
