@@ -167,7 +167,7 @@ module red_black_map::red_black_map {
     }
 
     public fun remove<V>(self: &mut Map<V>, key: u256): V {
-        let (node_index, parent_index, _) = self.search(key);
+        let (node_index, parent_index, child_direction) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
 
         // Borrow node and inspect fields.
@@ -195,36 +195,41 @@ module red_black_map::red_black_map {
             };
 
             // Swap positions in the tree. Note that since the successor is leftmost, it can have at
-            // most a right child.
-            let successor_color = successor_ref_mut.color;
-            let successor_parent = successor_ref_mut.parent;
+            // most a right child. The deleted node's fields do not need to be updated since it will
+            // be removed from the tree.
+            let successor_parent_index = successor_ref_mut.parent;
             let successor_right_child_index = successor_ref_mut.children[RIGHT];
             successor_ref_mut.color = node_color;
             successor_ref_mut.parent = node_parent;
             successor_ref_mut.children = vector[left_child_index, right_child_index];
-            node_ref_mut = &mut nodes_ref_mut[node_index];
-            node_ref_mut.color = successor_color;
-            node_ref_mut.parent = successor_parent;
-            node_ref_mut.children = vector[NIL, successor_right_child_index];
             nodes_ref_mut.swap(node_index, successor_index);
 
-            // Delete relocated node from the tree. Note it has at most a right child that will take
-            // its place.
-            node_index = successor_index;
-            parent_index = successor_parent;
-            let right_child_index = successor_right_child_index;
-            if (parent_index == NIL) {
-                self.root = node_index;
-            } else {
-                let parent_ref_mut = &mut nodes_ref_mut[parent_index];
-                let child_direction =
-                    if (node_index == parent_ref_mut.children[LEFT]) LEFT
-                    else RIGHT;
-                parent_ref_mut.children[child_direction] = right_child_index;
+            // Delete relocated node from the tree. Note that after the relocation it has at most a
+            // right child that will take its place.
+            let successor_parent_ref_mut = &mut nodes_ref_mut[successor_parent_index];
+            let successor_child_direction =
+                if (successor_index == successor_parent_ref_mut.children[LEFT]) LEFT
+                else RIGHT;
+            successor_parent_ref_mut.children[successor_child_direction] = successor_right_child_index;
+            if (successor_right_child_index != NIL) {
+                nodes_ref_mut[successor_right_child_index].parent = successor_parent_index;
             };
-            if (right_child_index != NIL) {
-                nodes_ref_mut[right_child_index].parent = parent_index;
-            };
+
+            node_index = successor_index; // Flag updated index for deallocation.
+
+            // Simple case 2: node has 1 child.
+        } else if (left_child_index != NIL || right_child_index != NIL) {
+            let child_index =
+                if (left_child_index != NIL) left_child_index
+                else right_child_index;
+
+            // Replace node with its child, which is then colored black.
+            let child_ref_mut = &mut nodes_ref_mut[child_index];
+            child_ref_mut.parent = parent_index;
+            child_ref_mut.color = Color::Black;
+            nodes_ref_mut.swap(node_index, child_index);
+
+            node_index = child_index; // Flag updated index for deallocation.
         };
 
         swap_remove_deleted_node(self, node_index)
