@@ -255,14 +255,59 @@ module red_black_map::red_black_map {
 
                     if (sibling_ref_mut.color is Color::Red) {
                         // Case_D3.
+                        self.rotate_parent_may_be_root(parent_index, child_direction);
+                        nodes_ref_mut = &mut self.nodes;
+                        nodes_ref_mut[parent_index].color = Color::Red;
+                        nodes_ref_mut[sibling_index].color = Color::Black;
+                        sibling_index = close_nephew_index;
+                        distant_nephew_index = nodes_ref_mut[sibling_index].children[1
+                            - child_direction];
+                        if (distant_nephew_index != NIL
+                            && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
+                            self.remove_case_d6(
+                                parent_index,
+                                child_direction,
+                                sibling_index,
+                                distant_nephew_index
+                            );
+                            break;
+                        };
+                        close_nephew_index = nodes_ref_mut[sibling_index].children[child_direction];
+                        if (close_nephew_index != NIL
+                            && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
+                            self.remove_case_d5(
+                                parent_index,
+                                child_direction,
+                                sibling_index,
+                                close_nephew_index,
+                                distant_nephew_index
+                            );
+                        } else {
+                            self.remove_case_d4(sibling_index, parent_index);
+                        };
+                        break;
                     } else if (distant_nephew_index != NIL
                         && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
-                        // Case_D6.
+                        self.remove_case_d6(
+                            parent_index,
+                            child_direction,
+                            sibling_index,
+                            distant_nephew_index
+                        );
+                        break;
                     } else if (close_nephew_index != NIL
                         && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
-                        // Case_D5.
-                    } else if (nodes_ref_mut[parent_index].color is Color::Red) {
-                        // Case_D4.
+                        self.remove_case_d5(
+                            parent_index,
+                            child_direction,
+                            sibling_index,
+                            close_nephew_index,
+                            distant_nephew_index
+                        );
+                        break;
+                    } else if (nodes_ref_mut[parent_index].color is Color::Red) { // Case_D4.
+                        self.remove_case_d4(sibling_index, parent_index);
+                        break;
                     };
 
                     // Case_D2.
@@ -291,6 +336,47 @@ module red_black_map::red_black_map {
 
     public fun values_ref<V: copy>(self: &Map<V>): vector<V> {
         vector::map_ref(&self.nodes, |node| node.value)
+    }
+
+    inline fun remove_case_d4<V>(
+        self: &mut Map<V>, sibling_index: u64, parent_index: u64
+    ) {
+        let nodes_ref_mut = &mut self.nodes;
+        nodes_ref_mut[sibling_index].color = Color::Red;
+        nodes_ref_mut[parent_index].color = Color::Black;
+    }
+
+    inline fun remove_case_d5<V>(
+        self: &mut Map<V>,
+        parent_index: u64,
+        child_direction: u64,
+        sibling_index: u64,
+        close_nephew_index: u64,
+        distant_nephew_index: u64
+    ) {
+        self.rotate_parent_is_not_root(sibling_index, 1 - child_direction);
+        let nodes_ref_mut = &mut self.nodes;
+        nodes_ref_mut[sibling_index].color = Color::Red;
+        nodes_ref_mut[close_nephew_index].color = Color::Black;
+        distant_nephew_index = sibling_index;
+        sibling_index = close_nephew_index;
+        self.remove_case_d6(
+            parent_index, child_direction, sibling_index, distant_nephew_index
+        );
+    }
+
+    inline fun remove_case_d6<V>(
+        self: &mut Map<V>,
+        parent_index: u64,
+        child_direction: u64,
+        sibling_index: u64,
+        distant_nephew_index: u64
+    ) {
+        self.rotate_parent_may_be_root(parent_index, child_direction);
+        let nodes_ref_mut = &mut self.nodes;
+        nodes_ref_mut[sibling_index].color = nodes_ref_mut[parent_index].color;
+        nodes_ref_mut[parent_index].color = Color::Black;
+        nodes_ref_mut[distant_nephew_index].color = Color::Black;
     }
 
     inline fun rotate_inner<V>(
@@ -657,19 +743,21 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    fun test_add_bulk(): Map<u256> {
+    fun test_add_remove_bulk(): Map<u256> {
         let map = new();
 
+        let keys = vector[
+            vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
+            vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
+            vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+            vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
+            vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
+            vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+        ];
+
         vector::for_each(
-            vector[
-                vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
-                vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
-                vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
-                vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
-                vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
-                vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
-            ],
+            keys,
             |key_group| {
                 vector::for_each(key_group, |key| {
                     map.add(key, key);
@@ -680,6 +768,19 @@ module red_black_map::red_black_map {
         for (i in 0..70) {
             assert!(map.contains_key(i), (i as u64));
         };
+
+        vector::for_each(
+            keys,
+            |key_group| {
+                vector::for_each(
+                    key_group,
+                    |key| {
+                        assert!(map.remove(key) == key);
+                        assert!(!map.contains_key(key));
+                    }
+                );
+            }
+        );
 
         map
     }
