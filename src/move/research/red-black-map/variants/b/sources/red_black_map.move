@@ -796,47 +796,7 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_borrow_mut_not_found(): Map<u256> {
-        let map = new();
-        map.borrow_mut(0);
-        map
-    }
-
-    #[test]
-    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_borrow_not_found(): Map<u256> {
-        let map = new();
-        map.borrow(0);
-        map
-    }
-
-    #[test]
-    #[expected_failure(abort_code = E_EMPTY)]
-    fun test_maximum_key_empty(): Map<u256> {
-        let map = new();
-        map.maximum_key();
-        map
-    }
-
-    #[test]
-    #[expected_failure(abort_code = E_EMPTY)]
-    fun test_minimum_key_empty(): Map<u256> {
-        let map = new();
-        map.minimum_key();
-        map
-    }
-
-    #[test]
-    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_remove_key_not_found(): Map<u256> {
-        let map = set_up_tree_1();
-        map.remove(0);
-        map
-    }
-
-    #[test]
-    fun test_sequence_1(): Map<u256> {
+    fun test_add_sequence_1(): Map<u256> {
         let map = new();
         assert!(map.length() == 0);
         assert!(map.keys() == vector[]);
@@ -1136,7 +1096,7 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    fun test_sequence_2(): Map<u256> {
+    fun test_add_sequence_2(): Map<u256> {
         let map = new();
 
         // Initialize root: insert 50.
@@ -1348,6 +1308,46 @@ module red_black_map::red_black_map {
         assert!(predecessor_key(&map, 25) == 20);
         assert!(predecessor_key(&map, 20) == 10);
 
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_borrow_mut_not_found(): Map<u256> {
+        let map = new();
+        map.borrow_mut(0);
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_borrow_not_found(): Map<u256> {
+        let map = new();
+        map.borrow(0);
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_EMPTY)]
+    fun test_maximum_key_empty(): Map<u256> {
+        let map = new();
+        map.maximum_key();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_EMPTY)]
+    fun test_minimum_key_empty(): Map<u256> {
+        let map = new();
+        map.minimum_key();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
+    fun test_remove_key_not_found(): Map<u256> {
+        let map = set_up_tree_1();
+        map.remove(0);
         map
     }
 
