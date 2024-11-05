@@ -1344,6 +1344,137 @@ module red_black_map::red_black_map {
     }
 
     #[test]
+    fun test_remove_1(): Map<u256> {
+        let map = set_up_tree_1();
+
+        // Case_D6: remove 5.
+        //
+        //       |            ->      |
+        //      8r2           ->     10r1
+        //     /   \          ->    /    \
+        //  5b0     10b1      -> 8b2      11b3
+        //         /    \     ->    \
+        //      9r4      11r3 ->     9r0
+        assert!(map.remove(5) == 5);
+        assert!(map.length() == 4);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 9,
+                value: 9,
+                color: Color::Red,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[2, 3]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 8,
+                value: 8,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, 0]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Simple case 2: remove 8.
+        //
+        //      |        ->      |
+        //     10r1      ->     10r1
+        //    /    \     ->    /    \
+        // 8b2      11b3 -> 9b2      11b0
+        //    \          ->
+        //     9r0       ->
+        assert!(map.remove(8) == 8);
+        assert!(map.length() == 3);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[2, 0]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 9,
+                value: 9,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Simple case 1 (doesn't loop, sucessor is right child): remove 10.
+        //
+        //      |        ->      |
+        //     10r1      ->     11r1
+        //    /    \     ->    /
+        // 9b2      11b0 -> 9b0
+        assert!(map.remove(10) == 10);
+        assert!(map.length() == 2);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 9,
+                value: 9,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[0, NIL]
+            }
+        );
+
+        map
+    }
+
+    #[test]
     #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
     fun test_remove_key_not_found(): Map<u256> {
         let map = set_up_tree_1();
