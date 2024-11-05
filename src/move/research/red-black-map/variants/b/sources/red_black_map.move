@@ -181,45 +181,49 @@ module red_black_map::red_black_map {
         // Simple case 1: node has 2 children.
         if (left_child_index != NIL && right_child_index != NIL) {
 
-            // Get node's color for upcoming position swap.
-            let node_color = node_ref_mut.color;
+            let node_color = node_ref_mut.color; // Store node's color for tree position swap.
 
             // Identify successor, the leftmost child of node's right subtree.
             let successor_index = right_child_index;
             let successor_ref_mut;
-            let child_index;
+            let next_left_child_index;
             loop {
                 successor_ref_mut = &mut nodes_ref_mut[successor_index];
-                child_index = successor_ref_mut.children[LEFT];
-                if (child_index == NIL) break;
-                successor_index = child_index;
+                next_left_child_index = successor_ref_mut.children[LEFT];
+                if (next_left_child_index == NIL) break;
+                successor_index = next_left_child_index;
             };
 
-            // Swap positions in the tree. Note that since the successor is leftmost, it can have at
-            // most a right child. The deleted node's fields do not need to be updated since it will
-            // be removed from the tree.
+            // Store tree position fields for successor, then overwrite them to those of node. Note
+            // that successor position has no left child since it is leftmost.
             let successor_parent_index = successor_ref_mut.parent;
-            let successor_child_index = successor_ref_mut.children[RIGHT];
-            successor_ref_mut.color = node_color;
+            let successor_right_child_index = successor_ref_mut.children[RIGHT];
+            let successor_color = successor_ref_mut.color;
             successor_ref_mut.parent = parent_index;
             successor_ref_mut.children = vector[left_child_index, right_child_index];
+            successor_ref_mut.color = node_color;
+
+            // Update tree position fields for node to those of successor, swap vector indices.
+            node_ref_mut = &mut nodes_ref_mut[node_index];
+            node_ref_mut.parent = successor_parent_index;
+            node_ref_mut.children = vector[NIL, successor_right_child_index];
+            node_ref_mut.color = successor_color;
             nodes_ref_mut.swap(node_index, successor_index);
 
-            // Delete relocated node from the tree. Note that after the relocation it has at most a
-            // right child that will take its place.
-            let successor_parent_ref_mut = &mut nodes_ref_mut[successor_parent_index];
-            let successor_child_direction =
-                if (successor_index == successor_parent_ref_mut.children[LEFT]) LEFT
-                else RIGHT;
-            successor_parent_ref_mut.children[successor_child_direction] = successor_child_index;
-            if (successor_child_index != NIL) {
-                nodes_ref_mut[successor_child_index].parent = successor_parent_index;
-            };
-
-            node_index = successor_index; // Flag updated index for deallocation.
-
-            // Simple case 2: node has 1 child.
-        } else if (left_child_index != NIL || right_child_index != NIL) {
+            // Reassign local variables for fallthrough to delete relocated node at successor tree
+            // position. Note that child direction of successor position is originally right only
+            // when the successor loop does not iterate past the right child of the original node,
+            // e.g. when the successor is the only node in the right subtree of the original node.
+            child_direction = if (right_child_index == successor_index) RIGHT
+            else LEFT;
+            node_index = successor_index;
+            parent_index = successor_parent_index;
+            left_child_index = NIL; // Successor position has no left child.
+            right_child_index = successor_right_child_index;
+            node_ref_mut = &mut nodes_ref_mut[node_index];
+        };
+        // Simple case 2: node has 1 child.
+        if (left_child_index != NIL || right_child_index != NIL) {
             let child_index =
                 if (left_child_index != NIL) left_child_index
                 else right_child_index;
@@ -1482,21 +1486,35 @@ module red_black_map::red_black_map {
             }
         );
 
-        // Simple case 1 (doesn't loop, sucessor is right child): remove 10.
+        // Simple case 1 (sucessor is right child), fall through to Case_D4: remove 10.
         //
-        // Replace node (10) with successor (11) via swap to index 0.
+        // Swap tree position of node (10) with successor (11).
         //
         //      |        ->      |
         //     10r1      ->     11r1
-        //    /    \     ->    /
-        // 9b2      11b0 -> 9b2
+        //    /    \     ->    /    \
+        // 9b2      11b0 -> 9b2      10b0
         //
-        // Deallocate via swap remove on new index 0.
+        // Replace child (10) at parent (11) with NIL.
+        //
+        //      |        ->      |
+        //     11r1      ->     11r1
+        //    /    \     ->    /
+        // 9b2      10b0 -> 9b2
+        //
+        // Recolor sibling (9) red, parent (11) black.
         //
         //      |   ->      |
-        //     11r1 ->     11r1
+        //     11r1 ->     11b1
         //    /     ->    /
-        // 9b2      -> 9b0
+        // 9b2      -> 9r2
+        //
+        // Deallocate via swap remove.
+        //
+        //      |   ->      |
+        //     11b1 ->     11b1
+        //    /     ->    /
+        // 9r2      -> 9r0
         assert!(map.remove(10) == 10);
         assert!(map.length() == 2);
         map.assert_root_index(1);
@@ -1505,7 +1523,7 @@ module red_black_map::red_black_map {
             MockNode {
                 key: 9,
                 value: 9,
-                color: Color::Black,
+                color: Color::Red,
                 parent: 1,
                 children: vector[NIL, NIL]
             }
@@ -1515,7 +1533,7 @@ module red_black_map::red_black_map {
             MockNode {
                 key: 11,
                 value: 11,
-                color: Color::Red,
+                color: Color::Black,
                 parent: NIL,
                 children: vector[0, NIL]
             }
