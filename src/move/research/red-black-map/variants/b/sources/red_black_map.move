@@ -1,4 +1,22 @@
 /// Based on Wikipedia reference implementation of red-black tree.
+///
+/// # Tree notation
+///
+/// In test diagrams, nodes are represented as `<KEY><b|r><INDEX>`, for example `10r1` denotes a red
+/// node with key 10 at index 1. The symbols `|`, `/`, and backslash (escaped as `\\` in markdown
+/// monospace for this doc comment) are used to represent tree edges, with `/` and `\\` placed at
+/// the character position directly adjacent to relevant nodes, and `|` placed above the middle
+/// character of a node, or the left inner character when it has an even number of characters. The
+/// symbol `->` indicates transitions, with exactly one character of space reserved between the
+/// closest characters on each side of the transition. For example a left rotation on parent node
+/// `8r2` would be represented as:
+///
+/// >      |            ->      |
+/// >     8r2           ->     10b1
+/// >        \          ->    /    \
+/// >         10b1      -> 8r2      11r3
+/// >        /    \     ->    \
+/// >     9r4      11r3 ->     9r4
 module red_black_map::red_black_map {
 
     use std::vector;
@@ -607,12 +625,12 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
-    //                  |
-    //                  8 (red, i = 2)
-    //                 / \
-    // (black, i = 0) 5   10 (black, i = 1)
-    //                   /  \
-    //     (red, i = 4) 9    11 (red, i = 3)
+    //      |
+    //     8r2
+    //    /   \
+    // 5b0     10b1
+    //        /    \
+    //     9r4      11r3
     public fun set_up_tree_1(): Map<u256> {
         let map = new();
         map.add(5, 5);
@@ -675,12 +693,12 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
-    //                    |
-    //       (red, i = 1) 30
-    //                   /  \
-    //  (black, i = 2) 20    50 (black, i = 0)
-    //                /  \
-    // (red, i = 4) 10    25 (red, i = 3)
+    //            |
+    //           30r1
+    //          /    \
+    //      20b2      50b0
+    //     /    \
+    // 10r4      25r3
     public fun set_up_tree_2(): Map<u256> {
         let map = new();
         map.add(50, 50);
@@ -814,8 +832,8 @@ module red_black_map::red_black_map {
 
         // Initialize root: insert 5.
         //
-        // |
-        // 5 (red, i = 0)
+        //  |
+        // 5r0
         map.add(5, 5);
         assert!(map.keys() == vector[5]);
         assert!(map.length() == 1);
@@ -840,9 +858,9 @@ module red_black_map::red_black_map {
         // Case_I4: insert 10.
         //
         // |
-        // 5 (black, i = 0)
-        //  \
-        //   10 (red, i = 1)
+        // 5r0
+        //    \
+        //     10r1
         map.add(10, 10);
         assert!(map.keys() == vector[5, 10]);
         map.assert_root_index(0);
@@ -883,12 +901,23 @@ module red_black_map::red_black_map {
 
         // Case_I56 (Case_I5 fall through to Case_I6): insert 8.
         //
-        // |                  |                                  |
-        // 5 (black, i = 0)   5 (black, i = 0)                   8 (black, i = 2)
-        //  \                  \                                / \
-        //   10 (red, i = 1) -> 8 (red, i = 2) -> (red, i = 0) 5   10 (red, i = 1)
-        //  /                    \
-        // 8 (red, i = 2)         10 (red, i = 1)
+        // Rotate right on 10.
+        //
+        //  |       ->  |
+        // 5b0      -> 5b0
+        //    \     ->    \
+        //     10r1 ->     8r2
+        //    /     ->        \
+        // 8r2      ->         10r1
+        //
+        // Rotate left on 5, recolor.
+        //
+        //  |           ->      |
+        // 5b0          ->     8b2
+        //    \         ->    /   \
+        //     8r2      -> 5r0     10r1
+        //        \     ->
+        //         10r1 ->
         map.add(8, 8);
         map.assert_root_index(2);
         assert!(map.contains_key(5));
@@ -952,12 +981,12 @@ module red_black_map::red_black_map {
 
         // Case_I2 fall through to Case_I3: insert 11.
         //
-        //                |                                     |
-        //                8 (black, i = 2)                      8 (red, i = 2)
-        //               / \                                   / \
-        // (red, i = 0) 5   10 (red, i = 1) -> (black, i = 0) 5   10 (black, i = 1)
-        //                    \                                     \
-        //                     11 (red, i = 3)                       11 (red, i = 3)
+        //      |            ->      |
+        //     8b2           ->     8r2
+        //    /   \          ->    /   \
+        // 5r0     10r1      -> 5b0     10b1
+        //             \     ->             \
+        //              11r3 ->              11r3
         map.add(11, 11);
         map.assert_root_index(2);
         map.assert_node(
@@ -1005,12 +1034,12 @@ module red_black_map::red_black_map {
 
         // Case_I1: insert 9.
         //
-        //                  |
-        //                  8 (red, i = 2)
-        //                 / \
-        // (black, i = 0) 5   10 (black, i = 1)
-        //                   /  \
-        //     (red, i = 4) 9    11 (red, i = 3)
+        //      |
+        //     8r2
+        //    /   \
+        // 5b0     10b1
+        //        /    \
+        //     9r4      11r3
         map.add(9, 9);
         map.assert_root_index(2);
         map.assert_node(
@@ -1105,8 +1134,8 @@ module red_black_map::red_black_map {
 
         // Initialize root: insert 50.
         //
-        // |
-        // 50 (red, i = 0)
+        //  |
+        // 50r0
         map.add(50, 50);
         map.assert_root_index(0);
         map.assert_node(
@@ -1122,10 +1151,10 @@ module red_black_map::red_black_map {
 
         // Case_I1: insert 30.
         //
-        //                 |
-        //                 50 (black, i = 0)
-        //                /
-        // (red, i = 1) 30
+        //       |
+        //      50b0
+        //     /
+        // 30r1
         map.add(30, 30);
         map.assert_root_index(0);
         map.assert_node(
@@ -1151,12 +1180,12 @@ module red_black_map::red_black_map {
 
         // Case_I6: insert 20.
         //
-        //                 |                  |
-        //  (black, i = 0) 50  (black, i = 1) 30
-        //                /                  /  \
-        // (red, i = 1) 30 -> (red, i = 2) 20    50 (red, i = 0)
-        //             /
-        //           20 (red, i = 2)
+        //            |   ->       |
+        //           50b0 ->      30b1
+        //          /     ->     /    \
+        //      30r1      -> 20r2      50r0
+        //     /          ->
+        // 20r2           ->
         map.add(20, 20);
         map.assert_root_index(1);
         map.assert_node(
@@ -1192,12 +1221,12 @@ module red_black_map::red_black_map {
 
         // Case_I2 fall through to Case_I3: insert 25.
         //
-        //                 |                                       |
-        //  (black, i = 1) 30                         (red, i = 1) 30
-        //                /  \                                    /  \
-        // (red, i = 2) 20    50 (red, i = 0) -> (black, i = 2) 20    50 (black, i = 0)
-        //                \                                       \
-        //                 25 (red, i = 3)                         25 (red, i = 3)
+        //       |        ->       |
+        //      30b1      ->      30r1
+        //     /    \     ->     /    \
+        // 20r2      50r0 -> 20b2      50b0
+        //     \          ->     \
+        //      25r3      ->      25r3
         map.add(25, 25);
         map.assert_root_index(1);
         map.assert_node(
@@ -1243,12 +1272,12 @@ module red_black_map::red_black_map {
 
         // Case_I1: insert 10
         //
-        //                    |
-        //       (red, i = 1) 30
-        //                   /  \
-        //  (black, i = 2) 20    50 (black, i = 0)
-        //                /  \
-        // (red, i = 4) 10    25 (red, i = 3)
+        //          |
+        //         30r1
+        //        /    \
+        //    20b2      50b0
+        //     /  \
+        // 10r4    25r3
         map.add(10, 10);
         map.assert_root_index(1);
         map.assert_node(
@@ -1355,12 +1384,12 @@ module red_black_map::red_black_map {
         //
         // Replace child (5) at parent (8) with NIL.
         //
-        //       |            ->  |
-        //      8r2           -> 8r2
-        //     /   \          ->    \
-        //  5b0     10b1      ->     10b1
-        //         /    \     ->    /    \
-        //      9r4      11r3 -> 9r4      11r3
+        //      |            ->  |
+        //     8r2           -> 8r2
+        //    /   \          ->    \
+        // 5b0     10b1      ->     10b1
+        //        /    \     ->    /    \
+        //     9r4      11r3 -> 9r4      11r3
         //
         // Left rotate at parent (8).
         //
