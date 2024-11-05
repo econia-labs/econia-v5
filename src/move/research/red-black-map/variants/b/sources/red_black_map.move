@@ -1349,12 +1349,44 @@ module red_black_map::red_black_map {
 
         // Case_D6: remove 5.
         //
-        //       |            ->      |
-        //      8r2           ->     10r1
-        //     /   \          ->    /    \
-        //  5b0     10b1      -> 8b2      11b3
-        //         /    \     ->    \
-        //      9r4      11r3 ->     9r0
+        // Replace child (5) at parent (8) with NIL.
+        //
+        //       |            ->  |
+        //      8r2           -> 8r2
+        //     /   \          ->    \
+        //  5b0     10b1      ->     10b1
+        //         /    \     ->    /    \
+        //      9r4      11r3 -> 9r4      11r3
+        //
+        // Left rotate at parent (8).
+        //
+        //  |            ->      |
+        // 8r2           ->     10b1
+        //    \          ->    /    \
+        //     10b1      -> 8r2      11r3
+        //    /    \     ->    \
+        // 9r4      11r3 ->     9r4
+        //
+        // Recolor per original positions.
+        // - Sibling (10) to color of parent (8), red.
+        // - Parent (8) to black.
+        // - Distant nephew (11) to black.
+        //
+        //      |        ->      |
+        //     10b1      ->     10r1
+        //    /    \     ->    /    \
+        // 8r2      11r3 -> 8b2      11b3
+        //    \          ->    \
+        //     9r4       ->     9r4
+        //
+        // Deallocate via swap remove.
+        //
+        //      |        ->      |
+        //     10r1      ->     10r1
+        //    /    \     ->    /    \
+        // 8b2      11b3 -> 8b2      11b3
+        //    \          ->    \
+        //     9r4       ->     9r0
         assert!(map.remove(5) == 5);
         assert!(map.length() == 4);
         map.assert_root_index(1);
@@ -1401,12 +1433,21 @@ module red_black_map::red_black_map {
 
         // Simple case 2: remove 8.
         //
+        // Replace node (8) with child (9) via swap to index 0.
+        //
         //      |        ->      |
         //     10r1      ->     10r1
         //    /    \     ->    /    \
-        // 8b2      11b3 -> 9b2      11b0
+        // 8b2      11b3 -> 9b2      11b3
         //    \          ->
         //     9r0       ->
+        //
+        // Deallocate via swap remove on new index 0.
+        //
+        //      |        ->      |
+        //     10r1      ->     10r1
+        //    /    \     ->    /    \
+        // 9b2      11b3 -> 9b2      11b0
         assert!(map.remove(8) == 8);
         assert!(map.length() == 3);
         map.assert_root_index(1);
@@ -1443,10 +1484,19 @@ module red_black_map::red_black_map {
 
         // Simple case 1 (doesn't loop, sucessor is right child): remove 10.
         //
+        // Replace node (10) with successor (11) via swap to index 0.
+        //
         //      |        ->      |
         //     10r1      ->     11r1
         //    /    \     ->    /
-        // 9b2      11b0 -> 9b0
+        // 9b2      11b0 -> 9b2
+        //
+        // Deallocate via swap remove on new index 0.
+        //
+        //      |   ->      |
+        //     11r1 ->     11r1
+        //    /     ->    /
+        // 9b2      -> 9b0
         assert!(map.remove(10) == 10);
         assert!(map.length() == 2);
         map.assert_root_index(1);
