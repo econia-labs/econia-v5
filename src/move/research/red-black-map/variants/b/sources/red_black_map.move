@@ -1433,7 +1433,7 @@ module red_black_map::red_black_map {
 
         // Simple case 2: remove 8.
         //
-        // Replace node (8) with child (9) via swap to index 0.
+        // Replace node (8) with child (9) via swap to index 0, recolor child (9) black.
         //
         //      |        ->      |
         //     10r1      ->     10r1
