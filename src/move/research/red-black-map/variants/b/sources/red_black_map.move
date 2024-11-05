@@ -311,8 +311,9 @@ module red_black_map::red_black_map {
                             self.remove_case_d4(sibling_index, parent_index);
                         };
                         break;
-                        // Case_D6.
-                    } else if (distant_nephew_index != NIL
+                    };
+                    // Case_D6.
+                    if (distant_nephew_index != NIL
                         && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
                         self.remove_case_d6(
                             parent_index,
@@ -321,8 +322,9 @@ module red_black_map::red_black_map {
                             distant_nephew_index
                         );
                         break;
-                        // Case_D5.
-                    } else if (close_nephew_index != NIL
+                    };
+                    // Case_D5.
+                    if (close_nephew_index != NIL
                         && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
                         self.remove_case_d5(
                             parent_index,
@@ -332,7 +334,9 @@ module red_black_map::red_black_map {
                             distant_nephew_index
                         );
                         break;
-                    } else if (nodes_ref_mut[parent_index].color is Color::Red) { // Case_D4.
+                    };
+                    // Case_D4.
+                    if (nodes_ref_mut[parent_index].color is Color::Red) {
                         self.remove_case_d4(sibling_index, parent_index);
                         break;
                     };
@@ -1515,7 +1519,7 @@ module red_black_map::red_black_map {
             }
         );
 
-        // Simple case 1 (sucessor is right child), fall through to Case_D4: remove 10.
+        // Simple case 1 (successor is right child), fall through to Case_D4: remove 10.
         //
         // Swap tree position of node (10) with successor (11).
         //
@@ -1568,7 +1572,110 @@ module red_black_map::red_black_map {
             }
         );
 
+        // Simple case 4: remove 9.
+        //
+        //      |   ->  |
+        //     11b1 -> 11b1
+        //    /     ->
+        // 9r0      ->
+        //
+        // Deallocate via swap remove.
+        //
+        //  |   ->  |
+        // 11b1 -> 11b0
+        assert!(map.remove(9) == 9);
+        assert!(map.length() == 1);
+        map.assert_root_index(0);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        // Simple case: 3 remove 11.
+        assert!(map.remove(11) == 11);
+        assert!(map.length() == 0);
+        assert!(map.is_empty());
+
         map
+    }
+
+    #[test]
+    fun test_remove_2(): Map<u256> {
+        let map = set_up_tree_1();
+
+        // Simple case 1 (successor is left child), fall through to simple case 4, remove 8.
+        //
+        // Swap tree position of node (8) with successor (9).
+        //
+        //      |            ->      |
+        //     8r2           ->     9r2
+        //    /   \          ->    /   \
+        // 5b0     10b1      -> 5b0     10b1
+        //        /    \     ->        /    \
+        //     9r4      11r3 ->     8r4      11r3
+        //
+        // Remove node (8).
+        //
+        //      |            ->      |
+        //     9r2           ->     9r2
+        //    /   \          ->    /   \
+        // 5b0     10b1      -> 5b0     10b1
+        //        /    \     ->             \
+        //     8r4      11r3 ->              11r3
+        //
+        // No swap remove deallocation required, since node was tail of nodes vector.
+        assert!(map.remove(8) == 8);
+        assert!(map.length() == 4);
+        map.assert_root_index(2);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Black,
+                parent: 2,
+                children: vector[NIL, 3]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 9,
+                value: 9,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[0, 1]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 11,
+                value: 11,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+
+        map
+
     }
 
     #[test]
