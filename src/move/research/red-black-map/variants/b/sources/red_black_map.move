@@ -232,8 +232,8 @@ module red_black_map::red_black_map {
             // position. Note that child direction of successor position is originally right only
             // when the successor loop does not iterate past the right child of the original node,
             // e.g. when the successor is the only node in the right subtree of the original node.
-            child_direction = if (right_child_index == successor_index) RIGHT
-            else LEFT;
+            child_direction = if (right_child_index == successor_index) { RIGHT }
+            else { LEFT };
             node_index = successor_index;
             parent_index = successor_parent_index;
             left_child_index = NIL; // Successor position has no left child.
@@ -344,11 +344,9 @@ module red_black_map::red_black_map {
                 parent_index = nodes_ref_mut[new_node_index].parent;
                 if (parent_index == NIL) break;
                 parent_ref_mut = &mut nodes_ref_mut[parent_index];
-                child_direction = if (new_node_index == parent_ref_mut.children[LEFT])
+                child_direction = if (new_node_index == parent_ref_mut.children[LEFT]) {
                     LEFT
-
-
-                else RIGHT;
+                } else { RIGHT };
             }; // Case_D1.
         };
 
