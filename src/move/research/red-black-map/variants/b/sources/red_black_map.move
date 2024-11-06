@@ -190,13 +190,13 @@ module red_black_map::red_black_map {
         let (node_index, parent_index, child_direction) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
 
-        // Borrow node and inspect fields.
+        // Borrow node, inspect fields.
         let nodes_ref_mut = &mut self.nodes;
         let node_ref_mut = &mut nodes_ref_mut[node_index];
         let left_child_index = node_ref_mut.children[LEFT];
         let right_child_index = node_ref_mut.children[RIGHT];
 
-        // Simple case 1: node has 2 children.
+        // Simple case 1: node has 2 children, will fall through to another case after swap.
         if (left_child_index != NIL && right_child_index != NIL) {
 
             let node_color = node_ref_mut.color; // Store node's color for tree position swap.
@@ -253,66 +253,40 @@ module red_black_map::red_black_map {
             nodes_ref_mut.swap(node_index, child_index);
 
             node_index = child_index; // Flag updated index for deallocation.
-        } else { // From now on node has no children.
+            // From now on node has no children.
+        } else if (parent_index == NIL) { // Simple case 3: node has no children and is root.
+            self.root = NIL;
+            let Node { value,.. } = nodes_ref_mut.pop_back();
+            return value
+        } else if (node_ref_mut.color is Color::Red) { // Simple case 4: red non-root leaf.
+            nodes_ref_mut[parent_index].children[child_direction] = NIL;
+        } else { // Complex case: black non-root leaf.
 
-            if (parent_index == NIL) { // Simple case 3: node has no children and is root.
-                self.root = NIL;
-                let Node { value,.. } = nodes_ref_mut.pop_back();
-                return value
-            };
+            // Replace node at its parent by NIL.
+            let parent_ref_mut = &mut nodes_ref_mut[parent_index];
+            parent_ref_mut.children[child_direction] = NIL;
 
-            if (node_ref_mut.color is Color::Red) { // Simple case 4: red non-root leaf.
-                nodes_ref_mut[parent_index].children[child_direction] = NIL;
+            // Declare loop variables.
+            let sibling_index;
+            let sibling_ref_mut;
+            let distant_nephew_index;
+            let close_nephew_index;
 
-            } else {
-                // Complex case: black non-root leaf.
+            loop {
+                sibling_index = parent_ref_mut.children[1 - child_direction];
+                sibling_ref_mut = &mut nodes_ref_mut[sibling_index];
+                distant_nephew_index = sibling_ref_mut.children[1 - child_direction];
+                close_nephew_index = sibling_ref_mut.children[child_direction];
 
-                // Update parent's reference to node.
-                let parent_ref_mut = &mut nodes_ref_mut[parent_index];
-                parent_ref_mut.children[child_direction] = NIL;
-
-                loop {
-                    let sibling_index = parent_ref_mut.children[1 - child_direction];
-                    let sibling_ref_mut = &mut nodes_ref_mut[sibling_index];
-                    let distant_nephew_index =
-                        sibling_ref_mut.children[1 - child_direction];
-                    let close_nephew_index = sibling_ref_mut.children[child_direction];
-
-                    // Case_D3.
-                    if (sibling_ref_mut.color is Color::Red) {
-                        self.rotate_parent_may_be_root(parent_index, child_direction);
-                        nodes_ref_mut = &mut self.nodes;
-                        nodes_ref_mut[parent_index].color = Color::Red;
-                        nodes_ref_mut[sibling_index].color = Color::Black;
-                        sibling_index = close_nephew_index;
-                        distant_nephew_index = nodes_ref_mut[sibling_index].children[1
-                            - child_direction];
-                        if (distant_nephew_index != NIL
-                            && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
-                            self.remove_case_d6(
-                                parent_index,
-                                child_direction,
-                                sibling_index,
-                                distant_nephew_index
-                            );
-                            break;
-                        };
-                        close_nephew_index = nodes_ref_mut[sibling_index].children[child_direction];
-                        if (close_nephew_index != NIL
-                            && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
-                            self.remove_case_d5(
-                                parent_index,
-                                child_direction,
-                                sibling_index,
-                                close_nephew_index,
-                                distant_nephew_index
-                            );
-                        } else {
-                            self.remove_case_d4(sibling_index, parent_index);
-                        };
-                        break;
-                    };
-                    // Case_D6.
+                // Case_D3.
+                if (sibling_ref_mut.color is Color::Red) {
+                    self.rotate_parent_may_be_root(parent_index, child_direction);
+                    nodes_ref_mut = &mut self.nodes;
+                    nodes_ref_mut[parent_index].color = Color::Red;
+                    nodes_ref_mut[sibling_index].color = Color::Black;
+                    sibling_index = close_nephew_index;
+                    distant_nephew_index = nodes_ref_mut[sibling_index].children[1
+                        - child_direction];
                     if (distant_nephew_index != NIL
                         && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
                         self.remove_case_d6(
@@ -323,7 +297,7 @@ module red_black_map::red_black_map {
                         );
                         break;
                     };
-                    // Case_D5.
+                    close_nephew_index = nodes_ref_mut[sibling_index].children[child_direction];
                     if (close_nephew_index != NIL
                         && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
                         self.remove_case_d5(
@@ -333,26 +307,49 @@ module red_black_map::red_black_map {
                             close_nephew_index,
                             distant_nephew_index
                         );
-                        break;
-                    };
-                    // Case_D4.
-                    if (nodes_ref_mut[parent_index].color is Color::Red) {
+                    } else {
                         self.remove_case_d4(sibling_index, parent_index);
-                        break;
                     };
+                    break;
+                };
+                // Case_D6.
+                if (distant_nephew_index != NIL
+                    && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
+                    self.remove_case_d6(
+                        parent_index, child_direction, sibling_index, distant_nephew_index
+                    );
+                    break;
+                };
+                // Case_D5.
+                if (close_nephew_index != NIL
+                    && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
+                    self.remove_case_d5(
+                        parent_index,
+                        child_direction,
+                        sibling_index,
+                        close_nephew_index,
+                        distant_nephew_index
+                    );
+                    break;
+                };
+                // Case_D4.
+                if (nodes_ref_mut[parent_index].color is Color::Red) {
+                    self.remove_case_d4(sibling_index, parent_index);
+                    break;
+                };
 
-                    // Case_D2.
-                    nodes_ref_mut[sibling_index].color = Color::Red;
-                    let new_current_node_index = parent_index;
-                    parent_index = nodes_ref_mut[new_current_node_index].parent;
-                    if (parent_index == NIL) break;
-                    parent_ref_mut = &mut nodes_ref_mut[parent_index];
-                    child_direction = if (new_current_node_index
-                        == parent_ref_mut.children[LEFT]) LEFT
-                    else RIGHT;
-                }; // Case_D1.
+                // Case_D2.
+                nodes_ref_mut[sibling_index].color = Color::Red;
+                let new_node_index = parent_index;
+                parent_index = nodes_ref_mut[new_node_index].parent;
+                if (parent_index == NIL) break;
+                parent_ref_mut = &mut nodes_ref_mut[parent_index];
+                child_direction = if (new_node_index == parent_ref_mut.children[LEFT])
+                    LEFT
 
-            }
+
+                else RIGHT;
+            }; // Case_D1.
         };
 
         swap_remove_deleted_node(self, node_index) // Deallocate node.
