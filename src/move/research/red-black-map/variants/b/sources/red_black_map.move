@@ -764,6 +764,95 @@ module red_black_map::red_black_map {
         map
     }
 
+    #[test_only]
+    //      |
+    //     1b1
+    //    /   \
+    // 0b0     3r3
+    //        /   \
+    //     2b2     5b5
+    //            /   \
+    //         4r4     6r6
+    public fun set_up_tree_3(): Map<u256> {
+        let map = new();
+        for (i in 0..7) {
+            map.add(i, i);
+        };
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 0,
+                value: 0,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 1,
+                value: 1,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[0, 3]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 2,
+                value: 2,
+                color: Color::Black,
+                parent: 3,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 3,
+                value: 3,
+                color: Color::Red,
+                parent: 1,
+                children: vector[2, 5]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 4,
+                value: 4,
+                color: Color::Red,
+                parent: 5,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            5,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 3,
+                children: vector[4, 6]
+            }
+        );
+        map.assert_node(
+            6,
+            MockNode {
+                key: 6,
+                value: 6,
+                color: Color::Red,
+                parent: 5,
+                children: vector[NIL, NIL]
+            }
+        );
+        map
+
+    }
+
     #[test]
     #[expected_failure(abort_code = E_KEY_ALREADY_EXISTS)]
     fun test_add_already_exists(): Map<u256> {
@@ -1386,7 +1475,7 @@ module red_black_map::red_black_map {
 
         // Case_D6: remove 5.
         //
-        // Replace child (5) at parent (8) with NIL.
+        // Replace node (5) at parent (8) with NIL.
         //
         //      |            ->  |
         //     8r2           -> 8r2
@@ -1528,7 +1617,7 @@ module red_black_map::red_black_map {
         //    /    \     ->    /    \
         // 9b2      11b0 -> 9b2      10b0
         //
-        // Replace child (10) at parent (11) with NIL.
+        // Replace node (10) at parent (11) with NIL.
         //
         //      |        ->      |
         //     11r1      ->     11r1
@@ -1676,6 +1765,136 @@ module red_black_map::red_black_map {
 
         map
 
+    }
+
+    #[test]
+    fun test_remove_3(): Map<u256> {
+        let map = set_up_tree_3();
+
+        // Case_D3 fall through to Case_D4: remove 0.
+        //
+        // Replace node (0) at parent (1) with NIL.
+        //
+        //      |              ->  |
+        //     1b1             -> 1b1
+        //    /   \            ->    \
+        // 0b0     3r3         ->     3r3
+        //        /   \        ->    /   \
+        //     2b2     5b5     -> 2b2     5b5
+        //            /   \    ->        /   \
+        //         4r4     6r6 ->     4r4     6r6
+        //
+        // Left rotate on parent (1).
+        //
+        //  |              ->        |
+        // 1b1             ->       3r3
+        //    \            ->    __/   \__
+        //     3r3         -> 1b1         5b5
+        //    /   \        ->    \       /   \
+        // 2b2     5b5     ->     2b2 4r4     6r6
+        //        /   \    ->
+        //     4r4     6r6 ->
+        //
+        // Recolor per original positions.
+        // - Parent (1) to red.
+        // - Sibling (3) to black.
+        //
+        //        |            ->        |
+        //       3r3           ->       3b3
+        //    __/   \__        ->    __/   \__
+        // 1b1         5b5     -> 1r1         5b5
+        //    \       /   \    ->    \       /   \
+        //     2b2 4r4     6r6 ->     2b2 4r4     6r6
+        //
+        // Update indices per original position
+        // - Sibling to close nephew (2).
+        // - Distant nephew to new sibling's right child (NIL).
+        // - Close nephew to new sibling's left child (NIL).
+        //
+        // Recolor per Case_D4:
+        // - Sibling (2) to red.
+        // - Parent (1) to black.
+        //
+        //        |            ->        |
+        //       3b3           ->       3b3
+        //    __/   \__        ->    __/   \__
+        // 1r1         5b5     -> 1b1         5b5
+        //    \       /   \    ->    \       /   \
+        //     2b2 4r4     6r6 ->     2r2 4r4     6r6
+        //
+        // Deallocate via swap remove.
+        //
+        //        |            ->        |
+        //       3b3           ->       3b3
+        //    __/   \__        ->    __/   \__
+        // 1b1         5b5     -> 1b1         5b5
+        //    \       /   \    ->    \       /   \
+        //     2r2 4r4     6r6 ->     2r2 4r4     6r0
+        assert!(map.remove(0) == 0);
+        assert!(map.length() == 6);
+        map.assert_root_index(3);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 6,
+                value: 6,
+                color: Color::Red,
+                parent: 5,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 1,
+                value: 1,
+                color: Color::Black,
+                parent: 3,
+                children: vector[NIL, 2]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 2,
+                value: 2,
+                color: Color::Red,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 3,
+                value: 3,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[1, 5]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 4,
+                value: 4,
+                color: Color::Red,
+                parent: 5,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            5,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 3,
+                children: vector[4, 0]
+            }
+        );
+
+        map
     }
 
     #[test]
