@@ -778,6 +778,7 @@ module red_black_map::red_black_map {
         for (i in 0..7) {
             map.add(i, i);
         };
+        assert!(map.length() == 7);
         map.assert_root_index(1);
         map.assert_node(
             0,
@@ -1806,7 +1807,7 @@ module red_black_map::red_black_map {
         //    \       /   \    ->    \       /   \
         //     2b2 4r4     6r6 ->     2b2 4r4     6r6
         //
-        // Update indices per original position
+        // Update indices per original position.
         // - Sibling to close nephew (2).
         // - Distant nephew to new sibling's right child (NIL).
         // - Close nephew to new sibling's left child (NIL).
@@ -1895,6 +1896,214 @@ module red_black_map::red_black_map {
         );
 
         map
+    }
+
+    #[test]
+    fun test_remove_4(): Map<u256> {
+        let map = set_up_tree_3();
+
+        // Remove 6 to set up Case_D5.
+        //
+        //      |              ->      |
+        //     1b1             ->     1b1
+        //    /   \            ->    /   \
+        // 0b0     3r3         -> 0b0     3r3
+        //        /   \        ->        /   \
+        //     2b2     5b5     ->     2b2     5b5
+        //            /   \    ->            /
+        //         4r4     6r6 ->         4r4
+        assert!(map.remove(6) == 6);
+        assert!(map.length() == 6);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 0,
+                value: 0,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 1,
+                value: 1,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[0, 3]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 2,
+                value: 2,
+                color: Color::Black,
+                parent: 3,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 3,
+                value: 3,
+                color: Color::Red,
+                parent: 1,
+                children: vector[2, 5]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 4,
+                value: 4,
+                color: Color::Red,
+                parent: 5,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            5,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 3,
+                children: vector[4, NIL]
+            }
+        );
+
+        // Case_D5: remove 2.
+        //
+        // Replace node (2) at parent (3) with NIL.
+        //
+        //      |          ->      |
+        //     1b1         ->     1b1
+        //    /   \        ->    /   \
+        // 0b0     3r3     -> 0b0     3r3
+        //        /   \    ->            \
+        //     2b2     5b5 ->             5b5
+        //            /    ->            /
+        //         4r4     ->         4r4
+        //
+        // Rotate right on sibling (5).
+        //
+        //      |          ->      |
+        //     1b1         ->     1b1
+        //    /   \        ->    /   \
+        // 0b0     3r3     -> 0b0     3r3
+        //            \    ->            \
+        //             5b5 ->             4r4
+        //            /    ->                \
+        //         4r4     ->                 5b5
+        //
+        // Recolor per original positions.
+        // - Sibling (5) to red
+        // - Close nephew (4) to black.
+        //
+        //      |              ->      |
+        //     1b1             ->     1b1
+        //    /   \            ->    /   \
+        // 0b0     3r3         -> 0b0     3r3
+        //            \        ->            \
+        //             4r4     ->             4b4
+        //                \    ->                \
+        //                 5b5 ->                 5r5
+        //
+        // Update indices per original positions.
+        // - Distant nephew to sibling (5).
+        // - Sibling to close nephew (4).
+        //
+        // Fall through to Case_D6, left rotate on parent (3).
+        //
+        //      |              ->       |
+        //     1b1             ->      1b1
+        //    /   \            ->     /   \
+        // 0b0     3r3         ->  0b0     4b4
+        //            \        ->         /   \
+        //             4b4     ->      3r3     5r5
+        //                \    ->
+        //                 5r5 ->
+        //
+        // Recolor:
+        // - New sibling (4) to unchanged parent (3) color red.
+        // - Unchanged parent (3) to black.
+        // - New distant nephew (5) to black.
+        //
+        //      |          ->      |
+        //     1b1         ->     1b1
+        //    /   \        ->    /   \
+        // 0b0     4b4     -> 0b0     4r4
+        //        /   \    ->        /   \
+        //     3r3     5r5 ->     3b3     5b5
+        //
+        // Deallocate via swap remove.
+        //
+        //      |          ->      |
+        //     1b1         ->     1b1
+        //    /   \        ->    /   \
+        // 0b0     4r4     -> 0b0     4r4
+        //        /   \    ->        /   \
+        //     3b3     5b5 ->     3b3     5b2
+        assert!(map.remove(2) == 2);
+        assert!(map.length() == 5);
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 0,
+                value: 0,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 1,
+                value: 1,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[0, 4]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 5,
+                value: 5,
+                color: Color::Black,
+                parent: 4,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 3,
+                value: 3,
+                color: Color::Black,
+                parent: 4,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 4,
+                value: 4,
+                color: Color::Red,
+                parent: 1,
+                children: vector[3, 2]
+            }
+        );
+
+        map
+
     }
 
     #[test]
