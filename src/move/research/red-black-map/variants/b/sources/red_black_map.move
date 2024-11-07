@@ -1018,6 +1018,31 @@ module red_black_map::red_black_map {
         assert!(map.is_empty());
         assert!(map.length() == 0);
 
+        // Repeat in linear order.
+        for (i in 0..n_keys) {
+            map.add((i as u256), (i as u256));
+            assert!(map.contains_key((i as u256)));
+            map.verify();
+        };
+        for (i in 0..n_keys) {
+            assert!(map.remove((i as u256)) == (i as u256));
+            map.verify();
+            assert!(!map.contains_key((i as u256)));
+        };
+
+        // Repeat for reverse linear order of removals.
+        for (i in 0..n_keys) {
+            map.add((i as u256), (i as u256));
+            assert!(map.contains_key((i as u256)));
+            map.verify();
+        };
+        for (i in 0..n_keys) {
+            let j = n_keys - i - 1;
+            assert!(map.remove((j as u256)) == (j as u256));
+            map.verify();
+            assert!(!map.contains_key((j as u256)));
+        };
+
         map
     }
 
