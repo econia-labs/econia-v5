@@ -45,6 +45,21 @@ module red_black_map::red_black_map {
     /// No predecessor or successor.
     const E_UNABLE_TO_TRAVERSE: u64 = 3;
 
+    /// Tree root index is `NIL` but nodes vector is not empty.
+    const E_PROPERTY_NIL_ROOT_HAS_NODES: u64 = 4;
+    /// Node's parent field does not match expected value.
+    const E_PROPERTY_PARENT_NODE_MISMATCH: u64 = 5;
+    /// One or more nodes were not visited during tree traversal.
+    const E_PROPERTY_STRAY_NODE: u64 = 6;
+    /// Consecutive red nodes found in tree.
+    const E_PROPERTY_CONSECUTIVE_RED_NODES: u64 = 7;
+    /// Total order of keys is violated.
+    const E_PROPERTY_TOTAL_ORDER_VIOLATION: u64 = 8;
+    /// Invalid direction.
+    const E_PROPERTY_DIRECTION_INVALID: u64 = 9;
+    /// Black height of subtrees is not equal.
+    const E_PROPERTY_BLACK_HEIGHT_VIOLATION: u64 = 10;
+
     struct Node<V> {
         key: u256,
         value: V,
@@ -347,6 +362,7 @@ module red_black_map::red_black_map {
                 child_direction = if (new_node_index == parent_ref_mut.children[LEFT])
                     LEFT
 
+
                 else RIGHT;
             }; // Case_D1.
         };
@@ -363,6 +379,83 @@ module red_black_map::red_black_map {
 
     public fun values_ref<V: copy>(self: &Map<V>): vector<V> {
         vector::map_ref(&self.nodes, |node| node.value)
+    }
+
+    /// Verify red-black tree properties.
+    fun verify<V>(self: &Map<V>) {
+
+        // Verify empty tree.
+        let root_index = self.root;
+        if (root_index == NIL) {
+            assert!(self.nodes.is_empty(), E_PROPERTY_NIL_ROOT_HAS_NODES);
+        };
+
+        // Recursively verify subtrees.
+        let (n_nodes, _) = self.verify_subtree(
+            NIL, Color::Black, 0, LEFT, root_index
+        );
+
+        // Verify all nodes have been visited.
+        assert!(n_nodes == self.length(), E_PROPERTY_STRAY_NODE);
+    }
+
+    fun verify_subtree<V>(
+        self: &Map<V>,
+        parent_index: u64,
+        parent_color: Color,
+        parent_key: u256,
+        child_direction: u64,
+        node_index: u64
+    ): (u64, u64) {
+        // If node index is NIL, return 0 nodes in subtree and 0 black height.
+        if (node_index == NIL) return (0, 0);
+
+        // Borrow node, verify its parent field.
+        let node_ref = &self.nodes[node_index];
+        assert!(node_ref.parent == parent_index, E_PROPERTY_PARENT_NODE_MISMATCH);
+
+        // Initialize subtree black height counter based on subtree root node color.
+        let black_height = if (node_ref.color is Color::Black) 1 else 0;
+
+        // For non-root node, verify no consecutive red nodes and total order of keys.
+        if (parent_index != NIL) {
+            if (parent_color is Color::Red) {
+                assert!(node_ref.color is Color::Black, E_PROPERTY_CONSECUTIVE_RED_NODES);
+            };
+            if (child_direction == LEFT) {
+                assert!(node_ref.key < parent_key, E_PROPERTY_TOTAL_ORDER_VIOLATION);
+            } else if (child_direction == RIGHT) {
+                assert!(node_ref.key > parent_key, E_PROPERTY_TOTAL_ORDER_VIOLATION);
+            } else {
+                abort E_PROPERTY_DIRECTION_INVALID;
+            };
+        };
+
+        // Get child indices.
+        let left_child_index = node_ref.children[LEFT];
+        let right_child_index = node_ref.children[RIGHT];
+
+        // Get number of nodes, black heights by recursively verifying two subtrees.
+        let (n_nodes_left_subtree, black_height_left_subtree) =
+            self.verify_subtree(
+                node_index, node_ref.color, node_ref.key, LEFT, left_child_index
+            );
+        let (n_nodes_right_subtree, black_height_right_subtree) =
+            self.verify_subtree(
+                node_index, node_ref.color, node_ref.key, RIGHT, right_child_index
+            );
+
+        // Verify equal black height in left and right subtrees.
+        assert!(
+            black_height_left_subtree == black_height_right_subtree,
+            E_PROPERTY_BLACK_HEIGHT_VIOLATION
+        );
+
+        // Return total number of nodes visited and black height of subtree.
+        (
+            1 + n_nodes_left_subtree + n_nodes_right_subtree,
+            black_height + black_height_left_subtree
+        )
     }
 
     inline fun remove_case_d4<V>(
@@ -634,10 +727,15 @@ module red_black_map::red_black_map {
     public fun set_up_tree_1(): Map<u256> {
         let map = new();
         map.add(5, 5);
+        map.verify();
         map.add(10, 10);
+        map.verify();
         map.add(8, 8);
+        map.verify();
         map.add(11, 11);
+        map.verify();
         map.add(9, 9);
+        map.verify();
         map.assert_root_index(2);
         map.assert_node(
             0,
@@ -689,6 +787,7 @@ module red_black_map::red_black_map {
                 children: vector[NIL, NIL]
             }
         );
+        map.verify();
         map
     }
 
@@ -702,10 +801,15 @@ module red_black_map::red_black_map {
     public fun set_up_tree_2(): Map<u256> {
         let map = new();
         map.add(50, 50);
+        map.verify();
         map.add(30, 30);
+        map.verify();
         map.add(20, 20);
+        map.verify();
         map.add(25, 25);
+        map.verify();
         map.add(10, 10);
+        map.verify();
         map.assert_root_index(1);
         map.assert_node(
             0,
@@ -757,6 +861,7 @@ module red_black_map::red_black_map {
                 children: vector[NIL, NIL]
             }
         );
+        map.verify();
         map
     }
 
@@ -773,6 +878,7 @@ module red_black_map::red_black_map {
         let map = new();
         for (i in 0..7) {
             map.add(i, i);
+            map.verify();
         };
         assert!(map.length() == 7);
         map.assert_root_index(1);
@@ -846,6 +952,7 @@ module red_black_map::red_black_map {
                 children: vector[NIL, NIL]
             }
         );
+        map.verify();
         map
 
     }
@@ -855,7 +962,9 @@ module red_black_map::red_black_map {
     fun test_add_already_exists(): Map<u256> {
         let map = new();
         map.add(0, 0);
+        map.verify();
         map.add(0, 1);
+        map.verify();
         map
     }
 
@@ -878,9 +987,13 @@ module red_black_map::red_black_map {
         vector::for_each(
             keys,
             |key_group| {
-                vector::for_each(key_group, |key| {
-                    map.add(key, key);
-                });
+                vector::for_each(
+                    key_group,
+                    |key| {
+                        map.add(key, key);
+                        map.verify();
+                    }
+                );
             }
         );
         assert!(!map.is_empty());
@@ -896,6 +1009,7 @@ module red_black_map::red_black_map {
                     key_group,
                     |key| {
                         assert!(map.remove(key) == key);
+                        map.verify();
                         assert!(!map.contains_key(key));
                     }
                 );
@@ -910,6 +1024,7 @@ module red_black_map::red_black_map {
     #[test]
     fun test_add_sequence_1(): Map<u256> {
         let map = new();
+        map.verify();
         assert!(map.length() == 0);
         assert!(map.keys() == vector[]);
         assert!(map.values_ref() == vector[]);
@@ -919,12 +1034,14 @@ module red_black_map::red_black_map {
             MockSearchResult { node_index: NIL, parent_index: NIL, child_direction: NIL }
         );
         assert!(!map.contains_key(5));
+        map.verify();
 
         // Initialize root: insert 5.
         //
         //  |
         // 5r0
         map.add(5, 5);
+        map.verify();
         assert!(map.keys() == vector[5]);
         assert!(map.length() == 1);
         map.assert_root_index(0);
@@ -952,6 +1069,7 @@ module red_black_map::red_black_map {
         //    \
         //     10r1
         map.add(10, 10);
+        map.verify();
         assert!(map.keys() == vector[5, 10]);
         map.assert_root_index(0);
         assert!(map.length() == 2);
@@ -1009,6 +1127,7 @@ module red_black_map::red_black_map {
         //        \     ->
         //         10r1 ->
         map.add(8, 8);
+        map.verify();
         map.assert_root_index(2);
         assert!(map.contains_key(5));
         assert!(map.contains_key(8));
@@ -1078,6 +1197,7 @@ module red_black_map::red_black_map {
         //             \     ->             \
         //              11r3 ->              11r3
         map.add(11, 11);
+        map.verify();
         map.assert_root_index(2);
         map.assert_node(
             0,
@@ -1131,6 +1251,7 @@ module red_black_map::red_black_map {
         //        /    \
         //     9r4      11r3
         map.add(9, 9);
+        map.verify();
         map.assert_root_index(2);
         map.assert_node(
             0,
@@ -1227,6 +1348,7 @@ module red_black_map::red_black_map {
         //  |
         // 50r0
         map.add(50, 50);
+        map.verify();
         map.assert_root_index(0);
         map.assert_node(
             0,
@@ -1246,6 +1368,7 @@ module red_black_map::red_black_map {
         //     /
         // 30r1
         map.add(30, 30);
+        map.verify();
         map.assert_root_index(0);
         map.assert_node(
             0,
@@ -1277,6 +1400,7 @@ module red_black_map::red_black_map {
         //     /          ->
         // 20r2           ->
         map.add(20, 20);
+        map.verify();
         map.assert_root_index(1);
         map.assert_node(
             0,
@@ -1318,6 +1442,7 @@ module red_black_map::red_black_map {
         //     \          ->     \
         //      25r3      ->      25r3
         map.add(25, 25);
+        map.verify();
         map.assert_root_index(1);
         map.assert_node(
             0,
@@ -1369,6 +1494,7 @@ module red_black_map::red_black_map {
         //     /  \
         // 10r4    25r3
         map.add(10, 10);
+        map.verify();
         map.assert_root_index(1);
         map.assert_node(
             0,
@@ -1511,6 +1637,7 @@ module red_black_map::red_black_map {
         //    \          ->    \
         //     9r4       ->     9r0
         assert!(map.remove(5) == 5);
+        map.verify();
         assert!(map.length() == 4);
         map.assert_root_index(1);
         map.assert_node(
@@ -1572,6 +1699,7 @@ module red_black_map::red_black_map {
         //    /    \     ->    /    \
         // 9b2      11b3 -> 9b2      11b0
         assert!(map.remove(8) == 8);
+        map.verify();
         assert!(map.length() == 3);
         map.assert_root_index(1);
         map.assert_node(
@@ -1635,6 +1763,7 @@ module red_black_map::red_black_map {
         //    /     ->    /
         // 9r2      -> 9r0
         assert!(map.remove(10) == 10);
+        map.verify();
         assert!(map.length() == 2);
         map.assert_root_index(1);
         map.assert_node(
@@ -1670,6 +1799,7 @@ module red_black_map::red_black_map {
         //  |   ->  |
         // 11b1 -> 11b0
         assert!(map.remove(9) == 9);
+        map.verify();
         assert!(map.length() == 1);
         map.assert_root_index(0);
         map.assert_node(
@@ -1685,6 +1815,7 @@ module red_black_map::red_black_map {
 
         // Simple case: 3 remove 11.
         assert!(map.remove(11) == 11);
+        map.verify();
         assert!(map.length() == 0);
         assert!(map.is_empty());
 
@@ -1717,6 +1848,7 @@ module red_black_map::red_black_map {
         //
         // No swap remove deallocation required, since node was tail of nodes vector.
         assert!(map.remove(8) == 8);
+        map.verify();
         assert!(map.length() == 4);
         map.assert_root_index(2);
         map.assert_node(
@@ -1828,6 +1960,7 @@ module red_black_map::red_black_map {
         //    \       /   \    ->    \       /   \
         //     2r2 4r4     6r6 ->     2r2 4r4     6r0
         assert!(map.remove(0) == 0);
+        map.verify();
         assert!(map.length() == 6);
         map.assert_root_index(3);
         map.assert_node(
@@ -1909,6 +2042,7 @@ module red_black_map::red_black_map {
         //            /   \    ->            /
         //         4r4     6r6 ->         4r4
         assert!(map.remove(6) == 6);
+        map.verify();
         assert!(map.length() == 6);
         map.assert_root_index(1);
         map.assert_node(
@@ -2045,6 +2179,7 @@ module red_black_map::red_black_map {
         //        /   \    ->        /   \
         //     3b3     5b5 ->     3b3     5b2
         assert!(map.remove(2) == 2);
+        map.verify();
         assert!(map.length() == 5);
         map.assert_root_index(1);
         map.assert_node(
@@ -2107,6 +2242,7 @@ module red_black_map::red_black_map {
     fun test_remove_key_not_found(): Map<u256> {
         let map = set_up_tree_1();
         map.remove(0);
+        map.verify();
         map
     }
 
