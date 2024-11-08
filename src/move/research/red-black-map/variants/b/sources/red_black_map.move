@@ -17,6 +17,15 @@
 /// >         10b1      -> 8r2      11r3
 /// >        /    \     ->    \
 /// >     9r4      11r3 ->     9r4
+///
+/// Note too the use of `_` to extend tree edges when extra space is required:
+///
+/// >            |            ->        |
+/// >           3r3           ->       3b3
+/// >        __/   \__        ->    __/   \__
+/// >     1b1         5b5     -> 1r1         5b5
+/// >        \       /   \    ->    \       /   \
+/// >         2b2 4r4     6r6 ->     2b2 4r4     6r6
 module red_black_map::red_black_map {
 
     use std::vector;
