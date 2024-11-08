@@ -390,7 +390,7 @@ module red_black_map::red_black_map {
         vector::map_ref(&self.nodes, |node| node.value)
     }
 
-    /// Verify red-black tree properties.
+    /// Verify red-black tree properties. `#[test_only]` omitted to enable coverage testing.
     fun verify<V>(self: &Map<V>) {
 
         // Verify empty tree.
@@ -408,6 +408,8 @@ module red_black_map::red_black_map {
         assert!(n_nodes == self.length(), E_PROPERTY_STRAY_NODE);
     }
 
+    /// Recursively verify subtree rooted at `node_index`. `#[test_only]` omitted to enable
+    /// coverage testing.
     fun verify_subtree<V>(
         self: &Map<V>,
         parent_index: u64,
