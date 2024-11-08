@@ -2311,4 +2311,93 @@ module red_black_map::red_black_map {
         map.successor_key(11);
         map
     }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_BLACK_HEIGHT_VIOLATION)]
+    fun test_verify_black_height_violation(): Map<u256> {
+        let map = set_up_tree_1();
+        map.nodes[3].color = Color::Black;
+        map.verify();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_CONSECUTIVE_RED_NODES)]
+    fun test_verify_consecutive_red_nodes(): Map<u256> {
+        let map = set_up_tree_1();
+        map.nodes[1].color = Color::Red;
+        map.verify();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_DIRECTION_INVALID)]
+    fun test_verify_direction_invalid(): Map<u256> {
+        let map = set_up_tree_1();
+        map.verify_subtree(
+            2, Color::Red, 8, 3, 0
+        );
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_NIL_ROOT_HAS_NODES)]
+    fun test_verify_nil_root_has_nodes(): Map<u256> {
+        let map = new();
+        map.nodes.push_back(
+            Node {
+                key: 0,
+                value: 0,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.verify();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_PARENT_NODE_MISMATCH)]
+    fun test_verify_parent_node_mismatch(): Map<u256> {
+        let map = set_up_tree_1();
+        map.nodes[0].parent = map.length();
+        map.verify();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_STRAY_NODE)]
+    fun test_verify_stray_node(): Map<u256> {
+        let map = set_up_tree_1();
+        map.nodes.push_back(
+            Node {
+                key: 0,
+                value: 0,
+                color: Color::Red,
+                parent: NIL,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.verify();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_TOTAL_ORDER_VIOLATION)]
+    fun test_verify_total_order_violation_left(): Map<u256> {
+        let map = set_up_tree_1();
+        map.nodes[0].key = 9;
+        map.verify();
+        map
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_PROPERTY_TOTAL_ORDER_VIOLATION)]
+    fun test_verify_total_order_violation_right(): Map<u256> {
+        let map = set_up_tree_1();
+        map.nodes[3].key = 4;
+        map.verify();
+        map
+    }
 }
