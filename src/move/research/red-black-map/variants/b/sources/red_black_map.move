@@ -1123,7 +1123,7 @@ module red_black_map::red_black_map {
 
     #[test_only]
     // Set up a large tree.
-    fun set_up_tree_5(): (Map<u256>, vector<vector<u256>>) {
+    public fun set_up_tree_5(): (Map<u256>, vector<vector<u256>>) {
         let map = new();
         let keys = vector[
             vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -1150,7 +1150,7 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
-    fun strip_red_leaves<V: drop>(self: &mut Map<V>) {
+    public fun strip_red_leaves<V: drop>(self: &mut Map<V>) {
         let keys_to_remove = vector[];
         self.nodes.for_each_ref(|node| {
             if (&node.color == &Color::Red && node.children == vector[NIL, NIL]) {
