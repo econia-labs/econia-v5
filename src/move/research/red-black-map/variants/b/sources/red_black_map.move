@@ -469,7 +469,7 @@ module red_black_map::red_black_map {
         )
     }
 
-    fun remove_case_d4<V>(
+    inline fun remove_case_d4<V>(
         self: &mut Map<V>, sibling_index: u64, parent_index: u64
     ) {
         let nodes_ref_mut = &mut self.nodes;
@@ -477,8 +477,7 @@ module red_black_map::red_black_map {
         nodes_ref_mut[parent_index].color = Color::Black;
     }
 
-    /*inline*/
-    fun remove_case_d5<V>(
+    inline fun remove_case_d5<V>(
         self: &mut Map<V>,
         parent_index: u64,
         child_direction: u64,
@@ -588,8 +587,7 @@ module red_black_map::red_black_map {
     ///   if tree is empty.
     /// - `u64`: Direction of the node where `key` should be inserted as child to its parent, `NIL`
     ///   if tree is empty.
-    /*inline*/
-    fun search<V>(self: &Map<V>, key: u256): (u64, u64, u64) {
+    inline fun search<V>(self: &Map<V>, key: u256): (u64, u64, u64) {
         let current_index = self.root;
         let parent_index = NIL;
         let child_direction = NIL;
@@ -609,8 +607,7 @@ module red_black_map::red_black_map {
     /// Return reference to node with either minimum or maximum key in subtree rooted at
     /// `node_index`, where `direction` is either `MINIMUM` or `MAXIMUM`, corresponding respectively
     /// to traversing left or right children.
-    /*inline*/
-    fun subtree_min_or_max_node_ref<V>(
+    inline fun subtree_min_or_max_node_ref<V>(
         self: &Map<V>, node_index: u64, direction: u64
     ): &Node<V> {
         let nodes_ref = &self.nodes;
@@ -624,8 +621,9 @@ module red_black_map::red_black_map {
         node_ref
     }
 
-    /*inline*/
-    fun swap_remove_deleted_node<V>(self: &mut Map<V>, node_index: u64): V {
+    inline fun swap_remove_deleted_node<V>(
+        self: &mut Map<V>, node_index: u64
+    ): V {
 
         // If deleted node is not tail, swap index references.
         let tail_index = self.nodes.length() - 1;
@@ -665,8 +663,9 @@ module red_black_map::red_black_map {
 
     /// Return reference to either predecessor or successor of node with `node_index` key, where
     /// `direction` is either `PREDECESSOR` or `SUCCESSOR`.
-    /*inline*/
-    fun traverse_ref<V>(self: &Map<V>, node_index: u64, direction: u64): &Node<V> {
+    inline fun traverse_ref<V>(
+        self: &Map<V>, node_index: u64, direction: u64
+    ): &Node<V> {
         let child_index = self.nodes[node_index].children[direction];
         if (child_index != NIL) {
             self.subtree_min_or_max_node_ref(child_index, 1 - direction)
