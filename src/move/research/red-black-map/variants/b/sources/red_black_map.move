@@ -469,7 +469,6 @@ module red_black_map::red_black_map {
         )
     }
 
-    /*inline*/
     fun remove_case_d4<V>(
         self: &mut Map<V>, sibling_index: u64, parent_index: u64
     ) {
