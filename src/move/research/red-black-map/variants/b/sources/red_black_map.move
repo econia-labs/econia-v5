@@ -1122,6 +1122,47 @@ module red_black_map::red_black_map {
         map
     }
 
+    #[test_only]
+    // Set up a large tree.
+    fun set_up_tree_5(): (Map<u256>, vector<vector<u256>>) {
+        let map = new();
+        let keys = vector[
+            vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
+            vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
+            vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+            vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
+            vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
+            vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+        ];
+        vector::for_each(
+            keys,
+            |key_group| {
+                vector::for_each(
+                    key_group,
+                    |key| {
+                        map.add(key, key);
+                        map.verify();
+                    }
+                );
+            }
+        );
+        (map, keys)
+    }
+
+    #[test_only]
+    fun strip_red_leaves<V: drop>(self: &mut Map<V>) {
+        let keys_to_remove = vector[];
+        self.nodes.for_each_ref(|node| {
+            if (&node.color == &Color::Red && node.children == vector[NIL, NIL]) {
+                keys_to_remove.push_back(node.key);
+            };
+        });
+        keys_to_remove.for_each(|key| {
+            self.remove(key);
+        });
+    }
+
     #[test]
     #[expected_failure(abort_code = E_KEY_ALREADY_EXISTS)]
     fun test_add_already_exists() {
@@ -1135,38 +1176,19 @@ module red_black_map::red_black_map {
 
     #[test]
     fun test_add_remove_bulk() {
-        let map = new();
-        let keys = vector[
-            vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-            vector[19, 18, 17, 16, 15, 14, 13, 12, 11, 10],
-            vector[69, 68, 67, 66, 65, 64, 63, 62, 61, 60],
-            vector[20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
-            vector[50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
-            vector[49, 48, 47, 46, 45, 44, 43, 42, 41, 40],
-            vector[30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
-        ];
-        let n_keys = keys.length();
 
-        // Add keys.
-        assert!(map.is_empty());
+        let (map, keys) = set_up_tree_5();
+        let n_keys = 0;
         vector::for_each(
             keys,
             |key_group| {
-                vector::for_each(
-                    key_group,
-                    |key| {
-                        map.add(key, key);
-                        map.verify();
-                    }
-                );
+                n_keys = n_keys + key_group.length();
             }
         );
-        assert!(!map.is_empty());
         for (i in 0..n_keys) {
             assert!(map.contains_key((i as u256)));
         };
 
-        // Remove keys.
         vector::for_each(
             keys,
             |key_group| {
@@ -1207,21 +1229,10 @@ module red_black_map::red_black_map {
             map.verify();
             assert!(!map.contains_key((j as u256)));
         };
+        map.destroy_empty();
 
         // Repeat for key groups removed by first occurence of non-root black leaves.
-        assert!(map.is_empty());
-        vector::for_each(
-            keys,
-            |key_group| {
-                vector::for_each(
-                    key_group,
-                    |key| {
-                        map.add(key, key);
-                        map.verify();
-                    }
-                );
-            }
-        );
+        let (map, _) = set_up_tree_5();
         loop {
             let node_index = map.first_black_non_root_leaf_in_nodes_vector();
             if (node_index == NIL) break;
@@ -1231,6 +1242,7 @@ module red_black_map::red_black_map {
             assert!(!map.contains_key(key));
         };
         map.drop();
+
     }
 
     #[test]
