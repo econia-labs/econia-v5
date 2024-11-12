@@ -496,8 +496,7 @@ module red_black_map::red_black_map {
         );
     }
 
-    /*inline*/
-    fun remove_case_d6<V>(
+    inline fun remove_case_d6<V>(
         self: &mut Map<V>,
         parent_index: u64,
         child_direction: u64,
@@ -511,8 +510,7 @@ module red_black_map::red_black_map {
         nodes_ref_mut[distant_nephew_index].color = Color::Black;
     }
 
-    /*inline*/
-    fun rotate_inner<V>(
+    inline fun rotate_inner<V>(
         self: &mut Map<V>, parent_index: u64, direction: u64
     ): (u64, u64) {
         let parent_ref = &self.nodes[parent_index];
