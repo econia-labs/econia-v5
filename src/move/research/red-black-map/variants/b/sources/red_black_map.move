@@ -735,8 +735,8 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
-    public fun first_black_non_root_leaf_in_nodes_vector<V: drop>(
-        self: &mut Map<V>
+    public fun first_black_non_root_leaf_in_nodes_vector<V>(
+        self: &Map<V>
     ): u64 {
         let node_ref;
         for (node_index in 0..self.length()) {
@@ -746,6 +746,49 @@ module red_black_map::red_black_map {
                 && node_ref.parent != NIL) {
                 return node_index;
             };
+        };
+        NIL
+    }
+
+    #[test_only]
+    public fun first_case_d3_d5_node_index<V>(self: &Map<V>): u64 {
+        let node_ref;
+        let parent_ref;
+        let parent_index;
+        let sibling_ref;
+        let sibling_index;
+        let child_direction;
+        let nodes_ref = &self.nodes;
+        let close_nephew_index;
+        let new_distant_nephew_index;
+        let new_close_nephew_index;
+        for (node_index in 0..self.length()) {
+            node_ref = &nodes_ref[node_index];
+            if (node_ref.color is Color::Red) continue; // From now on is black.
+            parent_index = node_ref.parent;
+            if (parent_index == NIL) continue; // From now on is black non-root leaf.
+            parent_ref = &nodes_ref[parent_index];
+            child_direction = if (node_index == parent_ref.children[LEFT]) LEFT
+            else RIGHT;
+            sibling_index = parent_ref.children[1 - child_direction];
+            sibling_ref = &nodes_ref[sibling_index];
+            if (sibling_ref.color is Color::Black) continue; // From now on is case D3.
+            close_nephew_index = sibling_ref.children[child_direction];
+
+            // Simluate check that triggers Case_D6.
+            new_distant_nephew_index = nodes_ref[close_nephew_index].children[1
+                - child_direction];
+            if (new_distant_nephew_index != NIL
+                && (nodes_ref[new_distant_nephew_index].color is Color::Red))
+                continue;
+
+            // Identify Case_D5 fall through check.
+            new_close_nephew_index = nodes_ref[close_nephew_index].children[child_direction];
+            if (new_close_nephew_index != NIL
+                && (nodes_ref[new_close_nephew_index].color is Color::Red)) {
+                return node_index;
+            };
+
         };
         NIL
     }
@@ -988,6 +1031,88 @@ module red_black_map::red_black_map {
         map.verify();
         map
 
+    }
+
+    #[test_only]
+    //       |
+    //      15b1
+    //     /    \
+    // 10b0      20r2
+    //          /    \
+    //      19b3      21b4
+    //     /
+    // 17r5
+    public fun set_up_tree_4(): Map<u256> {
+        let map = new();
+        map.add(10, 10);
+        map.add(15, 15);
+        map.add(20, 20);
+        map.add(19, 19);
+        map.add(21, 21);
+        map.add(17, 17);
+        map.verify();
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 15,
+                value: 15,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[0, 2]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 20,
+                value: 20,
+                color: Color::Red,
+                parent: 1,
+                children: vector[3, 4]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 19,
+                value: 19,
+                color: Color::Black,
+                parent: 2,
+                children: vector[5, NIL]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 21,
+                value: 21,
+                color: Color::Black,
+                parent: 2,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            5,
+            MockNode {
+                key: 17,
+                value: 17,
+                color: Color::Red,
+                parent: 3,
+                children: vector[NIL, NIL]
+            }
+        );
+        map
     }
 
     #[test]
@@ -2314,7 +2439,16 @@ module red_black_map::red_black_map {
         );
 
         map
+    }
 
+    #[test]
+    fun test_remove_5(): Map<u256> {
+        let map = set_up_tree_4();
+        let node_index = map.first_case_d3_d5_node_index();
+        assert!(map.nodes[node_index].key == 10);
+        assert!(map.remove(10) == 10);
+        map.verify();
+        map
     }
 
     #[test]
