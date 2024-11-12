@@ -178,16 +178,15 @@ module red_black_map::red_black_map {
         node_index != NIL
     }
 
-    public fun destroy_empty<V>(self: Map<V>) {
+    public fun destroy<V: drop>(self: Map<V>) {
         let Map { nodes,.. } = self;
-        nodes.destroy_empty();
+        nodes.destroy(|node| {
+            let Node { .. } = node;
+        });
     }
 
-    public fun drop<V: drop>(self: Map<V>) {
+    public fun destroy_empty<V>(self: Map<V>) {
         let Map { nodes,.. } = self;
-        for (i in 0..nodes.length()) {
-            let Node { .. } = nodes.pop_back();
-        };
         nodes.destroy_empty();
     }
 
@@ -1171,7 +1170,7 @@ module red_black_map::red_black_map {
         map.verify();
         map.add(0, 1);
         map.verify();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -1241,7 +1240,7 @@ module red_black_map::red_black_map {
             map.verify();
             assert!(!map.contains_key(key));
         };
-        map.drop();
+        map.destroy();
 
     }
 
@@ -1560,7 +1559,7 @@ module red_black_map::red_black_map {
         assert!(predecessor_key(&map, 9) == 8);
         assert!(predecessor_key(&map, 8) == 5);
 
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -1781,7 +1780,7 @@ module red_black_map::red_black_map {
         assert!(predecessor_key(&map, 25) == 20);
         assert!(predecessor_key(&map, 20) == 10);
 
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -1789,7 +1788,7 @@ module red_black_map::red_black_map {
     fun test_borrow_mut_not_found() {
         let map = new<u8>();
         map.borrow_mut(0);
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -1797,13 +1796,15 @@ module red_black_map::red_black_map {
     fun test_borrow_not_found() {
         let map = new<u8>();
         map.borrow(0);
-        map.drop();
+        map.destroy();
     }
 
     #[test]
-    fun test_destroy_empty() {
+    fun test_destroy_empty_destroy_when_empty() {
         let map = new<u8>();
         map.destroy_empty();
+        let map = new<u8>();
+        map.destroy();
     }
 
     #[test]
@@ -1811,7 +1812,7 @@ module red_black_map::red_black_map {
     fun test_maximum_key_empty() {
         let map = new<u8>();
         map.maximum_key();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -1819,7 +1820,7 @@ module red_black_map::red_black_map {
     fun test_minimum_key_empty() {
         let map = new<u8>();
         map.minimum_key();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2049,7 +2050,7 @@ module red_black_map::red_black_map {
         assert!(map.length() == 0);
         assert!(map.is_empty());
 
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2122,7 +2123,7 @@ module red_black_map::red_black_map {
             }
         );
 
-        map.drop();
+        map.destroy();
 
     }
 
@@ -2254,7 +2255,7 @@ module red_black_map::red_black_map {
             }
         );
 
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2463,7 +2464,7 @@ module red_black_map::red_black_map {
             }
         );
 
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2473,7 +2474,7 @@ module red_black_map::red_black_map {
         assert!(map.nodes[node_index].key == 10);
         assert!(map.remove(10) == 10);
         map.verify();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2482,7 +2483,7 @@ module red_black_map::red_black_map {
         let map = set_up_tree_1();
         map.remove(0);
         map.verify();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2490,7 +2491,7 @@ module red_black_map::red_black_map {
     fun test_traverse_predecessor_key_not_found() {
         let map = set_up_tree_2();
         map.predecessor_key(12);
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2498,7 +2499,7 @@ module red_black_map::red_black_map {
     fun test_traverse_predecessor_unable_to_traverse() {
         let map = set_up_tree_2();
         map.predecessor_key(10);
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2506,7 +2507,7 @@ module red_black_map::red_black_map {
     fun test_traverse_successor_key_not_found() {
         let map = set_up_tree_1();
         map.successor_key(12);
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2514,7 +2515,7 @@ module red_black_map::red_black_map {
     fun test_traverse_successor_unable_to_traverse() {
         let map = set_up_tree_1();
         map.successor_key(11);
-        map.drop()
+        map.destroy()
     }
 
     #[test]
@@ -2523,7 +2524,7 @@ module red_black_map::red_black_map {
         let map = set_up_tree_1();
         map.nodes[3].color = Color::Black;
         map.verify();
-        map.drop()
+        map.destroy()
     }
 
     #[test]
@@ -2532,7 +2533,7 @@ module red_black_map::red_black_map {
         let map = set_up_tree_1();
         map.nodes[1].color = Color::Red;
         map.verify();
-        map.drop()
+        map.destroy()
     }
 
     #[test]
@@ -2542,7 +2543,7 @@ module red_black_map::red_black_map {
         map.verify_subtree(
             2, Color::Red, 8, 3, 0
         );
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2559,7 +2560,7 @@ module red_black_map::red_black_map {
             }
         );
         map.verify();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2568,7 +2569,7 @@ module red_black_map::red_black_map {
         let map = set_up_tree_1();
         map.nodes[0].parent = map.length();
         map.verify();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2585,7 +2586,7 @@ module red_black_map::red_black_map {
             }
         );
         map.verify();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2594,7 +2595,7 @@ module red_black_map::red_black_map {
         let map = set_up_tree_1();
         map.nodes[0].key = 9;
         map.verify();
-        map.drop();
+        map.destroy();
     }
 
     #[test]
@@ -2603,6 +2604,6 @@ module red_black_map::red_black_map {
         let map = set_up_tree_1();
         map.nodes[3].key = 4;
         map.verify();
-        map.drop();
+        map.destroy();
     }
 }
