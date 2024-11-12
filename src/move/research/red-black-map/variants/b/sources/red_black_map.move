@@ -536,8 +536,7 @@ module red_black_map::red_black_map {
         (subtree_index, grandparent_index)
     }
 
-    /*inline*/
-    fun rotate_parent_is_not_root<V>(
+    inline fun rotate_parent_is_not_root<V>(
         self: &mut Map<V>, parent_index: u64, direction: u64
     ): u64 {
         let (subtree_index, grandparent_index) =
@@ -551,8 +550,7 @@ module red_black_map::red_black_map {
         subtree_index
     }
 
-    /*inline*/
-    fun rotate_parent_may_be_root<V>(
+    inline fun rotate_parent_may_be_root<V>(
         self: &mut Map<V>, parent_index: u64, direction: u64
     ) {
         let (subtree_index, grandparent_index) =
