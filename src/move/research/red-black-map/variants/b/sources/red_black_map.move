@@ -178,6 +178,19 @@ module red_black_map::red_black_map {
         node_index != NIL
     }
 
+    public fun destroy_empty<V>(self: Map<V>) {
+        let Map { nodes,.. } = self;
+        nodes.destroy_empty();
+    }
+
+    public fun drop<V: drop>(self: Map<V>) {
+        let Map { nodes,.. } = self;
+        for (i in 0..nodes.length()) {
+            let Node { .. } = nodes.pop_back();
+        };
+        nodes.destroy_empty();
+    }
+
     public fun is_empty<V>(self: &Map<V>): bool {
         self.root == NIL
     }
@@ -1111,17 +1124,17 @@ module red_black_map::red_black_map {
 
     #[test]
     #[expected_failure(abort_code = E_KEY_ALREADY_EXISTS)]
-    fun test_add_already_exists(): Map<u256> {
+    fun test_add_already_exists() {
         let map = new();
         map.add(0, 0);
         map.verify();
         map.add(0, 1);
         map.verify();
-        map
+        map.drop();
     }
 
     #[test]
-    fun test_add_remove_bulk(): Map<u256> {
+    fun test_add_remove_bulk() {
         let map = new();
         let keys = vector[
             vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -1217,11 +1230,11 @@ module red_black_map::red_black_map {
             map.verify();
             assert!(!map.contains_key(key));
         };
-        map
+        map.drop();
     }
 
     #[test]
-    fun test_add_sequence_1(): Map<u256> {
+    fun test_add_sequence_1() {
         let map = new();
         map.verify();
         assert!(map.length() == 0);
@@ -1535,11 +1548,11 @@ module red_black_map::red_black_map {
         assert!(predecessor_key(&map, 9) == 8);
         assert!(predecessor_key(&map, 8) == 5);
 
-        map
+        map.drop();
     }
 
     #[test]
-    fun test_add_sequence_2(): Map<u256> {
+    fun test_add_sequence_2() {
         let map = new();
 
         // Initialize root: insert 50.
@@ -1756,43 +1769,49 @@ module red_black_map::red_black_map {
         assert!(predecessor_key(&map, 25) == 20);
         assert!(predecessor_key(&map, 20) == 10);
 
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_borrow_mut_not_found(): Map<u256> {
-        let map = new();
+    fun test_borrow_mut_not_found() {
+        let map = new<u8>();
         map.borrow_mut(0);
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_borrow_not_found(): Map<u256> {
-        let map = new();
+    fun test_borrow_not_found() {
+        let map = new<u8>();
         map.borrow(0);
-        map
+        map.drop();
+    }
+
+    #[test]
+    fun test_destroy_empty() {
+        let map = new<u8>();
+        map.destroy_empty();
     }
 
     #[test]
     #[expected_failure(abort_code = E_EMPTY)]
-    fun test_maximum_key_empty(): Map<u256> {
-        let map = new();
+    fun test_maximum_key_empty() {
+        let map = new<u8>();
         map.maximum_key();
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_EMPTY)]
-    fun test_minimum_key_empty(): Map<u256> {
-        let map = new();
+    fun test_minimum_key_empty() {
+        let map = new<u8>();
         map.minimum_key();
-        map
+        map.drop();
     }
 
     #[test]
-    fun test_remove_1(): Map<u256> {
+    fun test_remove_1() {
         let map = set_up_tree_1();
 
         // Case_D6: remove 5.
@@ -2018,11 +2037,11 @@ module red_black_map::red_black_map {
         assert!(map.length() == 0);
         assert!(map.is_empty());
 
-        map
+        map.drop();
     }
 
     #[test]
-    fun test_remove_2(): Map<u256> {
+    fun test_remove_2() {
         let map = set_up_tree_1();
 
         // Simple case 1 (successor is left child), fall through to simple case 4, remove 8.
@@ -2091,12 +2110,12 @@ module red_black_map::red_black_map {
             }
         );
 
-        map
+        map.drop();
 
     }
 
     #[test]
-    fun test_remove_3(): Map<u256> {
+    fun test_remove_3() {
         let map = set_up_tree_3();
 
         // Case_D3 fall through to Case_D4: remove 0.
@@ -2223,11 +2242,11 @@ module red_black_map::red_black_map {
             }
         );
 
-        map
+        map.drop();
     }
 
     #[test]
-    fun test_remove_4(): Map<u256> {
+    fun test_remove_4() {
         let map = set_up_tree_3();
 
         // Remove 6 to set up Case_D5.
@@ -2432,91 +2451,91 @@ module red_black_map::red_black_map {
             }
         );
 
-        map
+        map.drop();
     }
 
     #[test]
-    fun test_remove_5(): Map<u256> {
+    fun test_remove_5() {
         let map = set_up_tree_4();
         let node_index = map.first_case_d3_d5_node_index();
         assert!(map.nodes[node_index].key == 10);
         assert!(map.remove(10) == 10);
         map.verify();
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_remove_key_not_found(): Map<u256> {
+    fun test_remove_key_not_found() {
         let map = set_up_tree_1();
         map.remove(0);
         map.verify();
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_traverse_predecessor_key_not_found(): Map<u256> {
+    fun test_traverse_predecessor_key_not_found() {
         let map = set_up_tree_2();
         map.predecessor_key(12);
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_UNABLE_TO_TRAVERSE)]
-    fun test_traverse_predecessor_unable_to_traverse(): Map<u256> {
+    fun test_traverse_predecessor_unable_to_traverse() {
         let map = set_up_tree_2();
         map.predecessor_key(10);
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_KEY_NOT_FOUND)]
-    fun test_traverse_successor_key_not_found(): Map<u256> {
+    fun test_traverse_successor_key_not_found() {
         let map = set_up_tree_1();
         map.successor_key(12);
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_UNABLE_TO_TRAVERSE)]
-    fun test_traverse_successor_unable_to_traverse(): Map<u256> {
+    fun test_traverse_successor_unable_to_traverse() {
         let map = set_up_tree_1();
         map.successor_key(11);
-        map
+        map.drop()
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_BLACK_HEIGHT_VIOLATION)]
-    fun test_verify_black_height_violation(): Map<u256> {
+    fun test_verify_black_height_violation() {
         let map = set_up_tree_1();
         map.nodes[3].color = Color::Black;
         map.verify();
-        map
+        map.drop()
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_CONSECUTIVE_RED_NODES)]
-    fun test_verify_consecutive_red_nodes(): Map<u256> {
+    fun test_verify_consecutive_red_nodes() {
         let map = set_up_tree_1();
         map.nodes[1].color = Color::Red;
         map.verify();
-        map
+        map.drop()
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_DIRECTION_INVALID)]
-    fun test_verify_direction_invalid(): Map<u256> {
+    fun test_verify_direction_invalid() {
         let map = set_up_tree_1();
         map.verify_subtree(
             2, Color::Red, 8, 3, 0
         );
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_NIL_ROOT_HAS_NODES)]
-    fun test_verify_nil_root_has_nodes(): Map<u256> {
+    fun test_verify_nil_root_has_nodes() {
         let map = new();
         map.nodes.push_back(
             Node {
@@ -2528,21 +2547,21 @@ module red_black_map::red_black_map {
             }
         );
         map.verify();
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_PARENT_NODE_MISMATCH)]
-    fun test_verify_parent_node_mismatch(): Map<u256> {
+    fun test_verify_parent_node_mismatch() {
         let map = set_up_tree_1();
         map.nodes[0].parent = map.length();
         map.verify();
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_STRAY_NODE)]
-    fun test_verify_stray_node(): Map<u256> {
+    fun test_verify_stray_node() {
         let map = set_up_tree_1();
         map.nodes.push_back(
             Node {
@@ -2554,24 +2573,24 @@ module red_black_map::red_black_map {
             }
         );
         map.verify();
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_TOTAL_ORDER_VIOLATION)]
-    fun test_verify_total_order_violation_left(): Map<u256> {
+    fun test_verify_total_order_violation_left() {
         let map = set_up_tree_1();
         map.nodes[0].key = 9;
         map.verify();
-        map
+        map.drop();
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_TOTAL_ORDER_VIOLATION)]
-    fun test_verify_total_order_violation_right(): Map<u256> {
+    fun test_verify_total_order_violation_right() {
         let map = set_up_tree_1();
         map.nodes[3].key = 4;
         map.verify();
-        map
+        map.drop();
     }
 }
