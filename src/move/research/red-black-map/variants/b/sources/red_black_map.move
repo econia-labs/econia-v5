@@ -337,21 +337,23 @@ module red_black_map::red_black_map {
                 // Case_D5.
                 if (close_nephew_index != NIL
                     && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
-                    self.remove_case_d5(
-                        parent_index,
-                        child_direction,
-                        sibling_index,
-                        close_nephew_index,
-                        distant_nephew_index
+                    self.rotate_parent_is_not_root(sibling_index, 1 - child_direction);
+                    nodes_ref_mut = &mut self.nodes;
+                    nodes_ref_mut[sibling_index].color = Color::Red;
+                    nodes_ref_mut[close_nephew_index].color = Color::Black;
+                    distant_nephew_index = sibling_index;
+                    sibling_index = close_nephew_index;
+                    self.remove_case_d6(
+                        parent_index, child_direction, sibling_index, distant_nephew_index
                     );
                     break;
                 };
                 // Case_D4.
                 if (nodes_ref_mut[parent_index].color is Color::Red) {
-                    self.remove_case_d4(sibling_index, parent_index);
+                    nodes_ref_mut[sibling_index].color = Color::Red;
+                    nodes_ref_mut[parent_index].color = Color::Black;
                     break;
                 };
-
                 // Case_D2.
                 nodes_ref_mut[sibling_index].color = Color::Red;
                 let new_node_index = parent_index;
@@ -457,33 +459,6 @@ module red_black_map::red_black_map {
             1 + n_nodes_left_subtree + n_nodes_right_subtree,
             black_height + black_height_left_subtree
         )
-    }
-
-    inline fun remove_case_d4<V>(
-        self: &mut Map<V>, sibling_index: u64, parent_index: u64
-    ) {
-        let nodes_ref_mut = &mut self.nodes;
-        nodes_ref_mut[sibling_index].color = Color::Red;
-        nodes_ref_mut[parent_index].color = Color::Black;
-    }
-
-    inline fun remove_case_d5<V>(
-        self: &mut Map<V>,
-        parent_index: u64,
-        child_direction: u64,
-        sibling_index: u64,
-        close_nephew_index: u64,
-        distant_nephew_index: u64
-    ) {
-        self.rotate_parent_is_not_root(sibling_index, 1 - child_direction);
-        let nodes_ref_mut = &mut self.nodes;
-        nodes_ref_mut[sibling_index].color = Color::Red;
-        nodes_ref_mut[close_nephew_index].color = Color::Black;
-        distant_nephew_index = sibling_index;
-        sibling_index = close_nephew_index;
-        self.remove_case_d6(
-            parent_index, child_direction, sibling_index, distant_nephew_index
-        );
     }
 
     inline fun remove_case_d6<V>(
