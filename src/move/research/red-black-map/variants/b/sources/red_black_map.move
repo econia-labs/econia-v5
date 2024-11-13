@@ -1282,6 +1282,89 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
+    //            |
+    //           3r3
+    //        __/   \__
+    //     1b1         7b7
+    //    /   \       /   \
+    // 0b0     2b2 5r5     8b8
+    //            /   \
+    //         4b4     6b6
+    public fun set_up_tree_7(): Map<u256> {
+        let map =
+            Map {
+                root: 3,
+                nodes: vector[
+                    Node {
+                        key: 0,
+                        value: 0,
+                        color: Color::Black,
+                        parent: 1,
+                        children: vector[NIL, NIL]
+                    },
+                    Node {
+                        key: 1,
+                        value: 1,
+                        color: Color::Black,
+                        parent: 3,
+                        children: vector[0, 2]
+                    },
+                    Node {
+                        key: 2,
+                        value: 2,
+                        color: Color::Black,
+                        parent: 1,
+                        children: vector[NIL, NIL]
+                    },
+                    Node {
+                        key: 3,
+                        value: 3,
+                        color: Color::Red,
+                        parent: NIL,
+                        children: vector[1, 7]
+                    },
+                    Node {
+                        key: 4,
+                        value: 4,
+                        color: Color::Black,
+                        parent: 5,
+                        children: vector[NIL, NIL]
+                    },
+                    Node {
+                        key: 5,
+                        value: 5,
+                        color: Color::Red,
+                        parent: 7,
+                        children: vector[4, 6]
+                    },
+                    Node {
+                        key: 6,
+                        value: 6,
+                        color: Color::Black,
+                        parent: 5,
+                        children: vector[NIL, NIL]
+                    },
+                    Node {
+                        key: 7,
+                        value: 7,
+                        color: Color::Black,
+                        parent: 3,
+                        children: vector[5, 8]
+                    },
+                    Node {
+                        key: 8,
+                        value: 8,
+                        color: Color::Black,
+                        parent: 7,
+                        children: vector[NIL, NIL]
+                    }
+                ]
+            };
+        map.verify();
+        map
+    }
+
+    #[test_only]
     public fun strip_red_leaves<V: drop>(self: &mut Map<V>) {
         let keys_to_remove = vector[];
         self.nodes.for_each_ref(|node| {
@@ -2656,13 +2739,14 @@ module red_black_map::red_black_map {
         assert!(map.remove(key) == 5);
         map.verify();
         map.destroy();
+    }
 
-        // Case_D6: close nephew has children.
-        (map, _) = set_up_tree_5();
-        node_index = map.first_case_d5_close_nephew_has_children();
-        map.strip_red_leaves();
+    #[test]
+    fun test_remove_6() {
+        let map = set_up_tree_7();
+        // Iterates to higher level where node with key 1 is the node for Case_D5.
+        assert!(map.remove(0) == 0);
         map.verify();
-        std::debug::print(&node_index);
         map.destroy();
     }
 
