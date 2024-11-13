@@ -64,10 +64,8 @@ module red_black_map::red_black_map {
     const E_PROPERTY_CONSECUTIVE_RED_NODES: u64 = 7;
     /// Total order of keys is violated.
     const E_PROPERTY_TOTAL_ORDER_VIOLATION: u64 = 8;
-    /// Invalid direction.
-    const E_PROPERTY_DIRECTION_INVALID: u64 = 9;
     /// Black height of subtrees is not equal.
-    const E_PROPERTY_BLACK_HEIGHT_VIOLATION: u64 = 10;
+    const E_PROPERTY_BLACK_HEIGHT_VIOLATION: u64 = 9;
 
     struct Node<V> {
         key: u256,
@@ -396,9 +394,10 @@ module red_black_map::red_black_map {
         };
 
         // Recursively verify subtrees.
-        let (n_nodes, _) = self.verify_subtree(
-            NIL, Color::Black, 0, LEFT, root_index
-        );
+        let (n_nodes, _) =
+            self.verify_subtree(
+                NIL, Color::Black, root_index, false, 0, false, 0
+            );
 
         // Verify all nodes have been visited.
         assert!(n_nodes == self.length(), E_PROPERTY_STRAY_NODE);
@@ -410,9 +409,11 @@ module red_black_map::red_black_map {
         self: &Map<V>,
         parent_index: u64,
         parent_color: Color,
-        parent_key: u256,
-        child_direction: u64,
-        node_index: u64
+        node_index: u64,
+        subtree_has_lower_key_bound: bool,
+        subtree_lower_key_bound: u256,
+        subtree_has_upper_key_bound: bool,
+        subtree_upper_key_bound: u256
     ): (u64, u64) {
         // If node index is NIL, return 0 nodes in subtree and 0 black height.
         if (node_index == NIL) return (0, 0);
@@ -429,27 +430,40 @@ module red_black_map::red_black_map {
             if (parent_color is Color::Red) {
                 assert!(node_ref.color is Color::Black, E_PROPERTY_CONSECUTIVE_RED_NODES);
             };
-            if (child_direction == LEFT) {
-                assert!(node_ref.key < parent_key, E_PROPERTY_TOTAL_ORDER_VIOLATION);
-            } else if (child_direction == RIGHT) {
-                assert!(node_ref.key > parent_key, E_PROPERTY_TOTAL_ORDER_VIOLATION);
-            } else {
-                abort E_PROPERTY_DIRECTION_INVALID;
+            if (subtree_has_lower_key_bound) {
+                assert!(
+                    node_ref.key > subtree_lower_key_bound,
+                    E_PROPERTY_TOTAL_ORDER_VIOLATION
+                );
+            };
+            if (subtree_has_upper_key_bound) {
+                assert!(
+                    node_ref.key < subtree_upper_key_bound,
+                    E_PROPERTY_TOTAL_ORDER_VIOLATION
+                );
             };
         };
-
-        // Get child indices.
-        let left_child_index = node_ref.children[LEFT];
-        let right_child_index = node_ref.children[RIGHT];
 
         // Get number of nodes, black heights by recursively verifying two subtrees.
         let (n_nodes_left_subtree, black_height_left_subtree) =
             self.verify_subtree(
-                node_index, node_ref.color, node_ref.key, LEFT, left_child_index
+                node_index,
+                node_ref.color,
+                node_ref.children[LEFT],
+                subtree_has_lower_key_bound,
+                subtree_lower_key_bound,
+                true,
+                node_ref.key
             );
         let (n_nodes_right_subtree, black_height_right_subtree) =
             self.verify_subtree(
-                node_index, node_ref.color, node_ref.key, RIGHT, right_child_index
+                node_index,
+                node_ref.color,
+                node_ref.children[RIGHT],
+                true,
+                node_ref.key,
+                subtree_has_upper_key_bound,
+                subtree_upper_key_bound
             );
 
         // Verify equal black height in left and right subtrees.
@@ -2834,16 +2848,6 @@ module red_black_map::red_black_map {
     }
 
     #[test]
-    #[expected_failure(abort_code = E_PROPERTY_DIRECTION_INVALID)]
-    fun test_verify_direction_invalid() {
-        let map = set_up_tree_1();
-        map.verify_subtree(
-            2, Color::Red, 8, 3, 0
-        );
-        map.destroy();
-    }
-
-    #[test]
     #[expected_failure(abort_code = E_PROPERTY_NIL_ROOT_HAS_NODES)]
     fun test_verify_nil_root_has_nodes() {
         let map = new();
@@ -2888,18 +2892,18 @@ module red_black_map::red_black_map {
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_TOTAL_ORDER_VIOLATION)]
-    fun test_verify_total_order_violation_left() {
+    fun test_verify_total_order_violation_lower_bound() {
         let map = set_up_tree_1();
-        map.nodes[0].key = 9;
+        map.nodes[4].key = 7;
         map.verify();
         map.destroy();
     }
 
     #[test]
     #[expected_failure(abort_code = E_PROPERTY_TOTAL_ORDER_VIOLATION)]
-    fun test_verify_total_order_violation_right() {
-        let map = set_up_tree_1();
-        map.nodes[3].key = 4;
+    fun test_verify_total_order_violation_upper_bound() {
+        let map = set_up_tree_2();
+        map.nodes[3].key = 31;
         map.verify();
         map.destroy();
     }
