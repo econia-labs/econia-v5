@@ -317,6 +317,8 @@ module red_black_map::red_black_map {
                 // Case_D3: node has red sibling, will fall through to another case after rotation,
                 // recolor, and reassignment.
                 if (sibling_ref_mut.color is Color::Red) {
+                    // If sibling is red, then it must have black children, otherwise the node to be
+                    // removed would result in a black height violation.
                     self.rotate_parent_may_be_root_close_nephew_is_non_nil(
                         parent_index, child_direction
                     );
