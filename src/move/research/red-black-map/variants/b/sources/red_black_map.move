@@ -1,4 +1,6 @@
-/// Based on Wikipedia reference implementation of red-black tree.
+/// Based on Wikipedia reference implementation of red-black tree. See Wikipedia for additional
+/// background information, diagrams, explanation of cases like `Case_I1` and `Case_D6`, and
+/// reference source code in C++ that is currently referenced in some below source code comments.
 ///
 /// # Tree notation
 ///
@@ -783,7 +785,7 @@ module red_black_map::red_black_map {
             if (sibling_ref.color is Color::Black) continue; // From now on is case D3.
             close_nephew_index = sibling_ref.children[child_direction];
 
-            // Simluate check that triggers Case_D6.
+            // Simulate check that triggers Case_D6.
             new_distant_nephew_index = nodes_ref[close_nephew_index].children[1
                 - child_direction];
             if (new_distant_nephew_index != NIL
@@ -1494,7 +1496,7 @@ module red_black_map::red_black_map {
         };
         map.destroy_empty();
 
-        // Repeat for key groups removed by first occurence of non-root black leaves.
+        // Repeat for key groups removed by first occurrence of non-root black leaves.
         let (map, _) = set_up_tree_5();
         loop {
             let node_index = map.first_case_black_non_root_leaf_node_index();
