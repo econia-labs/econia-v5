@@ -314,39 +314,17 @@ module red_black_map::red_black_map {
                 distant_nephew_index = sibling_ref_mut.children[1 - child_direction];
                 close_nephew_index = sibling_ref_mut.children[child_direction];
 
-                // Case_D3.
+                // Case_D3: node has red sibling, will fall through to another case after rotation,
+                // recolor, and reassignment.
                 if (sibling_ref_mut.color is Color::Red) {
                     self.rotate_parent_may_be_root(parent_index, child_direction);
                     nodes_ref_mut = &mut self.nodes;
                     nodes_ref_mut[parent_index].color = Color::Red;
                     nodes_ref_mut[sibling_index].color = Color::Black;
                     sibling_index = close_nephew_index;
-                    distant_nephew_index = nodes_ref_mut[sibling_index].children[1
-                        - child_direction];
-                    if (distant_nephew_index != NIL
-                        && (nodes_ref_mut[distant_nephew_index].color is Color::Red)) {
-                        self.remove_case_d6(
-                            parent_index,
-                            child_direction,
-                            sibling_index,
-                            distant_nephew_index
-                        );
-                        break;
-                    };
-                    close_nephew_index = nodes_ref_mut[sibling_index].children[child_direction];
-                    if (close_nephew_index != NIL
-                        && (nodes_ref_mut[close_nephew_index].color is Color::Red)) {
-                        self.remove_case_d5(
-                            parent_index,
-                            child_direction,
-                            sibling_index,
-                            close_nephew_index,
-                            distant_nephew_index
-                        );
-                    } else {
-                        self.remove_case_d4(sibling_index, parent_index);
-                    };
-                    break;
+                    sibling_ref_mut = &mut nodes_ref_mut[sibling_index];
+                    close_nephew_index = sibling_ref_mut.children[child_direction];
+                    distant_nephew_index = sibling_ref_mut.children[1 - child_direction];
                 };
                 // Case_D6.
                 if (distant_nephew_index != NIL
