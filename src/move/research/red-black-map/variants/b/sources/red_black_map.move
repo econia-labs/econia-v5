@@ -317,7 +317,9 @@ module red_black_map::red_black_map {
                 // Case_D3: node has red sibling, will fall through to another case after rotation,
                 // recolor, and reassignment.
                 if (sibling_ref_mut.color is Color::Red) {
-                    self.rotate_parent_may_be_root(parent_index, child_direction);
+                    self.rotate_parent_may_be_root_close_nephew_is_non_nil(
+                        parent_index, child_direction
+                    );
                     nodes_ref_mut = &mut self.nodes;
                     nodes_ref_mut[parent_index].color = Color::Red;
                     nodes_ref_mut[sibling_index].color = Color::Black;
@@ -482,9 +484,9 @@ module red_black_map::red_black_map {
         // RBnode* G = P->parent;
         let grandparent_index = parent_ref.parent;
         // RBnode* S = P->child[1-dir];
-        let subtree_index = parent_ref.children[1 - direction];
+        let sibling_index = parent_ref.children[1 - direction];
         // C = S->child[dir];
-        let close_nephew_index = self.nodes[subtree_index].children[direction];
+        let close_nephew_index = self.nodes[sibling_index].children[direction];
         // P->child[1-dir] = C;
         self.nodes[parent_index].children[1 - direction] = close_nephew_index;
         // if (C != NIL) C->parent = P;
@@ -492,13 +494,13 @@ module red_black_map::red_black_map {
             self.nodes[close_nephew_index].parent = parent_index;
         };
         // S->child[  dir] = P;
-        self.nodes[subtree_index].children[direction] = parent_index;
+        self.nodes[sibling_index].children[direction] = parent_index;
         // P->parent = S;
-        self.nodes[parent_index].parent = subtree_index;
+        self.nodes[parent_index].parent = sibling_index;
         // S->parent = G;
-        self.nodes[subtree_index].parent = grandparent_index;
+        self.nodes[sibling_index].parent = grandparent_index;
         // return S;
-        (subtree_index, grandparent_index)
+        (sibling_index, grandparent_index)
     }
 
     inline fun rotate_parent_is_not_root<V>(
@@ -532,6 +534,37 @@ module red_black_map::red_black_map {
             grandparent_ref_mut.children[child_direction_of_new_subtree] = subtree_index;
         } else {
             self.root = subtree_index;
+        }
+    }
+
+    inline fun rotate_parent_may_be_root_close_nephew_is_non_nil<V>(
+        self: &mut Map<V>, parent_index: u64, direction: u64
+    ) {
+        let parent_ref = &self.nodes[parent_index];
+        // RBnode* G = P->parent;
+        let grandparent_index = parent_ref.parent;
+        // RBnode* S = P->child[1-dir];
+        let sibling_index = parent_ref.children[1 - direction];
+        // C = S->child[dir];
+        let close_nephew_index = self.nodes[sibling_index].children[direction];
+        // P->child[1-dir] = C;
+        self.nodes[parent_index].children[1 - direction] = close_nephew_index;
+        // if (C != NIL) C->parent = P;
+        self.nodes[close_nephew_index].parent = parent_index;
+        // S->child[  dir] = P;
+        self.nodes[sibling_index].children[direction] = parent_index;
+        // P->parent = S;
+        self.nodes[parent_index].parent = sibling_index;
+        // S->parent = G;
+        self.nodes[sibling_index].parent = grandparent_index;
+        if (grandparent_index != NIL) {
+            let grandparent_ref_mut = &mut self.nodes[grandparent_index];
+            let child_direction_of_new_subtree =
+                if (parent_index == grandparent_ref_mut.children[RIGHT]) RIGHT
+                else LEFT;
+            grandparent_ref_mut.children[child_direction_of_new_subtree] = sibling_index;
+        } else {
+            self.root = sibling_index;
         }
     }
 
@@ -2693,27 +2726,9 @@ module red_black_map::red_black_map {
         map.verify();
         map.destroy();
 
-        // Case_D3: left rotation, NIL close nephew, parent is root.
-        map = set_up_tree_4();
-        assert!(map.remove(17) == 17);
-        map.verify();
-        assert!(map.nodes[node_index].key == 10);
-        assert!(map.remove(10) == 10);
-        map.verify();
-        map.destroy();
-
         // Case_D3: right rotation, non-NIL close nephew, parent is root.
         map = set_up_tree_6();
         node_index = map.first_case_d3_d5_node_index();
-        assert!(map.nodes[node_index].key == 20);
-        assert!(map.remove(20) == 20);
-        map.verify();
-        map.destroy();
-
-        // Case_D3: right rotation, NIL close nephew, parent is root.
-        map = set_up_tree_6();
-        assert!(map.remove(13) == 13);
-        map.verify();
         assert!(map.nodes[node_index].key == 20);
         assert!(map.remove(20) == 20);
         map.verify();
@@ -2729,7 +2744,13 @@ module red_black_map::red_black_map {
         map.verify();
         map.destroy();
 
-        // Case_D6: close nephew is NIL.
+        // Case_D6: close nephew is not NIL, parent is root.
+        map = set_up_tree_1();
+        assert!(map.remove(5) == 5);
+        map.verify();
+        map.destroy();
+
+        // Case_D6: close nephew is NIL, parent is root.
         map = set_up_tree_1();
         assert!(map.remove(9) == 9);
         map.verify();
@@ -2744,7 +2765,8 @@ module red_black_map::red_black_map {
     #[test]
     fun test_remove_6() {
         let map = set_up_tree_7();
-        // Iterates to higher level where node with key 1 is the node for Case_D5.
+        // Loops to higher iteration where node with key 1 is the node for Case_D5, such that the
+        // Case_D6 rotation has a non-NIL close nephew.
         assert!(map.remove(0) == 0);
         map.verify();
         map.destroy();
