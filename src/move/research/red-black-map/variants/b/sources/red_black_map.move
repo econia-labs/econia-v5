@@ -694,7 +694,7 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
-    public fun first_black_non_root_leaf_in_nodes_vector<V>(
+    public fun first_case_black_non_root_leaf_node_index<V>(
         self: &Map<V>
     ): u64 {
         let node_ref;
@@ -767,13 +767,84 @@ module red_black_map::red_black_map {
             parent_index = node_ref.parent;
             if (parent_index == NIL) continue; // From now on is black non-root leaf.
             parent_ref = &nodes_ref[parent_index];
-            if (parent_ref.parent == NIL) continue; // From now on is parent not root.
+            if (parent_ref.parent == NIL) continue; // From now on parent is not root.
             child_direction = if (node_index == parent_ref.children[LEFT]) LEFT
             else RIGHT;
             sibling_index = parent_ref.children[1 - child_direction];
             sibling_ref = &nodes_ref[sibling_index];
             // If sibling is red, Case_D3 with non-root parent.
             if (sibling_ref.color is Color::Red) return node_index;
+        };
+        NIL
+    }
+
+    #[test_only]
+    public fun first_case_d6_close_nephew_nil<V>(self: &Map<V>): u64 {
+        let node_ref;
+        let parent_ref;
+        let parent_index;
+        let sibling_ref;
+        let sibling_index;
+        let child_direction;
+        let nodes_ref = &self.nodes;
+        let close_nephew_index;
+        let distant_nephew_index;
+        for (node_index in 0..self.length()) {
+            node_ref = &nodes_ref[node_index];
+            if (node_ref.color is Color::Red) continue; // From now on is black.
+            parent_index = node_ref.parent;
+            if (parent_index == NIL) continue; // From now on is black non-root leaf.
+            parent_ref = &nodes_ref[parent_index];
+            child_direction = if (node_index == parent_ref.children[LEFT]) LEFT
+            else RIGHT;
+            sibling_index = parent_ref.children[1 - child_direction];
+            sibling_ref = &nodes_ref[sibling_index];
+            distant_nephew_index = sibling_ref.children[1 - child_direction];
+            if (distant_nephew_index != NIL
+                && (nodes_ref[distant_nephew_index].color is Color::Red)) {
+                close_nephew_index = sibling_ref.children[child_direction];
+                if (close_nephew_index == NIL) return node_index;
+            }
+        };
+        NIL
+    }
+
+    #[test_only]
+    public fun first_case_d5_close_nephew_has_children<V>(self: &Map<V>): u64 {
+        let node_ref;
+        let parent_ref;
+        let parent_index;
+        let sibling_ref;
+        let sibling_index;
+        let child_direction;
+        let nodes_ref = &self.nodes;
+        let close_nephew_index;
+        let distant_nephew_index;
+        let close_nephew_ref;
+        for (node_index in 0..self.length()) {
+            node_ref = &nodes_ref[node_index];
+            if (node_ref.color is Color::Red) continue; // From now on is black.
+            parent_index = node_ref.parent;
+            if (parent_index == NIL) continue; // From now on is black non-root leaf.
+            parent_ref = &nodes_ref[parent_index];
+            child_direction = if (node_index == parent_ref.children[LEFT]) LEFT
+            else RIGHT;
+            sibling_index = parent_ref.children[1 - child_direction];
+            sibling_ref = &nodes_ref[sibling_index];
+            distant_nephew_index = sibling_ref.children[1 - child_direction];
+            if (distant_nephew_index != NIL
+                && (nodes_ref[distant_nephew_index].color is Color::Red)) {
+                continue; // Skip if Case_D6.
+            };
+            close_nephew_index = sibling_ref.children[child_direction];
+            // From now on is Case_D5.
+            if (close_nephew_index != NIL
+                && (nodes_ref[close_nephew_index].color is Color::Red)) {
+                close_nephew_ref = &nodes_ref[close_nephew_index];
+                if (close_nephew_ref.children != vector[NIL, NIL]) {
+                    return node_index;
+                };
+            };
         };
         NIL
     }
@@ -1294,7 +1365,7 @@ module red_black_map::red_black_map {
         // Repeat for key groups removed by first occurence of non-root black leaves.
         let (map, _) = set_up_tree_5();
         loop {
-            let node_index = map.first_black_non_root_leaf_in_nodes_vector();
+            let node_index = map.first_case_black_non_root_leaf_node_index();
             if (node_index == NIL) break;
             let key = map.nodes[node_index].key;
             assert!(map.remove(key) == key);
@@ -2573,6 +2644,25 @@ module red_black_map::red_black_map {
         let key = map.nodes[node_index].key;
         assert!(map.remove(key) == key);
         map.verify();
+        map.destroy();
+
+        // Case_D6: close nephew is NIL.
+        map = set_up_tree_1();
+        assert!(map.remove(9) == 9);
+        map.verify();
+        node_index = map.first_case_d6_close_nephew_nil();
+        assert!(node_index == 0);
+        let key = map.nodes[node_index].key;
+        assert!(map.remove(key) == 5);
+        map.verify();
+        map.destroy();
+
+        // Case_D6: close nephew has children.
+        (map, _) = set_up_tree_5();
+        node_index = map.first_case_d5_close_nephew_has_children();
+        map.strip_red_leaves();
+        map.verify();
+        std::debug::print(&node_index);
         map.destroy();
     }
 
