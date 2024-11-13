@@ -68,7 +68,7 @@ module red_black_map::red_black_map {
     const E_PROPERTY_BLACK_HEIGHT_VIOLATION: u64 = 9;
 
     struct Node<V> {
-        key: u256,
+        key: u32,
         value: V,
         color: Color,
         parent: u64,
@@ -80,7 +80,7 @@ module red_black_map::red_black_map {
         nodes: vector<Node<V>>
     }
 
-    public fun add<V>(self: &mut Map<V>, key: u256, value: V) {
+    public fun add<V>(self: &mut Map<V>, key: u32, value: V) {
 
         // Verify key does not already exist, push new node to back of nodes vector.
         let (node_index, parent_index, child_direction) = self.search(key);
@@ -159,19 +159,19 @@ module red_black_map::red_black_map {
         }; // Case_I3.
     }
 
-    public fun borrow<V>(self: &Map<V>, key: u256): &V {
+    public fun borrow<V>(self: &Map<V>, key: u32): &V {
         let (node_index, _, _) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
         &self.nodes[node_index].value
     }
 
-    public fun borrow_mut<V>(self: &mut Map<V>, key: u256): &mut V {
+    public fun borrow_mut<V>(self: &mut Map<V>, key: u32): &mut V {
         let (node_index, _, _) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
         &mut self.nodes[node_index].value
     }
 
-    public fun contains_key<V>(self: &Map<V>, key: u256): bool {
+    public fun contains_key<V>(self: &Map<V>, key: u32): bool {
         let (node_index, _, _) = self.search(key);
         node_index != NIL
     }
@@ -192,7 +192,7 @@ module red_black_map::red_black_map {
         self.root == NIL
     }
 
-    public fun keys<V>(self: &Map<V>): vector<u256> {
+    public fun keys<V>(self: &Map<V>): vector<u32> {
         vector::map_ref(&self.nodes, |node| node.key)
     }
 
@@ -200,12 +200,12 @@ module red_black_map::red_black_map {
         self.nodes.length()
     }
 
-    public fun maximum_key<V>(self: &Map<V>): u256 {
+    public fun maximum_key<V>(self: &Map<V>): u32 {
         assert!(self.root != NIL, E_EMPTY);
         self.subtree_min_or_max_node_ref(self.root, MAXIMUM).key
     }
 
-    public fun minimum_key<V>(self: &Map<V>): u256 {
+    public fun minimum_key<V>(self: &Map<V>): u32 {
         assert!(self.root != NIL, E_EMPTY);
         self.subtree_min_or_max_node_ref(self.root, MINIMUM).key
     }
@@ -214,13 +214,13 @@ module red_black_map::red_black_map {
         Map { root: NIL, nodes: vector[] }
     }
 
-    public fun predecessor_key<V>(self: &Map<V>, key: u256): u256 {
+    public fun predecessor_key<V>(self: &Map<V>, key: u32): u32 {
         let (node_index, _, _) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
         self.traverse_ref(node_index, PREDECESSOR).key
     }
 
-    public fun remove<V>(self: &mut Map<V>, key: u256): V {
+    public fun remove<V>(self: &mut Map<V>, key: u32): V {
         let (node_index, parent_index, child_direction) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
 
@@ -374,7 +374,7 @@ module red_black_map::red_black_map {
 
     }
 
-    public fun successor_key<V>(self: &Map<V>, key: u256): u256 {
+    public fun successor_key<V>(self: &Map<V>, key: u32): u32 {
         let (node_index, _, _) = self.search(key);
         assert!(node_index != NIL, E_KEY_NOT_FOUND);
         self.traverse_ref(node_index, SUCCESSOR).key
@@ -411,9 +411,9 @@ module red_black_map::red_black_map {
         parent_color: Color,
         node_index: u64,
         subtree_has_lower_key_bound: bool,
-        subtree_lower_key_bound: u256,
+        subtree_lower_key_bound: u32,
         subtree_has_upper_key_bound: bool,
-        subtree_upper_key_bound: u256
+        subtree_upper_key_bound: u32
     ): (u64, u64) {
         // If node index is NIL, return 0 nodes in subtree and 0 black height.
         if (node_index == NIL) return (0, 0);
@@ -597,7 +597,7 @@ module red_black_map::red_black_map {
     ///   if tree is empty.
     /// - `u64`: Direction of the node where `key` should be inserted as child to its parent, `NIL`
     ///   if tree is empty.
-    inline fun search<V>(self: &Map<V>, key: u256): (u64, u64, u64) {
+    inline fun search<V>(self: &Map<V>, key: u32): (u64, u64, u64) {
         let current_index = self.root;
         let parent_index = NIL;
         let child_direction = NIL;
@@ -701,7 +701,7 @@ module red_black_map::red_black_map {
 
     #[test_only]
     struct MockNode<V: drop> has copy, drop {
-        key: u256,
+        key: u32,
         value: V,
         color: Color,
         parent: u64,
@@ -734,7 +734,7 @@ module red_black_map::red_black_map {
 
     #[test_only]
     fun assert_search_result<V>(
-        self: &Map<V>, key: u256, expected: MockSearchResult
+        self: &Map<V>, key: u32, expected: MockSearchResult
     ) {
         let (node_index, parent_index, child_direction) = self.search(key);
         assert!(node_index == expected.node_index);
@@ -905,7 +905,7 @@ module red_black_map::red_black_map {
     // 5b0     10b1
     //        /    \
     //     9r4      11r3
-    public fun set_up_tree_1(): Map<u256> {
+    public fun set_up_tree_1(): Map<u32> {
         let map = new();
         map.add(5, 5);
         map.verify();
@@ -979,7 +979,7 @@ module red_black_map::red_black_map {
     //      20b2      50b0
     //     /    \
     // 10r4      25r3
-    public fun set_up_tree_2(): Map<u256> {
+    public fun set_up_tree_2(): Map<u32> {
         let map = new();
         map.add(50, 50);
         map.verify();
@@ -1055,7 +1055,7 @@ module red_black_map::red_black_map {
     //     2b2     5b5
     //            /   \
     //         4r4     6r6
-    public fun set_up_tree_3(): Map<u256> {
+    public fun set_up_tree_3(): Map<u32> {
         let map = new();
         for (i in 0..7) {
             map.add(i, i);
@@ -1147,7 +1147,7 @@ module red_black_map::red_black_map {
     //      19b3      21b4
     //     /
     // 17r5
-    public fun set_up_tree_4(): Map<u256> {
+    public fun set_up_tree_4(): Map<u32> {
         let map = new();
         map.add(10, 10);
         map.add(15, 15);
@@ -1222,7 +1222,7 @@ module red_black_map::red_black_map {
 
     #[test_only]
     // Set up a large tree.
-    public fun set_up_tree_5(): (Map<u256>, vector<vector<u256>>) {
+    public fun set_up_tree_5(): (Map<u32>, vector<vector<u32>>) {
         let map = new();
         let keys = vector[
             vector[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -1257,7 +1257,7 @@ module red_black_map::red_black_map {
     // 9b4      12b3
     //              \
     //               13r5
-    public fun set_up_tree_6(): Map<u256> {
+    public fun set_up_tree_6(): Map<u32> {
         let map = new();
         map.add(10, 10);
         map.add(15, 15);
@@ -1339,7 +1339,7 @@ module red_black_map::red_black_map {
     // 0b0     2b2 5r5     8b8
     //            /   \
     //         4b4     6b6
-    public fun set_up_tree_7(): Map<u256> {
+    public fun set_up_tree_7(): Map<u32> {
         let map =
             Map {
                 root: 3,
@@ -1449,7 +1449,7 @@ module red_black_map::red_black_map {
             }
         );
         for (i in 0..n_keys) {
-            assert!(map.contains_key((i as u256)));
+            assert!(map.contains_key((i as u32)));
         };
 
         vector::for_each(
@@ -1470,27 +1470,27 @@ module red_black_map::red_black_map {
 
         // Repeat in linear order.
         for (i in 0..n_keys) {
-            map.add((i as u256), (i as u256));
-            assert!(map.contains_key((i as u256)));
+            map.add((i as u32), (i as u32));
+            assert!(map.contains_key((i as u32)));
             map.verify();
         };
         for (i in 0..n_keys) {
-            assert!(map.remove((i as u256)) == (i as u256));
+            assert!(map.remove((i as u32)) == (i as u32));
             map.verify();
-            assert!(!map.contains_key((i as u256)));
+            assert!(!map.contains_key((i as u32)));
         };
 
         // Repeat for reverse linear order of removals.
         for (i in 0..n_keys) {
-            map.add((i as u256), (i as u256));
-            assert!(map.contains_key((i as u256)));
+            map.add((i as u32), (i as u32));
+            assert!(map.contains_key((i as u32)));
             map.verify();
         };
         for (i in 0..n_keys) {
             let j = n_keys - i - 1;
-            assert!(map.remove((j as u256)) == (j as u256));
+            assert!(map.remove((j as u32)) == (j as u32));
             map.verify();
-            assert!(!map.contains_key((j as u256)));
+            assert!(!map.contains_key((j as u32)));
         };
         map.destroy_empty();
 
