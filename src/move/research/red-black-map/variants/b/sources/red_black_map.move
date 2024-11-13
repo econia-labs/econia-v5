@@ -1150,6 +1150,88 @@ module red_black_map::red_black_map {
     }
 
     #[test_only]
+    //           |
+    //          15b1
+    //         /    \
+    //     10r0      20b2
+    //    /    \
+    // 9b4      12b3
+    //              \
+    //               13r5
+    public fun set_up_tree_6(): Map<u256> {
+        let map = new();
+        map.add(10, 10);
+        map.add(15, 15);
+        map.add(20, 20);
+        map.add(12, 12);
+        map.add(9, 9);
+        map.add(13, 13);
+        map.verify();
+        map.assert_root_index(1);
+        map.assert_node(
+            0,
+            MockNode {
+                key: 10,
+                value: 10,
+                color: Color::Red,
+                parent: 1,
+                children: vector[4, 3]
+            }
+        );
+        map.assert_node(
+            1,
+            MockNode {
+                key: 15,
+                value: 15,
+                color: Color::Black,
+                parent: NIL,
+                children: vector[0, 2]
+            }
+        );
+        map.assert_node(
+            2,
+            MockNode {
+                key: 20,
+                value: 20,
+                color: Color::Black,
+                parent: 1,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            3,
+            MockNode {
+                key: 12,
+                value: 12,
+                color: Color::Black,
+                parent: 0,
+                children: vector[NIL, 5]
+            }
+        );
+        map.assert_node(
+            4,
+            MockNode {
+                key: 9,
+                value: 9,
+                color: Color::Black,
+                parent: 0,
+                children: vector[NIL, NIL]
+            }
+        );
+        map.assert_node(
+            5,
+            MockNode {
+                key: 13,
+                value: 13,
+                color: Color::Red,
+                parent: 3,
+                children: vector[NIL, NIL]
+            }
+        );
+        map
+    }
+
+    #[test_only]
     public fun strip_red_leaves<V: drop>(self: &mut Map<V>) {
         let keys_to_remove = vector[];
         self.nodes.for_each_ref(|node| {
@@ -2473,6 +2555,12 @@ module red_black_map::red_black_map {
         let node_index = map.first_case_d3_d5_node_index();
         assert!(map.nodes[node_index].key == 10);
         assert!(map.remove(10) == 10);
+        map.verify();
+        map.destroy();
+        map = set_up_tree_6();
+        node_index = map.first_case_d3_d5_node_index();
+        assert!(map.nodes[node_index].key == 20);
+        assert!(map.remove(20) == 20);
         map.verify();
         map.destroy();
     }
