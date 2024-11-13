@@ -1,5 +1,3 @@
-<!-- cspell:word movefmt -->
-
 # Red-black map
 
 The `variants` directory contains several implementations based on
