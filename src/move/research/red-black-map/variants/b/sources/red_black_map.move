@@ -515,8 +515,7 @@ module red_black_map::red_black_map {
         subtree_index
     }
 
-    /*inline*/
-    fun rotate_parent_may_be_root<V>(
+    inline fun rotate_parent_may_be_root<V>(
         self: &mut Map<V>, parent_index: u64, direction: u64
     ) {
         let (subtree_index, grandparent_index) =
@@ -749,6 +748,32 @@ module red_black_map::red_black_map {
                 return node_index;
             };
 
+        };
+        NIL
+    }
+
+    #[test_only]
+    public fun first_case_d3_parent_not_root_node_index<V>(self: &Map<V>): u64 {
+        let node_ref;
+        let parent_ref;
+        let parent_index;
+        let sibling_ref;
+        let sibling_index;
+        let child_direction;
+        let nodes_ref = &self.nodes;
+        for (node_index in 0..self.length()) {
+            node_ref = &nodes_ref[node_index];
+            if (node_ref.color is Color::Red) continue; // From now on is black.
+            parent_index = node_ref.parent;
+            if (parent_index == NIL) continue; // From now on is black non-root leaf.
+            parent_ref = &nodes_ref[parent_index];
+            if (parent_ref.parent == NIL) continue; // From now on is parent not root.
+            child_direction = if (node_index == parent_ref.children[LEFT]) LEFT
+            else RIGHT;
+            sibling_index = parent_ref.children[1 - child_direction];
+            sibling_ref = &nodes_ref[sibling_index];
+            // If sibling is red, Case_D3 with non-root parent.
+            if (sibling_ref.color is Color::Red) return node_index;
         };
         NIL
     }
@@ -2505,16 +2530,48 @@ module red_black_map::red_black_map {
 
     #[test]
     fun test_remove_5() {
+
+        // Case_D3: left rotation, non-NIL close nephew, parent is root.
         let map = set_up_tree_4();
         let node_index = map.first_case_d3_d5_node_index();
         assert!(map.nodes[node_index].key == 10);
         assert!(map.remove(10) == 10);
         map.verify();
         map.destroy();
+
+        // Case_D3: left rotation, NIL close nephew, parent is root.
+        map = set_up_tree_4();
+        assert!(map.remove(17) == 17);
+        map.verify();
+        assert!(map.nodes[node_index].key == 10);
+        assert!(map.remove(10) == 10);
+        map.verify();
+        map.destroy();
+
+        // Case_D3: right rotation, non-NIL close nephew, parent is root.
         map = set_up_tree_6();
         node_index = map.first_case_d3_d5_node_index();
         assert!(map.nodes[node_index].key == 20);
         assert!(map.remove(20) == 20);
+        map.verify();
+        map.destroy();
+
+        // Case_D3: right rotation, NIL close nephew, parent is root.
+        map = set_up_tree_6();
+        assert!(map.remove(13) == 13);
+        map.verify();
+        assert!(map.nodes[node_index].key == 20);
+        assert!(map.remove(20) == 20);
+        map.verify();
+        map.destroy();
+
+        // Case_D3: parent is not root.
+        (map, _) = set_up_tree_5();
+        map.strip_red_leaves();
+        node_index = map.first_case_d3_parent_not_root_node_index();
+        assert!(node_index != NIL);
+        let key = map.nodes[node_index].key;
+        assert!(map.remove(key) == key);
         map.verify();
         map.destroy();
     }
