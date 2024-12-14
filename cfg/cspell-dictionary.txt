@@ -4,6 +4,7 @@ bitshift
 clmm
 collateralized
 econia
+forall
 octas
 precommit
 struct
