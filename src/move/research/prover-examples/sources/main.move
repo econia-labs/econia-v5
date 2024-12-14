@@ -16,6 +16,10 @@ module prover_examples::main {
         invariant value <= MAX_VALUE;
     }
 
+    invariant<T> forall account_address: address where exists<PhantomKeyStruct<T>>(
+        account_address
+    ): global<PhantomKeyStruct<T>>(account_address).account_address == account_address;
+
     public fun move_to_phantom_key_struct<T>(account: &signer, value: u8) {
         assert!(value <= MAX_VALUE, E_VALUE_TOO_HIGH);
         move_to(
