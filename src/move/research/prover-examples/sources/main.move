@@ -9,7 +9,7 @@ module prover_examples::main {
 
     struct PhantomKeyStruct<phantom T> has key {
         account_address: address,
-        value: u8,
+        value: u8
     }
 
     spec PhantomKeyStruct {
@@ -18,18 +18,20 @@ module prover_examples::main {
 
     public fun move_to_phantom_key_struct<T>(account: &signer, value: u8) {
         assert!(value <= MAX_VALUE, E_VALUE_TOO_HIGH);
-        move_to(account, PhantomKeyStruct<T> {
-            account_address: signer::address_of(account),
-            value,
-        });
+        move_to(
+            account,
+            PhantomKeyStruct<T> { account_address: signer::address_of(account), value }
+        );
     }
 
-    public fun increment_phantom_key_struct_with_rollover<T>(account: &signer) acquires PhantomKeyStruct<T> {
+    public fun increment_phantom_key_struct_with_rollover<T>(
+        account: &signer
+    ) acquires PhantomKeyStruct<T> {
         let value_ref_mut = &mut PhantomKeyStruct<T>[signer::address_of(account)].value;
         if (*value_ref_mut == MAX_VALUE) {
             *value_ref_mut = 0;
         } else {
-            *value_ref_mut += 1;
+            *value_ref_mut = *value_ref_mut + 1;
         };
     }
 
@@ -37,14 +39,11 @@ module prover_examples::main {
         aborts_if value > MAX_VALUE;
         aborts_if exists_phantom_key_struct<T>(account);
         ensures exists_phantom_key_struct<T>(account);
-        ensures global<PhantomKeyStruct<T>>(signer::address_of(account)) == PhantomKeyStruct<T> {
-            account_address: signer::address_of(account),
-            value,
-        };
+        ensures global<PhantomKeyStruct<T>>(signer::address_of(account))
+            == PhantomKeyStruct<T> { account_address: signer::address_of(account), value };
     }
 
     spec fun exists_phantom_key_struct<T>(account: &signer): bool {
         exists<PhantomKeyStruct<T>>(signer::address_of(account))
     }
-
 }
