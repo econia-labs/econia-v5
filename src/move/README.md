@@ -19,3 +19,11 @@
    git ls-files | entr -c aptos move coverage bytecode --dev --move-2 \
        --module <MODULE>
    ```
+
+1. After [installing the Move Prover], to prove a package:
+
+   ```sh
+   aptos move prove --dev --move-2
+   ```
+
+[installing the move prover]: https://aptos.dev/en/build/cli/setup-cli/install-move-prover
