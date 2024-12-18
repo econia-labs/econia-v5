@@ -1,4 +1,4 @@
-module prover_examples::main {
+module prover_examples::phantom_key_struct {
 
     use std::signer;
 
