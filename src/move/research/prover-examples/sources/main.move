@@ -22,8 +22,8 @@ module prover_examples::main {
         account_address
     ): global<PhantomKeyStruct<T>>(account_address).account_address == account_address;
 
-    // Ensure that on update to a PhantomKeyStruct<T>, the value field is incremented by 1, or reset
-    // to 0 if it was already at MAX_VALUE.
+    // Ensure that on update to an individual PhantomKeyStruct<T>, the value field is incremented by
+    // 1, or reset to 0 if it was already at MAX_VALUE.
     invariant<T> update[global] forall account_address: address where exists<
         PhantomKeyStruct<T>>(account_address)
         && old(
