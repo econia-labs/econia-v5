@@ -14,22 +14,27 @@ module prover_examples::value_holder {
         value: u8
     }
 
-    invariant update forall account_address: address where !old(
+    invariant update[suspendable] forall account_address: address where !old(
         exists<ValueHolder>(account_address)
     ) && exists<ValueHolder>(account_address):
         contains(
             global<ValueHolderManifest>(@prover_examples).account_addresses,
             account_address
+        ) && old(
+            !contains(
+                global<ValueHolderManifest>(@prover_examples).account_addresses,
+                account_address
+            )
         );
 
     public fun init_value_holder(account: &signer) acquires ValueHolderManifest {
         let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
-        value_holder_manifest_ref_mut.account_addresses.push_back(
-            signer::address_of(account)
-        );
         move_to(
             account,
             ValueHolder { value: value_holder_manifest_ref_mut.value }
+        );
+        value_holder_manifest_ref_mut.account_addresses.push_back(
+            signer::address_of(account)
         );
     }
 
@@ -47,6 +52,8 @@ module prover_examples::value_holder {
     }
 
     spec init_value_holder {
+        pragma disable_invariants_in_body;
+
         requires exists<ValueHolderManifest>(@prover_examples); // Assumed per init_module.
         let account_address = signer::address_of(account);
         requires !contains(
