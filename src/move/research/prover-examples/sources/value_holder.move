@@ -28,12 +28,29 @@ module prover_examples::value_holder {
         contains(
             global<ValueHolderManifest>(@prover_examples).account_addresses,
             account_address
-        ) && old(
-            !contains(
-                global<ValueHolderManifest>(@prover_examples).account_addresses,
-                account_address
+        )
+            && old(
+                !contains(
+                    global<ValueHolderManifest>(@prover_examples).account_addresses,
+                    account_address
+                )
             )
-        );
+            && global<ValueHolder>(account_address).value
+                == global<ValueHolderManifest>(@prover_examples).value;
+
+    invariant update[suspendable] forall account_address: address where !old(
+        contains(
+            global<ValueHolderManifest>(@prover_examples).account_addresses,
+            account_address
+        )
+    ) && contains(
+        global<ValueHolderManifest>(@prover_examples).account_addresses,
+        account_address
+    ):
+        exists<ValueHolder>(account_address)
+            && old(!exists<ValueHolder>(account_address))
+            && global<ValueHolder>(account_address).value
+                == global<ValueHolderManifest>(@prover_examples).value;
 
     public fun init_value_holder(account: &signer) acquires ValueHolderManifest {
         let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
@@ -44,6 +61,11 @@ module prover_examples::value_holder {
         value_holder_manifest_ref_mut.account_addresses.push_back(
             signer::address_of(account)
         );
+    }
+
+    public fun invalid_manifest_update(account_address: address) acquires ValueHolderManifest {
+        let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
+        value_holder_manifest_ref_mut.account_addresses.push_back(account_address);
     }
 
     fun init_module(prover_examples: &signer) {
