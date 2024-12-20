@@ -15,13 +15,16 @@ module prover_examples::value_holder {
     }
 
     spec schema Initialized {
-        aborts_if !exists<ValueHolderManifest>(@prover_examples);
+        requires exists<ValueHolderManifest>(@prover_examples);
     }
 
     spec module {
         apply Initialized to * except init_module;
     }
 
+    /// Ensure that on the creation of a value holder, the account address is originally absent
+    /// from the manifest then gets added, and that the value in the value holder is the same as
+    /// the value in the manifest.
     invariant update[suspendable] forall account_address: address where !old(
         exists<ValueHolder>(account_address)
     ) && exists<ValueHolder>(account_address):
@@ -38,6 +41,8 @@ module prover_examples::value_holder {
             && global<ValueHolder>(account_address).value
                 == global<ValueHolderManifest>(@prover_examples).value;
 
+    /// Ensure that if an account address is originally absent from the manifest but is then
+    /// added, a value holder is created at the corresponding address with the correct value.
     invariant update[suspendable] forall account_address: address where !old(
         contains(
             global<ValueHolderManifest>(@prover_examples).account_addresses,
@@ -81,11 +86,14 @@ module prover_examples::value_holder {
     spec init_value_holder {
         pragma disable_invariants_in_body;
 
+        // Require that the account address is not already in the manifest and that no value holder
+        // exists at the account address.
         let account_address = signer::address_of(account);
         requires !contains(
             global<ValueHolderManifest>(@prover_examples).account_addresses,
             account_address
         );
+        requires !exists<ValueHolder>(account_address);
 
         // Verify value holder creation.
         aborts_if exists<ValueHolder>(account_address);
