@@ -63,11 +63,6 @@ module prover_examples::value_holder {
         );
     }
 
-    public fun invalid_manifest_update(account_address: address) acquires ValueHolderManifest {
-        let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
-        value_holder_manifest_ref_mut.account_addresses.push_back(account_address);
-    }
-
     fun init_module(prover_examples: &signer) {
         move_to(
             prover_examples,
