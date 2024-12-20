@@ -57,6 +57,12 @@ module prover_examples::value_holder {
             && global<ValueHolder>(account_address).value
                 == global<ValueHolderManifest>(@prover_examples).value;
 
+    /// Ensure that if the value in the manifest is updated, all value holders are updated.
+    invariant update[suspendable] forall new_value: u8, account_address: address where old(
+        exists<ValueHolderManifest>(@prover_examples)
+    ) && old(exists<ValueHolder>(account_address)):
+        global<ValueHolder>(account_address).value == new_value;
+
     public fun init_value_holder(account: &signer) acquires ValueHolderManifest {
         let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
         move_to(
@@ -66,6 +72,14 @@ module prover_examples::value_holder {
         value_holder_manifest_ref_mut.account_addresses.push_back(
             signer::address_of(account)
         );
+    }
+
+    public fun update_value(new_value: u8) acquires ValueHolder, ValueHolderManifest {
+        let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
+        value_holder_manifest_ref_mut.value = new_value;
+        value_holder_manifest_ref_mut.account_addresses.for_each_ref(|account_address_ref| {
+            ValueHolder[*account_address_ref].value = new_value;
+        });
     }
 
     fun init_module(prover_examples: &signer) {
