@@ -14,6 +14,28 @@ module prover_examples::value_holder {
         value: u8
     }
 
+    spec ValueHolderManifest {
+        // Prohibit account address duplicates in the manifest.
+        invariant forall account_address: address where contains(
+            account_addresses, account_address
+        ):
+            {
+                let index = index_of(account_addresses, account_address);
+                let length = len(account_addresses);
+                let before = if (index == 0) { vec() }
+                else {
+                    account_addresses[0..index]
+                };
+                let after =
+                    if (index == length - 1) { vec() }
+                    else {
+                        account_addresses[index + 1..length]
+                    };
+                let without = concat(before, after);
+                contains(without, account_address) == false
+            };
+    }
+
     spec schema Initialized {
         requires exists<ValueHolderManifest>(@prover_examples);
     }
@@ -21,6 +43,33 @@ module prover_examples::value_holder {
     spec module {
         apply Initialized to * except init_module;
     }
+
+    /// Ensure that the manifest only exists at the publisher address.
+    invariant forall account_address: address where account_address != @prover_examples:
+        !exists<ValueHolderManifest>(account_address);
+
+    /// Ensure that for every value holder, there is a corresponding account address in the
+    /// manifest and that the value in the holder is the same as the value in the manifest.
+    invariant [suspendable] forall account_address: address where exists<ValueHolder>(
+        account_address
+    ):
+        exists<ValueHolderManifest>(@prover_examples)
+            && contains(
+                global<ValueHolderManifest>(@prover_examples).account_addresses,
+                account_address
+            )
+            && global<ValueHolder>(account_address).value
+                == global<ValueHolderManifest>(@prover_examples).value;
+
+    /// Ensure that for every account address in the manifest, there exists a corresponding
+    /// holder and that the value inside it is the same as the value in the manifest.
+    invariant [suspendable] forall account_address: address where contains(
+        global<ValueHolderManifest>(@prover_examples).account_addresses,
+        account_address
+    ):
+        exists<ValueHolder>(account_address)
+            && global<ValueHolder>(account_address).value
+                == global<ValueHolderManifest>(@prover_examples).value;
 
     /// Ensure that on the creation of a value holder, the account address is originally absent
     /// from the manifest then gets added, and that the value in the value holder is the same as
