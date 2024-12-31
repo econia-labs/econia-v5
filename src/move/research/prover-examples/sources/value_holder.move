@@ -22,10 +22,11 @@ module prover_examples::value_holder {
             {
                 let index = index_of(account_addresses, account_address);
                 let length = len(account_addresses);
-                let before = if (index == 0) { vec() }
-                else {
-                    account_addresses[0..index]
-                };
+                let before =
+                    if (index == 0) { vec() }
+                    else {
+                        account_addresses[0..index]
+                    };
                 let after =
                     if (index == length - 1) { vec() }
                     else {
@@ -126,11 +127,35 @@ module prover_examples::value_holder {
     }
 
     public fun update_value(new_value: u8) acquires ValueHolder, ValueHolderManifest {
+        // Update value in the manifest.
         let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
         value_holder_manifest_ref_mut.value = new_value;
-        value_holder_manifest_ref_mut.account_addresses.for_each_ref(|account_address_ref| {
-            ValueHolder[*account_address_ref].value = new_value;
-        });
+
+        // Update value in all value holders.
+        let account_addresses_ref = &value_holder_manifest_ref_mut.account_addresses;
+        let index = 0;
+        let n_addresses = account_addresses_ref.length();
+        loop {
+            // At the start of loop, all value holders with account address index less than the
+            // current loop index should be updated.
+            spec {
+                invariant forall i: u64 where i < index:
+                    global<ValueHolder>(account_addresses_ref[i]).value
+                        == global<ValueHolderManifest>(@prover_examples).value;
+            };
+            if (index == n_addresses) {
+                break;
+            };
+            ValueHolder[account_addresses_ref[index]].value = new_value;
+            index = index + 1;
+            // At the end of loop, all value holders with account address index less than the
+            // next loop index should be updated.
+            spec {
+                assert forall i: u64 where i < index:
+                    global<ValueHolder>(account_addresses_ref[i]).value
+                        == global<ValueHolderManifest>(@prover_examples).value;
+            }
+        };
     }
 
     fun init_module(prover_examples: &signer) {
