@@ -198,5 +198,14 @@ module prover_examples::value_holder {
 
     spec update_value {
         pragma disable_invariants_in_body;
+
+        ensures global<ValueHolderManifest>(@prover_examples).value == new_value;
+        ensures forall account_address: address where contains(
+            global<ValueHolderManifest>(@prover_examples).account_addresses,
+            account_address
+        ): global<ValueHolder>(account_address).value == new_value;
+        ensures forall account_address: address where exists<ValueHolder>(
+            account_address
+        ): global<ValueHolder>(account_address).value == new_value;
     }
 }
