@@ -112,8 +112,10 @@ module prover_examples::value_holder {
         exists<ValueHolderManifest>(@prover_examples)
     )
         && old(exists<ValueHolder>(account_address))
+        && old(global<ValueHolderManifest>(@prover_examples).value) != new_value
         && global<ValueHolderManifest>(@prover_examples).value == new_value:
-        global<ValueHolder>(account_address).value == new_value;
+        old(global<ValueHolder>(account_address).value) != new_value
+            && global<ValueHolder>(account_address).value == new_value;
 
     public fun init_value_holder(account: &signer) acquires ValueHolderManifest {
         let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
@@ -127,8 +129,10 @@ module prover_examples::value_holder {
     }
 
     public fun update_value(new_value: u8) acquires ValueHolder, ValueHolderManifest {
-        // Update value in the manifest.
+        // Update value in the manifest, returning early if no update.
         let value_holder_manifest_ref_mut = &mut ValueHolderManifest[@prover_examples];
+        let value_ref_mut = &mut value_holder_manifest_ref_mut.value;
+        if (*value_ref_mut == new_value) return;
         value_holder_manifest_ref_mut.value = new_value;
 
         // Update value in all value holders.
@@ -199,11 +203,16 @@ module prover_examples::value_holder {
     spec update_value {
         pragma disable_invariants_in_body;
 
+        // Ensure manifest value is updated.
         ensures global<ValueHolderManifest>(@prover_examples).value == new_value;
+
+        // Ensure all value holders in the manifest have the new value.
         ensures forall account_address: address where contains(
             global<ValueHolderManifest>(@prover_examples).account_addresses,
             account_address
         ): global<ValueHolder>(account_address).value == new_value;
+
+        // Ensure all holders that exist have the new value.
         ensures forall account_address: address where exists<ValueHolder>(
             account_address
         ): global<ValueHolder>(account_address).value == new_value;
