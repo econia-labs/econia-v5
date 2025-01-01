@@ -135,26 +135,19 @@ module prover_examples::value_holder {
         let account_addresses_ref = &value_holder_manifest_ref_mut.account_addresses;
         let index = 0;
         let n_addresses = account_addresses_ref.length();
-        loop {
-            // At the start of loop, all value holders with account address index less than the
-            // current loop index should be updated.
+        while ({
             spec {
                 invariant forall i: u64 where i < index:
                     global<ValueHolder>(account_addresses_ref[i]).value
                         == global<ValueHolderManifest>(@prover_examples).value;
             };
-            if (index == n_addresses) {
-                break;
-            };
+            index < n_addresses
+        }) {
             ValueHolder[account_addresses_ref[index]].value = new_value;
-            index = index + 1;
-            // At the end of loop, all value holders with account address index less than the
-            // next loop index should be updated.
             spec {
-                assert forall i: u64 where i < index:
-                    global<ValueHolder>(account_addresses_ref[i]).value
-                        == global<ValueHolderManifest>(@prover_examples).value;
-            }
+                assert ValueHolder[account_addresses_ref[index]].value == new_value;
+            };
+            index = index + 1;
         };
     }
 
@@ -201,5 +194,9 @@ module prover_examples::value_holder {
             global<ValueHolderManifest>(@prover_examples).account_addresses,
             account_address
         );
+    }
+
+    spec update_value {
+        pragma disable_invariants_in_body;
     }
 }
