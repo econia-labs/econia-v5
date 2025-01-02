@@ -10,5 +10,6 @@ precommit
 struct
 structs
 subdir
+suspendable
 unrecognize
 xbtmatt

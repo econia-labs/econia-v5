@@ -23,7 +23,7 @@
 1. After [installing the Move Prover], to prove a package:
 
    ```sh
-   aptos move prove --dev --move-2
+   aptos move prove --dev --move-2 --trace
    ```
 
 [installing the move prover]: https://aptos.dev/en/build/cli/setup-cli/install-move-prover
